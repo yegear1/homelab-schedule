@@ -79,3 +79,9 @@ class RescheduleJobRequest(BaseModel):
 class ReloadRoutinesResponse(BaseModel):
     status: str = "reloaded"
     count: int
+
+
+class PurgeJobsResponse(BaseModel):
+    status: str = "purged"
+    deleted_count: int
+    retention_days: int

@@ -22,6 +22,7 @@ from homelab_schedule.errors import (
     YamlJobImmutable,
 )
 from homelab_schedule.health import ping
+from homelab_schedule.housekeeping_router import router as housekeeping_router
 from homelab_schedule.jobs_router import router as jobs_router
 from homelab_schedule.jobs_service import JobService
 from homelab_schedule.logging import configure_logging
@@ -83,6 +84,7 @@ def create_app(
                 now=clock_now,
                 cap_seconds=tick_cap_seconds,
                 routines_path=routines_file,
+                retention_days=resolved.job_retention_days,
             )
         )
         yield
@@ -97,6 +99,7 @@ def create_app(
     _register_error_handlers(app)
     app.include_router(routines_router)
     app.include_router(jobs_router)
+    app.include_router(housekeeping_router)
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:

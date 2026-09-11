@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Housekeeping e Expurgo de Jobs Antigos no SQLite (`[01.4]`)
+
+- **Contexto:** Jobs pontuais concluídos (`done`) ou com falha (`error`) se acumulavam indefinidamente no banco SQLite.
+- **Decisão:** Configuração `JOB_RETENTION_DAYS` (padrão de 365 dias / 1 ano, conforme alinhamento humano; `0` desativa). Expurgo automático diário no loop `run_tick` + endpoint operacional autenticado `POST /housekeeping/purge?days=...`. Expurgo restrito a `status IN ('done', 'error')` e `source = 'sqlite'`. Jobs `scheduled` e rotinas `yaml` são estritamente preservados.
+- **Consequências:** Banco de dados mantém footprint reduzido automaticamente ao longo dos anos, sem risco de expurgar lembretes agendados ou rotinas de arquivo.
+
 ### [2026-09-11] Watch e Reload de `routines.yaml` em runtime (`[01.3]`)
 
 - **Contexto:** Alterações no `routines.yaml` no host/homelab exigiam reiniciar o container para surtir efeito.

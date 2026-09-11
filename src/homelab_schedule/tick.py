@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from homelab_schedule.aliases import resolve_destination
@@ -12,8 +13,10 @@ from homelab_schedule.repository import JobRepository
 from homelab_schedule.routines import merge_routines
 from schemas.job import Job, JobKind, JobStatus
 
+_LOG = logging.getLogger("homelab_schedule.tick")
 _FAILURE_BACKOFF = 5.0
 _MIN_SLEEP = 0.05
+_DAY_SECONDS = 86400.0
 
 
 async def run_tick(
@@ -26,19 +29,35 @@ async def run_tick(
     now: Callable[[], datetime],
     cap_seconds: float = 300.0,
     routines_path: Path | None = None,
+    retention_days: int = 365,
 ) -> None:
     last_routines_mtime: float | None = _get_mtime(routines_path)
+    last_housekeeping: datetime | None = None
     while not stop.is_set():
+        current_now = now()
         if routines_path is not None:
             current_mtime = _get_mtime(routines_path)
             if current_mtime != last_routines_mtime:
                 last_routines_mtime = current_mtime
                 try:
-                    merge_routines(repo, routines_path, now())
+                    merge_routines(repo, routines_path, current_now)
                 except Exception:
                     pass
-        failed = await fire_due(repo, dispatcher, aliases, now())
-        delay = _next_delay(repo, now(), cap_seconds, failed)
+        if retention_days > 0:
+            if (
+                last_housekeeping is None
+                or (current_now - last_housekeeping).total_seconds() >= _DAY_SECONDS
+            ):
+                last_housekeeping = current_now
+                cutoff = current_now - timedelta(days=retention_days)
+                deleted = repo.purge_old_jobs(cutoff)
+                if deleted > 0:
+                    _LOG.info(
+                        "housekeeping_purged",
+                        extra={"deleted_count": deleted, "retention_days": retention_days},
+                    )
+        failed = await fire_due(repo, dispatcher, aliases, current_now)
+        delay = _next_delay(repo, current_now, cap_seconds, failed)
         try:
             await asyncio.wait_for(wake.wait(), timeout=delay)
         except TimeoutError:

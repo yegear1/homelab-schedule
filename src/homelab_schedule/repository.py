@@ -118,6 +118,29 @@ class JobRepository:
         ).fetchall()
         return [_row_to_job(row) for row in rows]
 
+    def purge_old_jobs(self, before: datetime) -> int:
+        encoded = _dt_to_db(before)
+        cursor = self._conn.execute(
+            """
+            DELETE FROM jobs
+            WHERE source = ?
+              AND status IN (?, ?)
+              AND (
+                (last_run_at IS NOT NULL AND last_run_at < ?)
+                OR (last_run_at IS NULL AND run_at IS NOT NULL AND run_at < ?)
+              )
+            """,
+            (
+                JobSource.SQLITE.value,
+                JobStatus.DONE.value,
+                JobStatus.ERROR.value,
+                encoded,
+                encoded,
+            ),
+        )
+        self._conn.commit()
+        return cursor.rowcount
+
 
 def _apply_status_filter(
     clauses: list[str],

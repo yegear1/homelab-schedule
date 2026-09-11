@@ -9,7 +9,7 @@ O envio é assíncrono. `202 Accepted` significa que a mensagem entrou na fila. 
 | Canal | Quem usa | v1 neste repo |
 | :--- | :--- | :--- |
 | **MCP** (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`) | Agente no Cursor | Sim |
-| **HTTP** (`/jobs`, `/health`, `/routines/reload`) | Scripts e o próprio MCP | Sim |
+| **HTTP** (`/jobs`, `/health`, `/routines/reload`, `/housekeeping/purge`) | Scripts e o próprio MCP | Sim |
 | **YAML** (`routines.yaml`) | Rotinas permanentes do homelab (reload automático por mtime ou `/routines/reload`) | Sim |
 | **WhatsApp** (`!lembra` / `!agenda`) | Você no celular | Só [contrato](.agent/CHANNELS.md); implementação no `whatsapp-api` |
 
@@ -61,6 +61,12 @@ Variáveis `WHATSAPP_API_URL` e `WHATSAPP_API_KEY`. Payload canônico enviado no
 
 > **Arquitetura Aberta:** Embora o conector padrão do homelab seja a WhatsApp API (`gatekeeper-py`), o `homelab-schedule` foi concebido com uma interface de disparo desacoplada (`Dispatcher`). Qualquer serviço HTTP ou webhook que aceite o payload canônico (`phone_number` e `content`) pode ser utilizado como endpoint de envio.
 
+## Housekeeping & Retenção
+
+- **Expurgo Automático Diário:** O loop de tick executa um housekeeping diário expurgando jobs finalizados (`status IN ('done', 'error')` e `source = 'sqlite'`) com idade superior a `JOB_RETENTION_DAYS` (padrão: 365 dias / 1 ano). Configure `JOB_RETENTION_DAYS=0` para desativar o expurgo automático.
+- **Expurgo Manual via API:** `POST /housekeeping/purge?days=365` (requer `x-api-key`). Jobs com status `scheduled` e rotinas de arquivo (`source = 'yaml'`) são sempre preservados.
+
 ## Repositório
 
 GitHub: `yegear/homelab-schedule`.
+
