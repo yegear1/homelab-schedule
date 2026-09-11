@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Query, Request, status
+from fastapi import APIRouter, Query, Request, status
 
-from homelab_schedule.errors import Unauthorized
+from homelab_schedule.auth import Auth
 from homelab_schedule.jobs_service import JobService
 from schemas.api import (
     CreateJobRequest,
@@ -22,18 +22,6 @@ def _service(request: Request) -> JobService:
     if not isinstance(service, JobService):
         raise RuntimeError("job service is not configured")
     return service
-
-
-def _require_api_key(
-    request: Request,
-    x_api_key: Annotated[str | None, Header()] = None,
-) -> None:
-    expected = request.app.state.api_key
-    if not isinstance(expected, str) or x_api_key != expected:
-        raise Unauthorized("invalid or missing api key")
-
-
-Auth = Annotated[None, Depends(_require_api_key)]
 
 
 @router.get("", response_model=JobListResponse)

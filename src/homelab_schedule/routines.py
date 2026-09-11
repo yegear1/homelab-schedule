@@ -29,12 +29,13 @@ def merge_routines(
     repo: JobRepository,
     path: Path,
     now: datetime | None = None,
-) -> None:
+) -> int:
     instant = now if now is not None else datetime.now(UTC)
     specs = load_routine_specs(path)
     _pause_removed_yaml_jobs(repo, {spec.id for spec in specs})
     for spec in specs:
         _upsert_yaml_job(repo, spec, instant)
+    return len(specs)
 
 
 def _spec_from_item(item: object) -> RoutineSpec:

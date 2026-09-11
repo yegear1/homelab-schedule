@@ -3,11 +3,13 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
 
 from homelab_schedule.aliases import resolve_destination
 from homelab_schedule.cron import next_cron_utc
 from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.repository import JobRepository
+from homelab_schedule.routines import merge_routines
 from schemas.job import Job, JobKind, JobStatus
 
 _FAILURE_BACKOFF = 5.0
@@ -23,8 +25,18 @@ async def run_tick(
     aliases: dict[str, str],
     now: Callable[[], datetime],
     cap_seconds: float = 300.0,
+    routines_path: Path | None = None,
 ) -> None:
+    last_routines_mtime: float | None = _get_mtime(routines_path)
     while not stop.is_set():
+        if routines_path is not None:
+            current_mtime = _get_mtime(routines_path)
+            if current_mtime != last_routines_mtime:
+                last_routines_mtime = current_mtime
+                try:
+                    merge_routines(repo, routines_path, now())
+                except Exception:
+                    pass
         failed = await fire_due(repo, dispatcher, aliases, now())
         delay = _next_delay(repo, now(), cap_seconds, failed)
         try:
@@ -32,6 +44,15 @@ async def run_tick(
         except TimeoutError:
             pass
         wake.clear()
+
+
+def _get_mtime(path: Path | None) -> float | None:
+    if path is None or not path.is_file():
+        return None
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return None
 
 
 async def fire_due(

@@ -27,6 +27,7 @@ from homelab_schedule.jobs_service import JobService
 from homelab_schedule.logging import configure_logging
 from homelab_schedule.repository import JobRepository
 from homelab_schedule.routines import merge_routines
+from homelab_schedule.routines_router import router as routines_router
 from homelab_schedule.store import connect
 from homelab_schedule.tick import run_tick
 from schemas.api import HealthResponse
@@ -49,7 +50,8 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         conn = connect(resolved.database_path)
         repo = JobRepository(conn)
-        merge_routines(repo, Path(resolved.routines_path), clock_now())
+        routines_file = Path(resolved.routines_path)
+        merge_routines(repo, routines_file, clock_now())
         notebook_changed = asyncio.Event()
         notebook_changed.set()
         http_client: httpx.AsyncClient | None = None
@@ -67,6 +69,9 @@ def create_app(
         app.state.notebook_changed = notebook_changed
         app.state.conn = conn
         app.state.dispatcher = active
+        app.state.repo = repo
+        app.state.routines_path = routines_file
+        app.state.clock_now = clock_now
         logging.getLogger("homelab_schedule").info("homelab-schedule started")
         tick_task = asyncio.create_task(
             run_tick(
@@ -77,6 +82,7 @@ def create_app(
                 aliases=aliases,
                 now=clock_now,
                 cap_seconds=tick_cap_seconds,
+                routines_path=routines_file,
             )
         )
         yield
@@ -89,6 +95,7 @@ def create_app(
 
     app = FastAPI(title="homelab-schedule", lifespan=lifespan)
     _register_error_handlers(app)
+    app.include_router(routines_router)
     app.include_router(jobs_router)
 
     @app.get("/health", response_model=HealthResponse)

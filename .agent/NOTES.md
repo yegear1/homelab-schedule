@@ -41,6 +41,18 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Watch e Reload de `routines.yaml` em runtime (`[01.3]`)
+
+- **Contexto:** Alterações no `routines.yaml` no host/homelab exigiam reiniciar o container para surtir efeito.
+- **Decisão:** Dupla via: verificação de `st_mtime` stdlib a cada iteração do tick + endpoint operacional autenticado `POST /routines/reload`. Merge atualiza agendamentos e dispara `notebook_changed.set()`. Sem dependências adicionais de inotify/watchfiles.
+- **Consequências:** Rotinas permanentes podem ser alteradas no git ou host montado sem interrupção do container.
+
+### [2026-09-11] Suporte a `reschedule` / `snooze` no MCP e HTTP (`[01.2]`)
+
+- **Contexto:** Adiar ou remarcar um aviso pontual exigia cancelá-lo e recriá-lo, gerando outro ID e perdendo contexto.
+- **Decisão:** Endpoint `POST /jobs/{id}/reschedule` e tool MCP `reschedule(job_id, when)`. Reativa jobs finalizados/cancelados com novo horário e acorda o tick. Rotinas YAML continuam protegidas (retornam 409).
+- **Consequências:** Agentes e usuários podem prorrogar ou remarcar avisos pontuais mantendo o ID estável.
+
 ### [2026-09-11] Persistência de `target_number` normalizado e gateway agnóstico
 
 - **Contexto:** `[01.1]` precisava salvar o número resolvido no próprio aviso para evitar resoluções dinâmicas ambíguas no tick e permitir que o bot WhatsApp (`!agendar`) passe o número do remetente diretamente. Além disso, o scheduler deve ser aberto para qualquer gateway HTTP compatível.

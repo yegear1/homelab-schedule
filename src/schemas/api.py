@@ -74,3 +74,8 @@ class RescheduleJobRequest(BaseModel):
         if self.cron_expr is not None and len(self.cron_expr.split()) != 5:
             raise ValueError("cron_expr must have five fields")
         return self
+
+
+class ReloadRoutinesResponse(BaseModel):
+    status: str = "reloaded"
+    count: int

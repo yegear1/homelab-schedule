@@ -8,9 +8,9 @@ O envio é assíncrono. `202 Accepted` significa que a mensagem entrou na fila. 
 
 | Canal | Quem usa | v1 neste repo |
 | :--- | :--- | :--- |
-| **MCP** (`schedule`, `list_agenda`, `get_item`, `cancel`) | Agente no Cursor | Sim |
-| **HTTP** (`/jobs`, `/health`) | Scripts e o próprio MCP | Sim |
-| **YAML** (`routines.yaml`) | Rotinas permanentes do homelab | Sim |
+| **MCP** (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`) | Agente no Cursor | Sim |
+| **HTTP** (`/jobs`, `/health`, `/routines/reload`) | Scripts e o próprio MCP | Sim |
+| **YAML** (`routines.yaml`) | Rotinas permanentes do homelab (reload automático por mtime ou `/routines/reload`) | Sim |
 | **WhatsApp** (`!lembra` / `!agenda`) | Você no celular | Só [contrato](.agent/CHANNELS.md); implementação no `whatsapp-api` |
 
 Você anota em português (*“amanhã 14h, pagar condomínio”*). O agente (MCP) ou o bot grava um job. Destinos usam **alias** (`eu`, `grupo-homelab`), não JID cru no dia a dia.
