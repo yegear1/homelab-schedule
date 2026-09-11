@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Pacote `homelab_schedule` sob `src/`
+
+- **Contexto:** Bootstrap `[00.1]` precisava de um import instalável sem FastAPI.
+- **Decisão:** Layout `src/homelab_schedule/` (hífen do repo → underscore). `__init__.py` só marca o pacote; sem reexport barrel. Stub `health.ping()` para o trio pytest/ruff/mypy. Runtime deps (FastAPI, pydantic, httpx) ficam para `[01.x]`.
+- **Consequências:** `uv sync` + `uv run pytest/ruff/mypy` na raiz. Import: `from homelab_schedule.health import ping`.
+
 ### [2026-09-11] Constituição greenfield preenchida
 
 - **Contexto:** Starter `template-agent` / greenfield ainda com colchetes. Escopo alinhado em chat: agenda container + WhatsApp + MCP + YAML v1 + contrato de comando WhatsApp.

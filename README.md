@@ -24,7 +24,7 @@ Você anota em português (*“amanhã 14h, pagar condomínio”*). O agente (MC
 
 Detalhe para agentes: [`AGENTS.md`](./AGENTS.md), [`.agent/NOTES.md`](./.agent/NOTES.md), [`.agent/TASK.md`](./.agent/TASK.md).
 
-## Desenvolvimento (quando o código existir)
+## Desenvolvimento
 
 ```bash
 cp .env.example .env
