@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-### 📌 Tarefa [02.2]: MCP stdio (quatro tools)
+### 📌 Tarefa [02.3]: Compose slim + logs NDJSON stdlib
 
-- **Descrição:** Servidor MCP stdio neste repo: `schedule`, `list_agenda`, `get_item`, `cancel`. Encapsula a HTTP local (`SCHEDULE_API_URL` + `SCHEDULE_API_KEY`). Superfície fechada (ADR-005). Sem CRUD genérico, sem mutar schema.
-- **Sistema(s) Envolvido(s):** skill `mcp-tool`, [ADR-005](adr/005-mcp-superficie-fechada.md)
+- **Descrição:** Imagem `python:3.13-slim`, um worker, compose com `container_name` estável, `LOG_FORMAT=json`, `NO_COLOR=1`, `SERVICE_NAME=homelab-schedule`, driver `json-file` 10m/3. Logs NDJSON via `logging` stdlib (skill `victorialogs-integration`). Volume para SQLite. Sem rebuild desnecessário na skill Docker do AGENTS.
+- **Sistema(s) Envolvido(s):** Docker Compose, skill global `victorialogs-integration`
 - **Tipo de Ação:**
   - [ ] Somente leitura / Documentação
   - [x] Escrita de código-fonte
@@ -18,9 +18,9 @@
   *(Fluxo: `PRONTO PARA PLANEJAMENTO` → `EM PLANEJAMENTO` ao apresentar plano → aprovação → `EM EXECUÇÃO`)*
 
 ### Critérios de Aceite
-- [ ] Quatro tools; HTTP por trás; tokens não logados
-- [ ] YAML cancel devolve erro para editar o arquivo
-- [ ] `mcp.json` do Cursor não versionado
+- [ ] Compose + Dockerfile slim; um processo
+- [ ] NDJSON stdout; sem JID/`content`/`request_id` como stream field
+- [ ] Volume `DATABASE_PATH`; sem senha no YAML
 
 ---
 
@@ -28,6 +28,7 @@
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [02.2] | MCP stdio (quatro tools) | *(este commit)* | 2026-09-11 |
 | [02.1] | Loader `routines.yaml` (merge por `id` estável) | [`4d95ec6`] | 2026-09-11 |
 | [01.3] | Tick `next_run_at` + cliente gatekeeper | [`e32910b`] | 2026-09-11 |
 | [01.2] | HTTP `/health` e `/jobs` (CRUD mínimo + run now + Event) | [`9d35bbe`] | 2026-09-11 |
@@ -40,7 +41,6 @@
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[02.3]** Compose slim + logs NDJSON stdlib — `[docker]`
 - [ ] **[02.4]** Skill Cursor de anotação (quando usar MCP) — `[docs]`
 
 ---

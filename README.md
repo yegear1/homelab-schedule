@@ -44,7 +44,13 @@ docker compose logs -f
 
 ## MCP (Cursor)
 
-Não versione `.cursor/mcp.json`. Depois da tarefa do servidor stdio, aponte o Cursor para o script do repo com `SCHEDULE_API_URL` e `SCHEDULE_API_KEY` no ambiente do MCP — o servidor só encapsula a HTTP.
+Não versione `.cursor/mcp.json`. Com a API no ar:
+
+```bash
+uv run homelab-schedule-mcp
+```
+
+No `mcp.json` local, `command`/`args` apontam para esse script (`uv run --directory <repo> homelab-schedule-mcp`) com `SCHEDULE_API_URL` e `SCHEDULE_API_KEY` no `env` do servidor. O MCP só encapsula a HTTP; não abre o SQLite.
 
 ## Integração WhatsApp
 

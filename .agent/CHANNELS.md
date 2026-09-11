@@ -8,7 +8,7 @@ Fuso de interpretação humana: `America/Sao_Paulo`. Logs e `next_run_at` na API
 
 ## 1. MCP (agente no Cursor)
 
-Implementação neste repo (tarefa `[02.2]`). Stdio, Python, chama a HTTP local.
+Implementação neste repo: `uv run homelab-schedule-mcp` (stdio). Chama a HTTP local (`SCHEDULE_API_URL` + `SCHEDULE_API_KEY`). Não abre SQLite.
 
 | Tool | Papel |
 | :--- | :--- |

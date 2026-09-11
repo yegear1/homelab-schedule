@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] MCP stdio com quatro tools via HTTP
+
+- **Contexto:** Agente precisa de caneta sem OpenAPI inteiro nem SQLite direto.
+- **Decisão:** SDK `mcp` 2.x (`MCPServer` stdio). Tools `schedule` / `list_agenda` / `get_item` / `cancel` chamam `SCHEDULE_API_URL` com `x-api-key`. `when` ISO → `once`; cinco campos → `cron`. Lista sem `content`, teto 50. 409 → `edite routines.yaml`. Erro de rede cita a URL, nunca a chave. Script `homelab-schedule-mcp`.
+- **Consequências:** Cursor `mcp.json` continua local. Skill de anotação `[02.4]`.
+
 ### [2026-09-11] Merge `routines.yaml` por `id` estável no boot
 
 - **Contexto:** Rotinas permanentes vivem no git; recados sqlite não podem ser sobrescritos por acidente.

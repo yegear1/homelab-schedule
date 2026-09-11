@@ -1,0 +1,56 @@
+from homelab_schedule.mcp_http import AgendaApi, AgendaToolError, compact_json
+
+
+def handle_schedule(
+    api: AgendaApi,
+    when: str,
+    content: str,
+    to: str = "eu",
+    title: str | None = None,
+) -> str:
+    try:
+        job = api.create_job(when=when, content=content, to=to, title=title)
+        return compact_json(
+            {
+                "id": job.get("id"),
+                "next_run_at": job.get("next_run_at"),
+                "to": job.get("to"),
+                "title": job.get("title"),
+                "content": job.get("content"),
+            }
+        )
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})
+
+
+def handle_list_agenda(api: AgendaApi) -> str:
+    try:
+        return compact_json(api.list_agenda())
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})
+
+
+def handle_get_item(api: AgendaApi, job_id: str) -> str:
+    try:
+        job = api.get_item(job_id)
+        return compact_json(
+            {
+                "id": job.get("id"),
+                "title": job.get("title"),
+                "content": job.get("content"),
+                "to": job.get("to"),
+                "kind": job.get("kind"),
+                "status": job.get("status"),
+                "next_run_at": job.get("next_run_at"),
+                "source": job.get("source"),
+            }
+        )
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})
+
+
+def handle_cancel(api: AgendaApi, job_id: str) -> str:
+    try:
+        return compact_json(api.cancel(job_id))
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})
