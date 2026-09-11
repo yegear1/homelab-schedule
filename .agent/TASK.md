@@ -7,28 +7,23 @@
 
 ## Tarefa Ativa
 
-Nenhuma. Ciclo de produto v1 encerrado em `[02.4]`. Não iniciar `[99.1]` sem permissão explícita.
+Nenhuma. Ciclo `v0.1.0` publicado. Próxima tarefa pronta para planejamento no backlog.
 
 ---
 
 ## Log de Tarefas Concluídas
 
+Ciclo `v0.1.0` arquivado em `ARCHIVE.md`.
+
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
-| [02.4] | Skill Cursor de anotação (quando usar MCP) | [`e89d7b7`] | 2026-09-11 |
-| [02.3] | Compose slim + logs NDJSON stdlib | [`c41ff51`] | 2026-09-11 |
-| [02.2] | MCP stdio (quatro tools) | [`d212d6d`] | 2026-09-11 |
-| [02.1] | Loader `routines.yaml` (merge por `id` estável) | [`4d95ec6`] | 2026-09-11 |
-| [01.3] | Tick `next_run_at` + cliente gatekeeper | [`e32910b`] | 2026-09-11 |
-| [01.2] | HTTP `/health` e `/jobs` (CRUD mínimo + run now + Event) | [`9d35bbe`] | 2026-09-11 |
-| [01.1] | Modelo de job + sqlite3 WAL + `CREATE TABLE` no connect | [`37073f3`] | 2026-09-11 |
-| [00.1] | Bootstrap UV, pyproject, ruff, mypy, pytest e layout `src/` | [`303a9c8`] | 2026-09-11 |
-| [00.0.1] | Constituição do produto, contratos e ADRs | [`a9d1766`] [`671ba19`] | 2026-09-11 |
-| [00.0] | Scaffolding inicial (ADD greenfield) | [`2c7ba79`] | 2026-09-11 |
 
 ---
 
 ## Backlog (Próximas, em ordem)
+
+- [ ] **[01.1]** Suporte a `reschedule` / `snooze` de recados pontuais no MCP e HTTP (PRONTO PARA PLANEJAMENTO)
+- [ ] **[01.2]** Watch / Reload de `routines.yaml` em runtime via endpoint `POST /routines/reload` ou mtime
 
 ---
 
@@ -36,8 +31,9 @@ Nenhuma. Ciclo de produto v1 encerrado em `[02.4]`. Não iniciar `[99.1]` sem pe
 
 - [ ] **[99.1]** Preparar Release (Tag Git) e Sanitizar Contexto (Apenas executar com permissão explícita do usuário)
 - [ ] Comando WhatsApp `!lembra` / `!agenda` no repo `whatsapp-api` (contrato: `.agent/CHANNELS.md`)
-- [ ] `reschedule` no MCP se cancel+schedule for frágil na prática
-- [ ] Watch de `routines.yaml` em runtime (v1 pode reload só no boot)
+- [ ] Housekeeping e limpeza periódica de jobs finalizados no SQLite
+- [ ] Expressões de intervalo amigáveis e templates dinâmicos de mensagem
+
 
 ---
 
