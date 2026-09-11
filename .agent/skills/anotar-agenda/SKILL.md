@@ -1,16 +1,16 @@
 ---
 name: anotar-agenda
 description: >
-  Use when the human asks to annotate, remind, schedule, list, or cancel a homelab
-  WhatsApp reminder (anota, me lembra, agenda, o que tem marcado, cancela). Call
-  MCP homelab-schedule tools; never POST /send or invent crontab.
+  Use when the human asks to annotate, remind, schedule, list, cancel, or
+  reschedule a homelab WhatsApp reminder (anota, me lembra, agenda, o que tem marcado,
+  cancela, adia, remarca). Call MCP homelab-schedule tools; never POST /send or invent crontab.
 ---
 
 # Anotar na agenda via MCP (`anotar-agenda`)
 
 ## 1. Contexto e Objetivo
 
-O humano fala em português. O caderno é estruturado. Esta skill é a **caneta do agente no Cursor**: gravar, listar e cancelar pelo MCP `homelab-schedule`, sem curl ad-hoc e sem o gatekeeper.
+O humano fala em português. O caderno é estruturado. Esta skill é a **caneta do agente no Cursor**: gravar, listar, cancelar e remarcar pelo MCP `homelab-schedule`, sem curl ad-hoc e sem o gatekeeper.
 
 Contrato de campos: skill [`agenda-job`](../agenda-job/SKILL.md). Canais: [CHANNELS.md](../CHANNELS.md). Tools: [ADR-005](../adr/005-mcp-superficie-fechada.md).
 
@@ -23,6 +23,7 @@ Ative sempre que o humano (ou a tarefa) pedir para:
 - anotar, me lembra, agenda, marcar um recado
 - o que tem marcado, o que tem na agenda, listar lembretes
 - cancela o lembrete, desmarca, não precisa mais
+- adia o recado, remarca, muda o horário para mais tarde
 
 **Não** use para: implementar o servidor MCP (`mcp-tool`); alterar schema SQLite; enviar WhatsApp na hora (`whatsapp-dispatch` / skill global `whatsapp`); bug de outro app (`github-bug-issue`); rotina permanente do homelab (aí é YAML).
 
@@ -30,7 +31,7 @@ Ative sempre que o humano (ou a tarefa) pedir para:
 
 ## 3. Ferramentas e Servidores MCP Relacionados
 
-- **MCP:** `homelab-schedule` stdio — `schedule`, `list_agenda`, `get_item`, `cancel`. A API HTTP tem de estar no ar (`uv run uvicorn …` ou Compose). `.cursor/mcp.json` é local, não versionado.
+- **MCP:** `homelab-schedule` stdio — `schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`. A API HTTP tem de estar no ar (`uv run uvicorn …` ou Compose). `.cursor/mcp.json` é local, não versionado.
 - **HTTP:** só se o MCP não estiver configurado no Cursor — mesmos campos, [ENDPOINTS.md](../ENDPOINTS.md), header `x-api-key: SCHEDULE_API_KEY`.
 - **Nunca:** `WHATSAPP_API_KEY`, `POST /send`, SQLite direto, `PATCH`.
 
@@ -45,6 +46,7 @@ Mutação em produção via MCP só com consentimento do humano (`AGENTS.md`).
 | Pedido | Caneta |
 | :--- | :--- |
 | Recado pontual ou cron ad-hoc (“amanhã 14h”, “toda segunda 9h”) | MCP `schedule` |
+| Adiar ou remarcar recado pontual (“adia em 2h”, “remarca para amanhã 10h”) | MCP `reschedule` |
 | Política permanente do homelab (backup, status semanal no git) | Editar `routines.yaml` (id estável); não SQLite |
 | Celular `!lembra` / `!agenda` | Fora deste repo ([CHANNELS.md](../CHANNELS.md)) |
 
@@ -52,7 +54,7 @@ Mutação em produção via MCP só com consentimento do humano (`AGENTS.md`).
 
 1. **when** — ISO-8601 com offset (fuso default `America/Sao_Paulo`) ou cron de **cinco** campos. Se estiver ambíguo, **uma** pergunta; não grave.
 2. **content** — texto que vai no WhatsApp.
-3. **to** — default `eu`; alias conhecido. Não peça JID se o alias existir.
+3. **to** — default `eu`; alias conhecido ou número normalizado. Não peça JID se o alias existir.
 4. **title** — uma linha; se faltar, o servidor deriva do content.
 
 ### Passo 3: Chamar a tool e confirmar
@@ -60,7 +62,8 @@ Mutação em produção via MCP só com consentimento do humano (`AGENTS.md`).
 - Criar: `schedule` (`when`, `content`, `to`, `title` opcional).
 - Listar: `list_agenda` (lista curta, sem `content` de todos).
 - Detalhe: `get_item` com o `id`.
-- Cancelar sqlite: `cancel` + `id`. YAML → diga para editar `routines.yaml`. Reagendar = `cancel` + `schedule`.
+- Cancelar sqlite: `cancel` + `id`. YAML → diga para editar `routines.yaml`.
+- Remarcar/adiar sqlite: `reschedule` (`job_id`, `when`). YAML → edite `routines.yaml`.
 
 **A tarefa só acaba** quando você devolver ao humano: `id`, próximo disparo em BRT **e** UTC, `to`, `title`/`content`.
 

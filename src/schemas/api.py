@@ -61,3 +61,16 @@ class JobListResponse(BaseModel):
 class RunNowResponse(BaseModel):
     status: str
     job_id: str
+
+
+class RescheduleJobRequest(BaseModel):
+    run_at: datetime | None = None
+    cron_expr: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_fields(self) -> "RescheduleJobRequest":
+        if self.run_at is None and self.cron_expr is None:
+            raise ValueError("either run_at or cron_expr must be provided")
+        if self.cron_expr is not None and len(self.cron_expr.split()) != 5:
+            raise ValueError("cron_expr must have five fields")
+        return self

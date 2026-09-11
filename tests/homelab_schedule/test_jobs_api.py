@@ -201,3 +201,64 @@ def test_run_now_gatekeeper_failure_is_502(tmp_path: Path, api_key: str) -> None
         job_id = created.json()["id"]
         response = client.post(f"/jobs/{job_id}/run", headers=_auth(api_key))
         assert response.status_code == 502
+
+
+def test_reschedule_once_job_updates_time_and_reactivates(
+    client: TestClient, api_key: str
+) -> None:
+    created = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "reunião",
+            "content": "Reunião de alinhamento.",
+            "kind": "once",
+            "run_at": "2026-09-12T14:00:00-03:00",
+        },
+    )
+    job_id = created.json()["id"]
+    client.post(f"/jobs/{job_id}/cancel", headers=_auth(api_key))
+    detail_cancelled = client.get(f"/jobs/{job_id}", headers=_auth(api_key))
+    assert detail_cancelled.json()["status"] == "done"
+
+    rescheduled = client.post(
+        f"/jobs/{job_id}/reschedule",
+        headers=_auth(api_key),
+        json={"run_at": "2026-09-13T10:00:00-03:00"},
+    )
+    assert rescheduled.status_code == 200
+    body = rescheduled.json()
+    assert body["status"] == "scheduled"
+    assert body["enabled"] is True
+    assert body["next_run_at"] in {"2026-09-13T13:00:00Z", "2026-09-13T13:00:00+00:00"}
+
+
+def test_reschedule_yaml_job_is_409(client: TestClient, app: FastAPI, api_key: str) -> None:
+    repo = JobRepository(app.state.conn)
+    repo.insert(
+        Job(
+            id="yaml-report",
+            title="report",
+            content="Relatório.",
+            to="eu",
+            kind=JobKind.ONCE,
+            run_at=datetime(2026, 9, 12, 17, 0, tzinfo=UTC),
+            source=JobSource.YAML,
+        )
+    )
+    response = client.post(
+        "/jobs/yaml-report/reschedule",
+        headers=_auth(api_key),
+        json={"run_at": "2026-09-13T10:00:00-03:00"},
+    )
+    assert response.status_code == 409
+    assert "routines.yaml" in response.json()["detail"]
+
+
+def test_reschedule_missing_job_is_404(client: TestClient, api_key: str) -> None:
+    response = client.post(
+        "/jobs/missing-job/reschedule",
+        headers=_auth(api_key),
+        json={"run_at": "2026-09-13T10:00:00-03:00"},
+    )
+    assert response.status_code == 404

@@ -4,7 +4,12 @@ from collections.abc import Callable
 import httpx
 
 from homelab_schedule.mcp_http import AgendaApi
-from homelab_schedule.mcp_tools import handle_cancel, handle_list_agenda, handle_schedule
+from homelab_schedule.mcp_tools import (
+    handle_cancel,
+    handle_list_agenda,
+    handle_reschedule,
+    handle_schedule,
+)
 from homelab_schedule.mcp_when import parse_when
 from schemas.job import JobKind
 
@@ -101,3 +106,38 @@ def test_unavailable_api_mentions_url_not_key() -> None:
     payload = json.loads(text)
     assert "http://schedule.test" in payload["error"]
     assert "secret-key" not in payload["error"]
+
+
+def test_reschedule_posts_new_time() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "id": "j-123",
+                "title": "condomínio",
+                "to": "eu",
+                "status": "scheduled",
+                "next_run_at": "2026-09-13T13:00:00+00:00",
+            },
+        )
+
+    text = handle_reschedule(_api(handler), "j-123", "2026-09-13T10:00:00-03:00")
+    payload = json.loads(text)
+    assert payload["id"] == "j-123"
+    assert payload["next_run_at"] == "2026-09-13T13:00:00+00:00"
+    assert len(seen) == 1
+    assert seen[0].url.path == "/jobs/j-123/reschedule"
+    body = json.loads(seen[0].content)
+    assert "run_at" in body
+
+
+def test_reschedule_yaml_returns_edit_file_error() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(409, json={"detail": "edit routines.yaml to change this job"})
+
+    text = handle_reschedule(_api(handler), "yaml-routine", "2026-09-13T10:00:00-03:00")
+    payload = json.loads(text)
+    assert payload["error"] == "edite routines.yaml"

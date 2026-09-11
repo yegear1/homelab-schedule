@@ -7,6 +7,7 @@ from homelab_schedule.mcp_tools import (
     handle_cancel,
     handle_get_item,
     handle_list_agenda,
+    handle_reschedule,
     handle_schedule,
 )
 
@@ -40,6 +41,11 @@ def build_mcp(api: AgendaApi) -> MCPServer:
     def cancel(job_id: str) -> str:
         """Cancel a sqlite job. YAML routines must be edited in routines.yaml."""
         return handle_cancel(api, job_id)
+
+    @mcp.tool()
+    def reschedule(job_id: str, when: str) -> str:
+        """Reschedule/snooze an existing job to a new time (ISO-8601 or cron)."""
+        return handle_reschedule(api, job_id, when)
 
     return mcp
 

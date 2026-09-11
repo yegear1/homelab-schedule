@@ -6,10 +6,17 @@ from collections.abc import Callable
 from datetime import datetime
 
 from homelab_schedule.aliases import normalize_whatsapp_phone, resolve_destination
+from homelab_schedule.cron import next_cron_utc
 from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.errors import EntityNotFound, GatekeeperError, YamlJobImmutable
 from homelab_schedule.repository import JobRepository
-from schemas.api import CreateJobRequest, JobListFilter, JobListItem, RunNowResponse
+from schemas.api import (
+    CreateJobRequest,
+    JobListFilter,
+    JobListItem,
+    RescheduleJobRequest,
+    RunNowResponse,
+)
 from schemas.job import Job, JobKind, JobSource, JobStatus
 
 
@@ -71,6 +78,32 @@ class JobService:
             raise YamlJobImmutable("edit routines.yaml to change this job")
         self._repo.update(_cancelled(job))
         self._notebook_changed.set()
+
+    def reschedule(self, job_id: str, payload: RescheduleJobRequest) -> Job:
+        job = self.get(job_id)
+        if job.source is JobSource.YAML:
+            raise YamlJobImmutable("edit routines.yaml to change this job")
+
+        updates: dict[str, object] = {
+            "enabled": True,
+            "status": JobStatus.SCHEDULED,
+            "last_error": None,
+        }
+        if payload.run_at is not None:
+            updates["kind"] = JobKind.ONCE
+            updates["run_at"] = payload.run_at
+            updates["next_run_at"] = payload.run_at
+            updates["cron_expr"] = None
+        elif payload.cron_expr is not None:
+            updates["kind"] = JobKind.CRON
+            updates["cron_expr"] = payload.cron_expr
+            updates["next_run_at"] = next_cron_utc(payload.cron_expr, self._now())
+            updates["run_at"] = None
+
+        updated = job.model_copy(update=updates)
+        stored = self._repo.update(updated)
+        self._notebook_changed.set()
+        return stored
 
     async def run_now(self, job_id: str) -> RunNowResponse:
         job = self.get(job_id)

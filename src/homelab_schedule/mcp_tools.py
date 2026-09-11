@@ -54,3 +54,19 @@ def handle_cancel(api: AgendaApi, job_id: str) -> str:
         return compact_json(api.cancel(job_id))
     except AgendaToolError as exc:
         return compact_json({"error": exc.message})
+
+
+def handle_reschedule(api: AgendaApi, job_id: str, when: str) -> str:
+    try:
+        job = api.reschedule_job(job_id=job_id, when=when)
+        return compact_json(
+            {
+                "id": job.get("id"),
+                "title": job.get("title"),
+                "next_run_at": job.get("next_run_at"),
+                "to": job.get("to"),
+                "status": job.get("status"),
+            }
+        )
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})

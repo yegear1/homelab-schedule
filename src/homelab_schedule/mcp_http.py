@@ -71,6 +71,16 @@ class AgendaApi:
         self._request("POST", f"/jobs/{job_id}/cancel")
         return {"cancelled": job_id}
 
+    def reschedule_job(self, *, job_id: str, when: str) -> dict[str, object]:
+        kind, run_at, cron_expr = parse_when(when)
+        payload: dict[str, object] = {}
+        if kind is JobKind.ONCE and run_at is not None:
+            payload["run_at"] = run_at.isoformat()
+        if kind is JobKind.CRON and cron_expr is not None:
+            payload["cron_expr"] = cron_expr
+        response = self._request("POST", f"/jobs/{job_id}/reschedule", json=payload)
+        return _json_object(response)
+
     def _request(
         self,
         method: str,
