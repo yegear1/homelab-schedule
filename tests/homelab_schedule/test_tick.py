@@ -158,3 +158,37 @@ async def test_fire_due_uses_persisted_target_number(tmp_path: Path) -> None:
     assert len(dispatcher.calls) == 1
     assert dispatcher.calls[0][0] == "5511912345678@c.us"
     conn.close()
+
+
+@pytest.mark.anyio
+async def test_fire_due_renders_dynamic_template(tmp_path: Path) -> None:
+    conn = connect(str(tmp_path / "schedule.sqlite"))
+    repo = JobRepository(conn)
+    # 2026-09-11 15:00 UTC -> 12:00 in America/Sao_Paulo
+    now = datetime(2026, 9, 11, 15, 0, tzinfo=UTC)
+    repo.insert(
+        Job(
+            id="template-job",
+            title="template test",
+            content="Alerta de {{day_name}} do dia {{date}} às {{time}}.",
+            to="eu",
+            target_number="5511999998888@c.us",
+            kind=JobKind.ONCE,
+            run_at=now,
+            next_run_at=now,
+            status=JobStatus.SCHEDULED,
+        )
+    )
+    dispatcher = RecordingDispatcher()
+    failed = await fire_due(repo, dispatcher, {}, now)
+    assert failed is False
+    assert len(dispatcher.calls) == 1
+    phone, sent_content = dispatcher.calls[0]
+    assert phone == "5511999998888@c.us"
+    assert sent_content == "Alerta de sexta-feira do dia 11/09/2026 às 12:00."
+
+    # Verify that stored job content remains intact (with templates)
+    stored = repo.get("template-job")
+    assert stored is not None
+    assert stored.content == "Alerta de {{day_name}} do dia {{date}} às {{time}}."
+    conn.close()

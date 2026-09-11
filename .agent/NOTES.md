@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Templates Dinâmicos de Mensagem no Disparo (`[02.2]`)
+
+- **Contexto:** Lembretes recorrentes e rotinas fixas no YAML precisavam exibir a data, hora ou dia da semana corrente no corpo do texto sem intervenção manual.
+- **Decisão:** Criação do módulo `templates.py` com `render_template(content, when, tz)`. Suporte a placeholders temporais (`{{date}}`, `{{date_iso}}`, `{{time}}`, `{{weekday}}`, `{{day_name}}`, `{{month_name}}`, `{{year}}`) avaliados no momento do disparo via tick (`fire_due`) ou disparo imediato (`run_now`). O conteúdo original gravado no SQLite ou YAML permanece com as tags intactas para os próximos ciclos.
+- **Consequências:** Rotinas periódicas tornam-se contextuais e humanas sem complexidade de templates externos pesados como Jinja2.
+
 ### [2026-09-11] Filtros e Paginação na Listagem do MCP e HTTP (`[02.1]`)
 
 - **Contexto:** O agente no Cursor precisava inspecionar jobs que falharam (`error`) ou concluídos (`done`), e poder limitar o número de itens retornados para economizar contexto e tokens.

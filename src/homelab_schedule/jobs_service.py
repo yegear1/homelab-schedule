@@ -10,6 +10,7 @@ from homelab_schedule.cron import next_cron_utc
 from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.errors import EntityNotFound, GatekeeperError, YamlJobImmutable
 from homelab_schedule.repository import JobRepository
+from homelab_schedule.templates import render_template
 from schemas.api import (
     CreateJobRequest,
     JobListFilter,
@@ -109,7 +110,9 @@ class JobService:
     async def run_now(self, job_id: str) -> RunNowResponse:
         job = self.get(job_id)
         dest = job.target_number or resolve_destination(job.to, self._aliases)
-        result = await self._dispatcher.send(phone_number=dest, content=job.content)
+        now_instant = self._now()
+        content_to_send = render_template(job.content, now_instant)
+        result = await self._dispatcher.send(phone_number=dest, content=content_to_send)
         self._notebook_changed.set()
         if not result.ok:
             self._repo.update(job.model_copy(update={"last_error": result.last_error}))
@@ -117,7 +120,7 @@ class JobService:
         self._repo.update(
             job.model_copy(
                 update={
-                    "last_run_at": self._now(),
+                    "last_run_at": now_instant,
                     "last_status": "queued",
                     "last_error": None,
                 }

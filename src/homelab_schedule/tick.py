@@ -11,6 +11,7 @@ from homelab_schedule.cron import next_cron_utc
 from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.repository import JobRepository
 from homelab_schedule.routines import merge_routines
+from homelab_schedule.templates import render_template
 from schemas.job import Job, JobKind, JobStatus
 
 _LOG = logging.getLogger("homelab_schedule.tick")
@@ -83,7 +84,8 @@ async def fire_due(
     failed = False
     for job in repo.list_due(now):
         dest = job.target_number or resolve_destination(job.to, aliases)
-        result = await dispatcher.send(phone_number=dest, content=job.content)
+        content_to_send = render_template(job.content, now)
+        result = await dispatcher.send(phone_number=dest, content=content_to_send)
         if result.ok:
             repo.update(_after_success(job, now))
             continue

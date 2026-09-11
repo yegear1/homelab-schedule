@@ -66,6 +66,22 @@ Variáveis `WHATSAPP_API_URL` e `WHATSAPP_API_KEY`. Payload canônico enviado no
 - **Expurgo Automático Diário:** O loop de tick executa um housekeeping diário expurgando jobs finalizados (`status IN ('done', 'error')` e `source = 'sqlite'`) com idade superior a `JOB_RETENTION_DAYS` (padrão: 365 dias / 1 ano). Configure `JOB_RETENTION_DAYS=0` para desativar o expurgo automático.
 - **Expurgo Manual via API:** `POST /housekeeping/purge?days=365` (requer `x-api-key`). Jobs com status `scheduled` e rotinas de arquivo (`source = 'yaml'`) são sempre preservados.
 
+## Templates Dinâmicos de Mensagem
+
+No momento do disparo, variáveis de data/hora no `content` do recado são interpoladas automaticamente no fuso horário configurado (`TZ`, padrão `America/Sao_Paulo`):
+
+| Placeholder | Exemplo de Saída | Descrição |
+| :--- | :--- | :--- |
+| `{{date}}` | `11/09/2026` | Data no formato brasileiro `DD/MM/YYYY` |
+| `{{date_iso}}` | `2026-09-11` | Data no formato `YYYY-MM-DD` |
+| `{{time}}` | `08:00` | Horário no formato `HH:MM` |
+| `{{weekday}}` | `sex` | Dia da semana curto em português |
+| `{{day_name}}` | `sexta-feira` | Dia da semana por extenso |
+| `{{month_name}}` | `setembro` | Nome do mês por extenso |
+| `{{year}}` | `2026` | Ano atual com 4 dígitos |
+
+O template permanece intacto na definição do job para que rotinas recorrentes (`cron`) sejam interpoladas a cada ciclo.
+
 ## Repositório
 
 GitHub: `yegear/homelab-schedule`.
