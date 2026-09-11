@@ -28,7 +28,7 @@
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
-| [02.2] | MCP stdio (quatro tools) | *(este commit)* | 2026-09-11 |
+| [02.2] | MCP stdio (quatro tools) | [`d212d6d`] | 2026-09-11 |
 | [02.1] | Loader `routines.yaml` (merge por `id` estável) | [`4d95ec6`] | 2026-09-11 |
 | [01.3] | Tick `next_run_at` + cliente gatekeeper | [`e32910b`] | 2026-09-11 |
 | [01.2] | HTTP `/health` e `/jobs` (CRUD mínimo + run now + Event) | [`9d35bbe`] | 2026-09-11 |
