@@ -30,7 +30,7 @@
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
-| [01.2] | HTTP `/health` e `/jobs` (CRUD mínimo + run now + Event) | *(este commit)* | 2026-09-11 |
+| [01.2] | HTTP `/health` e `/jobs` (CRUD mínimo + run now + Event) | [`9d35bbe`] | 2026-09-11 |
 | [01.1] | Modelo de job + sqlite3 WAL + `CREATE TABLE` no connect | [`37073f3`] | 2026-09-11 |
 | [00.1] | Bootstrap UV, pyproject, ruff, mypy, pytest e layout `src/` | [`303a9c8`] | 2026-09-11 |
 | [00.0.1] | Constituição do produto, contratos e ADRs | [`a9d1766`] [`671ba19`] | 2026-09-11 |
