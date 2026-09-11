@@ -15,7 +15,7 @@ Nenhuma. Ciclo de produto v1 encerrado em `[02.4]`. Não iniciar `[99.1]` sem pe
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
-| [02.4] | Skill Cursor de anotação (quando usar MCP) | *(este commit)* | 2026-09-11 |
+| [02.4] | Skill Cursor de anotação (quando usar MCP) | [`e89d7b7`] | 2026-09-11 |
 | [02.3] | Compose slim + logs NDJSON stdlib | [`c41ff51`] | 2026-09-11 |
 | [02.2] | MCP stdio (quatro tools) | [`d212d6d`] | 2026-09-11 |
 | [02.1] | Loader `routines.yaml` (merge por `id` estável) | [`4d95ec6`] | 2026-09-11 |
