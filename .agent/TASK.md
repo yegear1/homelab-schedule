@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[02.2]`
-- **Título:** Templates dinâmicos de mensagem no disparo (placeholders de data/hora)
+- **ID:** `[02.3]`
+- **Título:** Retentativas de disparo para falhas transitórias do gateway
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Suporte a placeholders temporais no texto dos jobs (ex: `{{date}}`, `{{time}}`, `{{weekday}}`, `{{day_name}}`) renderizados no momento do disparo via tick.
+- **Contexto:** Mecanismo leve de retry transitório: se o gateway falhar temporariamente (erro de rede, timeout, 500, 502, 503) em job pontual, reagendar para retry com backoff antes de marcar como `error` definitivo.
 
 ---
 
@@ -20,6 +20,7 @@ Ciclo `v0.1.0` arquivado em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [02.2] | Templates dinâmicos de mensagem no disparo (placeholders de data/hora) | [`a6c2535`] | 2026-09-11 |
 | [02.1] | Filtros e paginação na listagem do MCP (status e limit) | [`6f00be3`] | 2026-09-11 |
 | [01.4] | Housekeeping e expurgo automático de jobs antigos no SQLite | [`2de02f1`] | 2026-09-11 |
 | [01.3] | Watch / Reload de `routines.yaml` em runtime via `/routines/reload` e mtime | [`223ac9b`] | 2026-09-11 |
@@ -30,7 +31,7 @@ Ciclo `v0.1.0` arquivado em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[02.3]** Retentativas de disparo para falhas transitórias do gateway
+(Vazio no momento - aguardando novas definições ou promoção de ideias)
 
 ---
 
