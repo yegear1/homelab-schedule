@@ -29,7 +29,8 @@
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
-| [00.0] | Scaffolding inicial (ADD greenfield) + constituição do produto | *(pending commit)* | 2026-09-11 |
+| [00.0] | Scaffolding inicial (ADD greenfield) | [`2c7ba79`] | 2026-09-11 |
+| [00.0.1] | Constituição do produto, contratos e ADRs | [`a9d1766`] [`671ba19`] | 2026-09-11 |
 
 ---
 
