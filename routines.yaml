@@ -1,0 +1,10 @@
+# Permanent homelab routines. Merge key is `id`. Cron `when` uses TZ=America/Sao_Paulo.
+# Removing an id disables that yaml job on next boot. Do not reuse a sqlite job id.
+
+# - id: backup-status
+#   title: backup-status
+#   when: "0 9 * * 1"
+#   to: eu
+#   content: "Status do backup."
+
+[]

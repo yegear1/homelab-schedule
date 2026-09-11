@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request
@@ -23,6 +24,7 @@ from homelab_schedule.health import ping
 from homelab_schedule.jobs_router import router as jobs_router
 from homelab_schedule.jobs_service import JobService
 from homelab_schedule.repository import JobRepository
+from homelab_schedule.routines import merge_routines
 from homelab_schedule.store import connect
 from homelab_schedule.tick import run_tick
 from schemas.api import HealthResponse
@@ -43,8 +45,10 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         conn = connect(resolved.database_path)
-        notebook_changed = asyncio.Event()
         repo = JobRepository(conn)
+        merge_routines(repo, Path(resolved.routines_path), clock_now())
+        notebook_changed = asyncio.Event()
+        notebook_changed.set()
         http_client: httpx.AsyncClient | None = None
         active = dispatcher
         if active is None:

@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Merge `routines.yaml` por `id` estável no boot
+
+- **Contexto:** Rotinas permanentes vivem no git; recados sqlite não podem ser sobrescritos por acidente.
+- **Decisão:** Loader no lifespan (sem watch). `when` = cron de 5 campos. Merge atualiza título/conteúdo/`to`/cron; cron igual preserva `next_run_at`. Id sumiu do arquivo → yaml job `paused`. Id já usado por `source=sqlite` → `YamlIdConflict` (boot falha). PyYAML `safe_load`.
+- **Consequências:** Cancel HTTP de yaml continua 409. MCP `[02.2]` não precisa falar com o arquivo.
+
 ### [2026-09-11] Tick `next_run_at` + gatekeeper httpx
 
 - **Contexto:** `[01.3]` precisava disparar no tempo sem APScheduler e sem mentir 202.

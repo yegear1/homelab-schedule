@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-### 📌 Tarefa [02.1]: Loader `routines.yaml` (merge por `id` estável)
+### 📌 Tarefa [02.2]: MCP stdio (quatro tools)
 
-- **Descrição:** No boot, ler `ROUTINES_PATH`, validar rotinas (id estável, kind cron/once, to, content) e mergear no caderno sqlite por `id`. Edit no YAML atualiza o job `source=yaml`. Conflito com id sqlite existente → rejeitar. Cancel HTTP de yaml continua 409. Reload v1 só no boot (watch é débito).
-- **Sistema(s) Envolvido(s):** `routines.yaml`, skill `agenda-job`, ADR-002
+- **Descrição:** Servidor MCP stdio neste repo: `schedule`, `list_agenda`, `get_item`, `cancel`. Encapsula a HTTP local (`SCHEDULE_API_URL` + `SCHEDULE_API_KEY`). Superfície fechada (ADR-005). Sem CRUD genérico, sem mutar schema.
+- **Sistema(s) Envolvido(s):** skill `mcp-tool`, [ADR-005](adr/005-mcp-superficie-fechada.md)
 - **Tipo de Ação:**
   - [ ] Somente leitura / Documentação
   - [x] Escrita de código-fonte
@@ -18,10 +18,9 @@
   *(Fluxo: `PRONTO PARA PLANEJAMENTO` → `EM PLANEJAMENTO` ao apresentar plano → aprovação → `EM EXECUÇÃO`)*
 
 ### Critérios de Aceite
-- [ ] Merge por `id` estável; `source=yaml`
-- [ ] Edit no arquivo reflete no job após boot
-- [ ] Conflito id sqlite vs yaml rejeitado
-- [ ] Sem watch em runtime
+- [ ] Quatro tools; HTTP por trás; tokens não logados
+- [ ] YAML cancel devolve erro para editar o arquivo
+- [ ] `mcp.json` do Cursor não versionado
 
 ---
 
@@ -29,6 +28,7 @@
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [02.1] | Loader `routines.yaml` (merge por `id` estável) | *(este commit)* | 2026-09-11 |
 | [01.3] | Tick `next_run_at` + cliente gatekeeper | [`e32910b`] | 2026-09-11 |
 | [01.2] | HTTP `/health` e `/jobs` (CRUD mínimo + run now + Event) | [`9d35bbe`] | 2026-09-11 |
 | [01.1] | Modelo de job + sqlite3 WAL + `CREATE TABLE` no connect | [`37073f3`] | 2026-09-11 |
@@ -40,7 +40,6 @@
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[02.2]** MCP stdio (quatro tools) — `[mcp]`
 - [ ] **[02.3]** Compose slim + logs NDJSON stdlib — `[docker]`
 - [ ] **[02.4]** Skill Cursor de anotação (quando usar MCP) — `[docs]`
 

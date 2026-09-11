@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from homelab_schedule.cron import next_cron_utc
 from homelab_schedule.store import _dt_from_db, _dt_to_db, _row_to_job
 from schemas.api import JobListFilter
-from schemas.job import Job, JobKind, JobStatus
+from schemas.job import Job, JobKind, JobSource, JobStatus
 
 
 class JobRepository:
@@ -110,6 +110,13 @@ class JobRepository:
         if row is None or row["nxt"] is None:
             return None
         return _dt_from_db(row["nxt"])
+
+    def list_by_source(self, source: JobSource) -> list[Job]:
+        rows = self._conn.execute(
+            "SELECT * FROM jobs WHERE source = ?",
+            (source.value,),
+        ).fetchall()
+        return [_row_to_job(row) for row in rows]
 
 
 def _apply_status_filter(

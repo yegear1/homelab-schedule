@@ -18,3 +18,7 @@ class YamlJobImmutable(AppError):
 
 class GatekeeperError(AppError):
     pass
+
+
+class YamlIdConflict(AppError):
+    pass

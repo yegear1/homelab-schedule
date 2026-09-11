@@ -13,3 +13,4 @@ class Settings(BaseSettings):
     whatsapp_api_url: str = "http://localhost:8001"
     whatsapp_api_key: str = ""
     whatsapp_aliases: str = "eu=5511999998888@c.us"
+    routines_path: str = "./routines.yaml"

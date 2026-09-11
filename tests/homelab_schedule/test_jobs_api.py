@@ -29,6 +29,7 @@ def app(tmp_path: Path, api_key: str, dispatcher: RecordingDispatcher) -> FastAP
         schedule_api_key=api_key,
         database_path=str(tmp_path / "schedule.sqlite"),
         whatsapp_aliases="eu=5511999998888@c.us",
+        routines_path=str(tmp_path / "routines.yaml"),
         _env_file=None,
     )
     return create_app(settings, dispatcher=dispatcher)
@@ -163,6 +164,7 @@ def test_run_now_gatekeeper_failure_is_502(tmp_path: Path, api_key: str) -> None
     settings = Settings(
         schedule_api_key=api_key,
         database_path=str(tmp_path / "schedule.sqlite"),
+        routines_path=str(tmp_path / "routines.yaml"),
         _env_file=None,
     )
     app = create_app(settings, dispatcher=dispatcher)
