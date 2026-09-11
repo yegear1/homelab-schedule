@@ -7,20 +7,20 @@
 
 ## Tarefa Ativa
 
-### 📌 Tarefa [02.3]: Compose slim + logs NDJSON stdlib
+### 📌 Tarefa [02.4]: Skill Cursor de anotação (quando usar MCP)
 
-- **Descrição:** Imagem `python:3.13-slim`, um worker, compose com `container_name` estável, `LOG_FORMAT=json`, `NO_COLOR=1`, `SERVICE_NAME=homelab-schedule`, driver `json-file` 10m/3. Logs NDJSON via `logging` stdlib (skill `victorialogs-integration`). Volume para SQLite. Sem rebuild desnecessário na skill Docker do AGENTS.
-- **Sistema(s) Envolvido(s):** Docker Compose, skill global `victorialogs-integration`
+- **Descrição:** Skill do repo (a partir de `000-template.md`) ensinando o agente a anotar/listar/cancelar via MCP `homelab-schedule` (não curl ad-hoc, não `/send`). Gatilho: “anota / me lembra / agenda / o que tem marcado”. Apontar para `agenda-job` + CHANNELS. Listar no `AGENTS.md` e `.agent/skills/README.md`.
+- **Sistema(s) Envolvido(s):** `.agent/skills/`, skill `000-template`, `agenda-job`
 - **Tipo de Ação:**
-  - [ ] Somente leitura / Documentação
-  - [x] Escrita de código-fonte
+  - [x] Somente leitura / Documentação
+  - [ ] Escrita de código-fonte
 - **Status:** PRONTO PARA PLANEJAMENTO
   *(Fluxo: `PRONTO PARA PLANEJAMENTO` → `EM PLANEJAMENTO` ao apresentar plano → aprovação → `EM EXECUÇÃO`)*
 
 ### Critérios de Aceite
-- [ ] Compose + Dockerfile slim; um processo
-- [ ] NDJSON stdout; sem JID/`content`/`request_id` como stream field
-- [ ] Volume `DATABASE_PATH`; sem senha no YAML
+- [ ] SKILL.md com quando usar MCP vs YAML vs HTTP
+- [ ] Confirmacão id + próximo disparo + destino + texto
+- [ ] Catalogada no README de skills e no AGENTS.md
 
 ---
 
@@ -28,6 +28,7 @@
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [02.3] | Compose slim + logs NDJSON stdlib | *(este commit)* | 2026-09-11 |
 | [02.2] | MCP stdio (quatro tools) | [`d212d6d`] | 2026-09-11 |
 | [02.1] | Loader `routines.yaml` (merge por `id` estável) | [`4d95ec6`] | 2026-09-11 |
 | [01.3] | Tick `next_run_at` + cliente gatekeeper | [`e32910b`] | 2026-09-11 |
@@ -40,8 +41,6 @@
 ---
 
 ## Backlog (Próximas, em ordem)
-
-- [ ] **[02.4]** Skill Cursor de anotação (quando usar MCP) — `[docs]`
 
 ---
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -23,6 +24,7 @@ from homelab_schedule.errors import (
 from homelab_schedule.health import ping
 from homelab_schedule.jobs_router import router as jobs_router
 from homelab_schedule.jobs_service import JobService
+from homelab_schedule.logging import configure_logging
 from homelab_schedule.repository import JobRepository
 from homelab_schedule.routines import merge_routines
 from homelab_schedule.store import connect
@@ -38,6 +40,7 @@ def create_app(
     tick_cap_seconds: float = 300.0,
 ) -> FastAPI:
     resolved = settings if settings is not None else Settings()
+    configure_logging()
     clock = SystemClock()
     clock_now = now if now is not None else clock.now
     aliases = parse_aliases(resolved.whatsapp_aliases)
@@ -64,6 +67,7 @@ def create_app(
         app.state.notebook_changed = notebook_changed
         app.state.conn = conn
         app.state.dispatcher = active
+        logging.getLogger("homelab_schedule").info("homelab-schedule started")
         tick_task = asyncio.create_task(
             run_tick(
                 stop=stop,

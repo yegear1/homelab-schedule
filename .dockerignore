@@ -1,0 +1,14 @@
+.venv
+.git
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.agent
+tests
+data
+*.sqlite
+.env
+.env.*
+!.env.example
+__pycache__
+.cursor

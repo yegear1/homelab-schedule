@@ -1,0 +1,32 @@
+services:
+  homelab-schedule:
+    build: .
+    image: homelab-schedule:local
+    container_name: homelab-schedule
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      LOG_FORMAT: json
+      NO_COLOR: "1"
+      ENV: ${ENV:-production}
+      ENVIRONMENT: ${ENV:-production}
+      SERVICE_NAME: homelab-schedule
+      APP: homelab-schedule
+      TZ: America/Sao_Paulo
+      DATABASE_PATH: /data/schedule.sqlite
+      ROUTINES_PATH: /app/routines.yaml
+      APP_PORT: "8002"
+    ports:
+      - "8002:8002"
+    volumes:
+      - schedule-data:/data
+      - ./routines.yaml:/app/routines.yaml:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  schedule-data:

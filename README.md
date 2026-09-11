@@ -35,12 +35,15 @@ uv run mypy .
 uv run uvicorn homelab_schedule.main:create_app --factory --reload --port 8002
 ```
 
-Compose (após existir `docker-compose.yml`):
+Compose:
 
 ```bash
-docker compose up -d
+cp .env.example .env
+docker compose up -d --build
 docker compose logs -f
 ```
+
+O SQLite vive no volume `schedule-data`. Segredos ficam no `.env`, não no YAML. `WHATSAPP_API_URL` deve alcançar o gatekeeper a partir do container.
 
 ## MCP (Cursor)
 

@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Compose slim e NDJSON stdlib
+
+- **Contexto:** Homelab precisa de um container e logs que o Vector/VictoriaLogs parseiem.
+- **Decisão:** `python:3.13-slim` + `uv sync --frozen --no-dev`, um worker uvicorn, `--no-access-log`. Compose: `container_name=homelab-schedule`, `LOG_FORMAT=json`, `NO_COLOR=1`, `ENV`/`ENVIRONMENT`, volume `schedule-data` em `/data`. Formatter stdlib: `WARNING`→`warn`; extras não canônicos em `context` (JID/`content` não são stream field). Segredos só no `.env`.
+- **Consequências:** `WHATSAPP_API_URL` tem de resolver o gatekeeper a partir da rede Docker. Skill de anotação MCP é `[02.4]`.
+
 ### [2026-09-11] MCP stdio com quatro tools via HTTP
 
 - **Contexto:** Agente precisa de caneta sem OpenAPI inteiro nem SQLite direto.

@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     database_path: str = "./data/schedule.sqlite"
     env: str = "development"
     service_name: str = "homelab-schedule"
+    app: str = "homelab-schedule"
+    log_format: str = "json"
     tz: str = "America/Sao_Paulo"
     app_port: int = 8002
     whatsapp_api_url: str = "http://localhost:8001"
