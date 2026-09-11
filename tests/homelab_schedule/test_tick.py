@@ -131,3 +131,30 @@ async def _overdue_weekly_cron_fires_once(tmp_path: Path) -> None:
     assert stored.next_run_at is not None
     assert stored.next_run_at > now
     conn.close()
+
+
+@pytest.mark.anyio
+async def test_fire_due_uses_persisted_target_number(tmp_path: Path) -> None:
+    conn = connect(str(tmp_path / "schedule.sqlite"))
+    repo = JobRepository(conn)
+    overdue = datetime(2026, 9, 7, 12, 0, tzinfo=UTC)
+    repo.insert(
+        Job(
+            id="persisted-target",
+            title="status",
+            content="Teste target.",
+            to="desconhecido",
+            target_number="5511912345678@c.us",
+            kind=JobKind.ONCE,
+            run_at=overdue,
+            next_run_at=overdue,
+            status=JobStatus.SCHEDULED,
+        )
+    )
+    dispatcher = RecordingDispatcher()
+    now = datetime(2026, 9, 7, 13, 0, tzinfo=UTC)
+    failed = await fire_due(repo, dispatcher, {}, now)
+    assert failed is False
+    assert len(dispatcher.calls) == 1
+    assert dispatcher.calls[0][0] == "5511912345678@c.us"
+    conn.close()

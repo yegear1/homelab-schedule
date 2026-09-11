@@ -23,7 +23,7 @@ def build_mcp(api: AgendaApi) -> MCPServer:
 
     @mcp.tool()
     def schedule(when: str, content: str, to: str = "eu", title: str | None = None) -> str:
-        """Create an agenda job. when is ISO-8601 or a 5-field cron. to is an alias (default eu)."""
+        """Create an agenda job. when is ISO-8601 or cron. to is a phone or alias."""
         return handle_schedule(api, when, content, to, title)
 
     @mcp.tool()

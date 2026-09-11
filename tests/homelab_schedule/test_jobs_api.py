@@ -69,15 +69,34 @@ def test_create_get_list_and_notebook_event(client: TestClient, api_key: str) ->
     body = created.json()
     assert body["content"] == "Pagar condomínio."
     assert body["status"] == "scheduled"
+    assert body["target_number"] == "5511999998888@c.us"
     job_id = body["id"]
     listed = client.get("/jobs", headers=_auth(api_key))
     assert listed.status_code == 200
     jobs = listed.json()["jobs"]
     assert len(jobs) == 1
     assert "content" not in jobs[0]
+    assert jobs[0]["target_number"] == "5511999998888@c.us"
     detail = client.get(f"/jobs/{job_id}", headers=_auth(api_key))
     assert detail.status_code == 200
     assert detail.json()["content"] == "Pagar condomínio."
+    assert detail.json()["target_number"] == "5511999998888@c.us"
+
+
+def test_create_with_explicit_target_number(client: TestClient, api_key: str) -> None:
+    payload = {
+        "title": "recado direto",
+        "content": "Aviso pontual.",
+        "to": "joao",
+        "target_number": "5521977778888",
+        "kind": "once",
+        "run_at": "2026-09-12T14:00:00-03:00",
+    }
+    created = client.post("/jobs", headers=_auth(api_key), json=payload)
+    assert created.status_code == 201
+    body = created.json()
+    assert body["to"] == "joao"
+    assert body["target_number"] == "5521977778888@c.us"
 
 
 def test_create_once_without_run_at_is_422(client: TestClient, api_key: str) -> None:

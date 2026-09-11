@@ -55,9 +55,11 @@ uv run homelab-schedule-mcp
 
 No `mcp.json` local, `command`/`args` apontam para esse script (`uv run --directory <repo> homelab-schedule-mcp`) com `SCHEDULE_API_URL` e `SCHEDULE_API_KEY` no `env` do servidor. O MCP só encapsula a HTTP; não abre o SQLite.
 
-## Integração WhatsApp
+## Integração WhatsApp & Gateways Compatíveis
 
-Variáveis `WHATSAPP_API_URL` e `WHATSAPP_API_KEY`. Payload canônico: `phone_number` (JID `@c.us` / `@g.us`), `content`, header `x-api-key`. Playbook: skill global `whatsapp`.
+Variáveis `WHATSAPP_API_URL` e `WHATSAPP_API_KEY`. Payload canônico enviado no POST: `phone_number` (número normalizado ou JID `@c.us` / `@g.us`), `content`, header `x-api-key`. Playbook: skill global `whatsapp`.
+
+> **Arquitetura Aberta:** Embora o conector padrão do homelab seja a WhatsApp API (`gatekeeper-py`), o `homelab-schedule` foi concebido com uma interface de disparo desacoplada (`Dispatcher`). Qualquer serviço HTTP ou webhook que aceite o payload canônico (`phone_number` e `content`) pode ser utilizado como endpoint de envio.
 
 ## Repositório
 

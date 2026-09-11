@@ -24,6 +24,7 @@ def test_connect_creates_wal_schema_and_due_index(tmp_path: Path) -> None:
         "title",
         "content",
         "to",
+        "target_number",
         "kind",
         "run_at",
         "cron_expr",
@@ -39,6 +40,55 @@ def test_connect_creates_wal_schema_and_due_index(tmp_path: Path) -> None:
     names = {str(row[1]) for row in indexes}
     assert "idx_jobs_due" in names
     conn.close()
+
+
+def test_migration_v1_to_v2(tmp_path: Path) -> None:
+    import sqlite3
+    db = tmp_path / "legacy.sqlite"
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute(
+        """
+        CREATE TABLE jobs (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            "to" TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            run_at TEXT,
+            cron_expr TEXT,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL,
+            next_run_at TEXT,
+            last_run_at TEXT,
+            last_status TEXT,
+            last_error TEXT
+        )
+        """
+    )
+    conn.execute("PRAGMA user_version=1")
+    conn.execute(
+        """
+        INSERT INTO jobs (
+            id, title, content, "to", kind, run_at, enabled, source, status
+        ) VALUES (
+            'j1', 'old job', 'hello', '5511999998888@c.us', 'once',
+            '2026-09-12T17:00:00+00:00', 1, 'sqlite', 'scheduled'
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    migrated = connect(str(db))
+    version = migrated.execute("PRAGMA user_version").fetchone()
+    assert version is not None and int(version[0]) == 2
+    repo = JobRepository(migrated)
+    job = repo.get("j1")
+    assert job is not None
+    assert job.target_number == "5511999998888@c.us"
+    migrated.close()
 
 
 def test_reconnect_existing_file_keeps_schema(tmp_path: Path) -> None:

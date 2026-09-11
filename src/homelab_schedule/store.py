@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from schemas.job import Job, JobKind, JobSource, JobStatus
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 APP_TZ = ZoneInfo("America/Sao_Paulo")
 
 _CREATE_JOBS = """
@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     title TEXT NOT NULL,
     content TEXT NOT NULL,
     "to" TEXT NOT NULL,
+    target_number TEXT NOT NULL DEFAULT '',
     kind TEXT NOT NULL,
     run_at TEXT,
     cron_expr TEXT,
@@ -48,8 +49,12 @@ def init_schema(conn: sqlite3.Connection) -> None:
     )
     row = conn.execute("PRAGMA user_version").fetchone()
     version = int(row[0]) if row is not None else 0
-    if version < SCHEMA_VERSION:
-        conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+    if version < 2:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()]
+        if "target_number" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN target_number TEXT NOT NULL DEFAULT ''")
+            conn.execute('UPDATE jobs SET target_number = "to" WHERE target_number = \'\'')
+        conn.execute("PRAGMA user_version=2")
     conn.commit()
 
 
@@ -78,6 +83,9 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         title=str(row["title"]),
         content=str(row["content"]),
         to=str(row["to"]),
+        target_number=str(row["target_number"])
+        if "target_number" in row.keys() and row["target_number"] is not None
+        else str(row["to"]),
         kind=JobKind(str(row["kind"])),
         run_at=_dt_from_db(row["run_at"]),
         cron_expr=str(row["cron_expr"]) if row["cron_expr"] is not None else None,

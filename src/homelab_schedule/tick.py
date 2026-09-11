@@ -42,7 +42,7 @@ async def fire_due(
 ) -> bool:
     failed = False
     for job in repo.list_due(now):
-        dest = resolve_destination(job.to, aliases)
+        dest = job.target_number or resolve_destination(job.to, aliases)
         result = await dispatcher.send(phone_number=dest, content=job.content)
         if result.ok:
             repo.update(_after_success(job, now))

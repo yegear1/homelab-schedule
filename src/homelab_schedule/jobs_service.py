@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Callable
 from datetime import datetime
 
-from homelab_schedule.aliases import resolve_destination
+from homelab_schedule.aliases import normalize_whatsapp_phone, resolve_destination
 from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.errors import EntityNotFound, GatekeeperError, YamlJobImmutable
 from homelab_schedule.repository import JobRepository
@@ -29,11 +29,17 @@ class JobService:
         self._now = now
 
     def create(self, payload: CreateJobRequest) -> Job:
+        target = (
+            normalize_whatsapp_phone(payload.target_number)
+            if payload.target_number
+            else resolve_destination(payload.to, self._aliases)
+        )
         job = Job(
             id=str(uuid.uuid4()),
             title=payload.title,
             content=payload.content,
             to=payload.to,
+            target_number=target,
             kind=payload.kind,
             run_at=payload.run_at,
             cron_expr=payload.cron_expr,
@@ -68,7 +74,7 @@ class JobService:
 
     async def run_now(self, job_id: str) -> RunNowResponse:
         job = self.get(job_id)
-        dest = resolve_destination(job.to, self._aliases)
+        dest = job.target_number or resolve_destination(job.to, self._aliases)
         result = await self._dispatcher.send(phone_number=dest, content=job.content)
         self._notebook_changed.set()
         if not result.ok:

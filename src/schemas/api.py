@@ -21,6 +21,7 @@ class CreateJobRequest(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     content: str = Field(min_length=1)
     to: str = "eu"
+    target_number: str | None = None
     kind: JobKind
     run_at: datetime | None = None
     cron_expr: str | None = None
@@ -41,6 +42,7 @@ class JobListItem(BaseModel):
     id: str
     title: str
     to: str
+    target_number: str = ""
     kind: JobKind
     run_at: datetime | None = None
     cron_expr: str | None = None

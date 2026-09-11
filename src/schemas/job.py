@@ -26,6 +26,7 @@ class Job(BaseModel):
     title: str
     content: str
     to: str
+    target_number: str = ""
     kind: JobKind
     run_at: datetime | None = None
     cron_expr: str | None = None
@@ -46,4 +47,6 @@ class Job(BaseModel):
                 raise ValueError("kind=cron requires cron_expr")
             if len(self.cron_expr.split()) != 5:
                 raise ValueError("cron_expr must have five fields")
+        if not self.target_number and self.to:
+            self.target_number = self.to
         return self

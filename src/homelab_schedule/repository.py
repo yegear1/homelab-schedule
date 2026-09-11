@@ -18,10 +18,10 @@ class JobRepository:
         self._conn.execute(
             """
             INSERT INTO jobs (
-                id, title, content, "to", kind, run_at, cron_expr,
+                id, title, content, "to", target_number, kind, run_at, cron_expr,
                 enabled, source, status, next_run_at, last_run_at,
                 last_status, last_error
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             _job_params(to_store),
         )
@@ -70,7 +70,7 @@ class JobRepository:
         self._conn.execute(
             """
             UPDATE jobs SET
-                title = ?, content = ?, "to" = ?, kind = ?, run_at = ?,
+                title = ?, content = ?, "to" = ?, target_number = ?, kind = ?, run_at = ?,
                 cron_expr = ?, enabled = ?, source = ?, status = ?,
                 next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?
             WHERE id = ?
@@ -155,6 +155,7 @@ def _job_params(job: Job) -> tuple[
     str,
     str,
     str,
+    str,
     str | None,
     str | None,
     int,
@@ -170,6 +171,7 @@ def _job_params(job: Job) -> tuple[
         job.title,
         job.content,
         job.to,
+        job.target_number,
         job.kind.value,
         _dt_to_db(job.run_at),
         job.cron_expr,

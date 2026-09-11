@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Persistência de `target_number` normalizado e gateway agnóstico
+
+- **Contexto:** `[01.1]` precisava salvar o número resolvido no próprio aviso para evitar resoluções dinâmicas ambíguas no tick e permitir que o bot WhatsApp (`!agendar`) passe o número do remetente diretamente. Além disso, o scheduler deve ser aberto para qualquer gateway HTTP compatível.
+- **Decisão:** Coluna `target_number TEXT` no SQLite (migração v1→v2 com backfill de `"to"`). Normalização aplicada no momento da criação (`CreateJobRequest.target_number` ou resolução de `to`). O tick e `run_now` utilizam diretamente `job.target_number`. README atualizado documentando compatibilidade com qualquer gateway webhook que aceite o payload.
+- **Consequências:** SQLite migra transparentemente no connect. MCP e bot gravam o número normalizado diretamente. Dispatcher permanece desacoplado via Protocol.
+
 ### [2026-09-11] Skill `anotar-agenda` para o agente no Cursor
 
 - **Contexto:** `[02.4]` precisava de um playbook de *uso* do MCP, distinto de implementar tools (`mcp-tool`) e do contrato de campos (`agenda-job`).
