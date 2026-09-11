@@ -20,8 +20,8 @@ class JobRepository:
             INSERT INTO jobs (
                 id, title, content, "to", target_number, kind, run_at, cron_expr,
                 enabled, source, status, next_run_at, last_run_at,
-                last_status, last_error
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                last_status, last_error, retry_count
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             _job_params(to_store),
         )
@@ -76,7 +76,7 @@ class JobRepository:
             UPDATE jobs SET
                 title = ?, content = ?, "to" = ?, target_number = ?, kind = ?, run_at = ?,
                 cron_expr = ?, enabled = ?, source = ?, status = ?,
-                next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?
+                next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?, retry_count = ?
             WHERE id = ?
             """,
             (
@@ -196,6 +196,7 @@ def _job_params(job: Job) -> tuple[
     str | None,
     str | None,
     str | None,
+    int,
 ]:
     return (
         job.id,
@@ -213,4 +214,5 @@ def _job_params(job: Job) -> tuple[
         _dt_to_db(job.last_run_at),
         job.last_status,
         job.last_error,
+        job.retry_count,
     )

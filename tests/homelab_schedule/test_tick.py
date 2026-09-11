@@ -192,3 +192,92 @@ async def test_fire_due_renders_dynamic_template(tmp_path: Path) -> None:
     assert stored is not None
     assert stored.content == "Alerta de {{day_name}} do dia {{date}} às {{time}}."
     conn.close()
+
+
+@pytest.mark.anyio
+async def test_fire_due_transient_failure_schedules_retry(tmp_path: Path) -> None:
+    conn = connect(str(tmp_path / "schedule.sqlite"))
+    repo = JobRepository(conn)
+    now = datetime(2026, 9, 11, 15, 0, tzinfo=UTC)
+    repo.insert(
+        Job(
+            id="retry-job",
+            title="retry test",
+            content="Aviso temporario.",
+            to="eu",
+            target_number="5511999998888@c.us",
+            kind=JobKind.ONCE,
+            run_at=now,
+            next_run_at=now,
+            status=JobStatus.SCHEDULED,
+        )
+    )
+    # 503 Service Unavailable (transient)
+    dispatcher = RecordingDispatcher(status_code=503)
+
+    # 1st failure: retry_count becomes 1, next_run_at = now + 2 min
+    failed = await fire_due(repo, dispatcher, {}, now)
+    assert failed is True
+    job = repo.get("retry-job")
+    assert job is not None
+    assert job.retry_count == 1
+    assert job.status is JobStatus.SCHEDULED
+    assert job.enabled is True
+    assert job.next_run_at == now + timedelta(minutes=2)
+
+    # 2nd failure: retry_count becomes 2, next_run_at = now + 4 min
+    await fire_due(repo, dispatcher, {}, now + timedelta(minutes=2))
+    job = repo.get("retry-job")
+    assert job is not None
+    assert job.retry_count == 2
+    assert job.status is JobStatus.SCHEDULED
+    assert job.enabled is True
+    assert job.next_run_at == (now + timedelta(minutes=2)) + timedelta(minutes=4)
+
+    # 3rd failure: retry_count becomes 3, next_run_at = now + 8 min
+    t3 = (now + timedelta(minutes=2)) + timedelta(minutes=4)
+    await fire_due(repo, dispatcher, {}, t3)
+    job = repo.get("retry-job")
+    assert job is not None
+    assert job.retry_count == 3
+    assert job.status is JobStatus.SCHEDULED
+
+    # 4th failure: exceeds _MAX_RETRIES -> status becomes ERROR, enabled becomes False
+    t4 = t3 + timedelta(minutes=8)
+    await fire_due(repo, dispatcher, {}, t4)
+    job = repo.get("retry-job")
+    assert job is not None
+    assert job.status is JobStatus.ERROR
+    assert job.enabled is False
+    assert job.next_run_at is None
+    conn.close()
+
+
+@pytest.mark.anyio
+async def test_fire_due_permanent_failure_no_retries(tmp_path: Path) -> None:
+    conn = connect(str(tmp_path / "schedule.sqlite"))
+    repo = JobRepository(conn)
+    now = datetime(2026, 9, 11, 15, 0, tzinfo=UTC)
+    repo.insert(
+        Job(
+            id="perm-job",
+            title="perm test",
+            content="Aviso permanente.",
+            to="eu",
+            target_number="5511999998888@c.us",
+            kind=JobKind.ONCE,
+            run_at=now,
+            next_run_at=now,
+            status=JobStatus.SCHEDULED,
+        )
+    )
+    # 401 Unauthorized (permanent)
+    dispatcher = RecordingDispatcher(status_code=401)
+    failed = await fire_due(repo, dispatcher, {}, now)
+    assert failed is True
+    job = repo.get("perm-job")
+    assert job is not None
+    assert job.status is JobStatus.ERROR
+    assert job.enabled is False
+    assert job.next_run_at is None
+    conn.close()

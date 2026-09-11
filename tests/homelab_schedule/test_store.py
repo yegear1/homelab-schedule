@@ -35,6 +35,7 @@ def test_connect_creates_wal_schema_and_due_index(tmp_path: Path) -> None:
         "last_run_at",
         "last_status",
         "last_error",
+        "retry_count",
     }
     indexes = conn.execute("PRAGMA index_list(jobs)").fetchall()
     names = {str(row[1]) for row in indexes}
@@ -83,11 +84,62 @@ def test_migration_v1_to_v2(tmp_path: Path) -> None:
 
     migrated = connect(str(db))
     version = migrated.execute("PRAGMA user_version").fetchone()
-    assert version is not None and int(version[0]) == 2
+    assert version is not None and int(version[0]) == 3
     repo = JobRepository(migrated)
     job = repo.get("j1")
     assert job is not None
     assert job.target_number == "5511999998888@c.us"
+    assert job.retry_count == 0
+    migrated.close()
+
+
+def test_migration_v2_to_v3(tmp_path: Path) -> None:
+    import sqlite3
+    db = tmp_path / "v2.sqlite"
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute(
+        """
+        CREATE TABLE jobs (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            "to" TEXT NOT NULL,
+            target_number TEXT NOT NULL DEFAULT '',
+            kind TEXT NOT NULL,
+            run_at TEXT,
+            cron_expr TEXT,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL,
+            next_run_at TEXT,
+            last_run_at TEXT,
+            last_status TEXT,
+            last_error TEXT
+        )
+        """
+    )
+    conn.execute("PRAGMA user_version=2")
+    conn.execute(
+        """
+        INSERT INTO jobs (
+            id, title, content, "to", target_number, kind, run_at, enabled, source, status
+        ) VALUES (
+            'j2', 'v2 job', 'hello v2', 'eu', '5511999998888@c.us', 'once',
+            '2026-09-12T17:00:00+00:00', 1, 'sqlite', 'scheduled'
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    migrated = connect(str(db))
+    version = migrated.execute("PRAGMA user_version").fetchone()
+    assert version is not None and int(version[0]) == 3
+    repo = JobRepository(migrated)
+    job = repo.get("j2")
+    assert job is not None
+    assert job.retry_count == 0
     migrated.close()
 
 

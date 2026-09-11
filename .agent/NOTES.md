@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Retentativas de Disparo para Falhas Transitórias do Gateway (`[02.3]`)
+
+- **Contexto:** Instabilidades temporárias de rede ou do gateway (ex: reinício do container do WhatsApp, HTTP 500/502/503) marcavam imediatamente o job pontual como `error` definitivo, perdendo o disparo.
+- **Decisão:** Coluna `retry_count INTEGER NOT NULL DEFAULT 0` no SQLite (migração v2 → v3 no connect). Erros permanentes (401, 422) continuam falhando imediatamente. Erros transitórios reagendam o job até 3 vezes (`_MAX_RETRIES = 3`) com backoff exponencial (`2^retry_count` minutos: +2m, +4m, +8m). Sucesso (`202`) zera o `retry_count`. Rotinas YAML esgotam retentativas transitórias e saltam para o próximo ciclo cron regular.
+- **Consequências:** Lembretes tornam-se tolerantes a quedas curtas de conectividade sem risco de envio duplicado no mesmo instante.
+
 ### [2026-09-11] Templates Dinâmicos de Mensagem no Disparo (`[02.2]`)
 
 - **Contexto:** Lembretes recorrentes e rotinas fixas no YAML precisavam exibir a data, hora ou dia da semana corrente no corpo do texto sem intervenção manual.

@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from schemas.job import Job, JobKind, JobSource, JobStatus
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 APP_TZ = ZoneInfo("America/Sao_Paulo")
 
 _CREATE_JOBS = """
@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     next_run_at TEXT,
     last_run_at TEXT,
     last_status TEXT,
-    last_error TEXT
+    last_error TEXT,
+    retry_count INTEGER NOT NULL DEFAULT 0
 )
 """
 
@@ -55,6 +56,11 @@ def init_schema(conn: sqlite3.Connection) -> None:
             conn.execute("ALTER TABLE jobs ADD COLUMN target_number TEXT NOT NULL DEFAULT ''")
             conn.execute('UPDATE jobs SET target_number = "to" WHERE target_number = \'\'')
         conn.execute("PRAGMA user_version=2")
+    if version < 3:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()]
+        if "retry_count" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0")
+        conn.execute("PRAGMA user_version=3")
     conn.commit()
 
 
@@ -96,4 +102,7 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         last_run_at=_dt_from_db(row["last_run_at"]),
         last_status=str(row["last_status"]) if row["last_status"] is not None else None,
         last_error=str(row["last_error"]) if row["last_error"] is not None else None,
+        retry_count=int(row["retry_count"])
+        if "retry_count" in row.keys() and row["retry_count"] is not None
+        else 0,
     )

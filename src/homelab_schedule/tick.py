@@ -18,6 +18,8 @@ _LOG = logging.getLogger("homelab_schedule.tick")
 _FAILURE_BACKOFF = 5.0
 _MIN_SLEEP = 0.05
 _DAY_SECONDS = 86400.0
+_MAX_RETRIES = 3
+_BASE_RETRY_MINUTES = 2
 
 
 async def run_tick(
@@ -90,7 +92,7 @@ async def fire_due(
             repo.update(_after_success(job, now))
             continue
         failed = True
-        repo.update(_after_failure(job, result.last_error, result.permanent))
+        repo.update(_after_failure(job, result.last_error, result.permanent, now))
     return failed
 
 
@@ -119,6 +121,7 @@ def _after_success(job: Job, now: datetime) -> Job:
                 "last_run_at": now,
                 "last_status": "queued",
                 "last_error": None,
+                "retry_count": 0,
             }
         )
     if job.cron_expr is None:
@@ -129,13 +132,41 @@ def _after_success(job: Job, now: datetime) -> Job:
             "last_run_at": now,
             "last_status": "queued",
             "last_error": None,
+            "retry_count": 0,
         }
     )
 
 
-def _after_failure(job: Job, last_error: str | None, permanent: bool) -> Job:
-    status = JobStatus.ERROR if permanent else job.status
-    enabled = False if permanent else job.enabled
+def _after_failure(job: Job, last_error: str | None, permanent: bool, now: datetime) -> Job:
+    if permanent or job.retry_count >= _MAX_RETRIES:
+        if job.kind is JobKind.ONCE:
+            return job.model_copy(
+                update={
+                    "status": JobStatus.ERROR,
+                    "enabled": False,
+                    "last_error": last_error,
+                    "next_run_at": None,
+                }
+            )
+        if job.cron_expr is None:
+            raise RuntimeError("cron job missing cron_expr")
+        return job.model_copy(
+            update={
+                "last_error": last_error,
+                "next_run_at": next_cron_utc(job.cron_expr, now),
+                "retry_count": 0,
+            }
+        )
+
+    new_retry = job.retry_count + 1
+    delay_minutes = _BASE_RETRY_MINUTES**new_retry
+    next_run = now + timedelta(minutes=delay_minutes)
     return job.model_copy(
-        update={"status": status, "enabled": enabled, "last_error": last_error}
+        update={
+            "retry_count": new_retry,
+            "next_run_at": next_run,
+            "status": JobStatus.SCHEDULED,
+            "enabled": True,
+            "last_error": last_error,
+        }
     )

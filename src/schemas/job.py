@@ -37,6 +37,7 @@ class Job(BaseModel):
     last_run_at: datetime | None = None
     last_status: str | None = None
     last_error: str | None = None
+    retry_count: int = 0
 
     @model_validator(mode="after")
     def _kind_schedule_fields(self) -> "Job":
