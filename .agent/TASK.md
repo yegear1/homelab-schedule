@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[02.3]`
-- **Título:** Retentativas de disparo para falhas transitórias do gateway
-- **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Mecanismo leve de retry transitório: se o gateway falhar temporariamente (erro de rede, timeout, 500, 502, 503) em job pontual, reagendar para retry com backoff antes de marcar como `error` definitivo.
+- **ID:** Nenhuma
+- **Título:** Nenhuma
+- **Status:** `CONCLUÍDO`
+- **Contexto:** Todas as tarefas da iteração (02.1, 02.2 e 02.3) foram concluídas com sucesso.
 
 ---
 
@@ -20,6 +20,7 @@ Ciclo `v0.1.0` arquivado em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [02.3] | Retentativas de disparo para falhas transitórias do gateway | [`1f2eb5a`] | 2026-09-11 |
 | [02.2] | Templates dinâmicos de mensagem no disparo (placeholders de data/hora) | [`a6c2535`] | 2026-09-11 |
 | [02.1] | Filtros e paginação na listagem do MCP (status e limit) | [`6f00be3`] | 2026-09-11 |
 | [01.4] | Housekeeping e expurgo automático de jobs antigos no SQLite | [`2de02f1`] | 2026-09-11 |
