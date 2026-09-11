@@ -7,7 +7,7 @@
 
 ## Tarefa Ativa
 
-Nenhuma. Ciclo `v0.1.0` publicado. Próxima tarefa pronta para planejamento no backlog.
+Nenhuma. Ciclo pós-v0.1.0 em andamento. Próxima tarefa pronta para planejamento no backlog.
 
 ---
 
@@ -17,13 +17,16 @@ Ciclo `v0.1.0` arquivado em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [01.1] | Persistir `target_number` normalizado no job e documentar gateway agnóstico | [`33fe49b`] | 2026-09-11 |
 
 ---
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[01.1]** Suporte a `reschedule` / `snooze` de recados pontuais no MCP e HTTP (PRONTO PARA PLANEJAMENTO)
-- [ ] **[01.2]** Watch / Reload de `routines.yaml` em runtime via endpoint `POST /routines/reload` ou mtime
+- [ ] **[01.2]** Suporte a `reschedule` / `snooze` de recados pontuais no MCP e HTTP (PRONTO PARA PLANEJAMENTO)
+- [ ] **[01.3]** Watch / Reload de `routines.yaml` em runtime via endpoint `POST /routines/reload` ou mtime
+
+
 
 ---
 
