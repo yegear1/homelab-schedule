@@ -1,0 +1,56 @@
+from datetime import datetime
+from enum import StrEnum
+
+from pydantic import BaseModel, Field, model_validator
+
+from schemas.job import JobKind, JobSource, JobStatus
+
+
+class JobListFilter(StrEnum):
+    UPCOMING = "upcoming"
+    DONE = "done"
+    PAUSED = "paused"
+    ALL = "all"
+
+
+class HealthResponse(BaseModel):
+    status: str = "ok"
+
+
+class CreateJobRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+    content: str = Field(min_length=1)
+    to: str = "eu"
+    kind: JobKind
+    run_at: datetime | None = None
+    cron_expr: str | None = None
+
+    @model_validator(mode="after")
+    def _kind_schedule_fields(self) -> "CreateJobRequest":
+        if self.kind is JobKind.ONCE and self.run_at is None:
+            raise ValueError("kind=once requires run_at")
+        if self.kind is JobKind.CRON:
+            if self.cron_expr is None:
+                raise ValueError("kind=cron requires cron_expr")
+            if len(self.cron_expr.split()) != 5:
+                raise ValueError("cron_expr must have five fields")
+        return self
+
+
+class JobListItem(BaseModel):
+    id: str
+    title: str
+    to: str
+    kind: JobKind
+    run_at: datetime | None = None
+    cron_expr: str | None = None
+    enabled: bool
+    source: JobSource
+    status: JobStatus
+    next_run_at: datetime | None = None
+    last_run_at: datetime | None = None
+    last_status: str | None = None
+
+
+class JobListResponse(BaseModel):
+    jobs: list[JobListItem]

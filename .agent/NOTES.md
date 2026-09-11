@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] HTTP `/health` e `/jobs`; run-now 501 até o tick
+
+- **Contexto:** `[01.2]` precisava da caneta HTTP sem o cliente do gatekeeper.
+- **Decisão:** FastAPI factory (`create_app`), auth `x-api-key` (`SCHEDULE_API_KEY`) em tudo exceto `/health`. Cancel sqlite `once` → `done` + `next_run_at` nulo; cron → `paused`. YAML → 409. Escritas (create/cancel/run) setam `asyncio.Event`. `POST /jobs/{id}/run` responde 501 e **não** muda o agendamento. Lista omite `content`.
+- **Consequências:** `[01.3]` troca o 501 por POST `/send` e liga o loop no Event. Uvicorn: `--factory homelab_schedule.main:create_app`.
+
 ### [2026-09-11] Job store sqlite3 WAL e schemas em `src/schemas/`
 
 - **Contexto:** `[01.1]` precisava do caderno sem HTTP. AGENTS manda contratos globais em `src/schemas/`.

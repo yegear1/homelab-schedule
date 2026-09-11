@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-### 📌 Tarefa [01.2]: HTTP `/health` e `/jobs` (CRUD mínimo + run now + Event)
+### 📌 Tarefa [01.3]: Tick `next_run_at` + cliente gatekeeper
 
-- **Descrição:** FastAPI: `GET /health` sem auth; `/jobs` com `x-api-key` (`SCHEDULE_API_KEY`). Router fino → service → `JobRepository`. Criar/listar/obter/cancelar recados sqlite; `POST /jobs/{id}/run` ainda pode só persistir o pedido ou devolver 501 se o cliente gatekeeper não existir — preferir stub de Event + persistência e deixar o POST `/send` para `[01.3]` se o cliente não estiver pronto. `asyncio.Event` no app state após escrita no caderno.
-- **Sistema(s) Envolvido(s):** FastAPI, skill `api-endpoint`, [ENDPOINTS.md](ENDPOINTS.md)
+- **Descrição:** Loop asyncio (ADR-006 / skill `due-tick`): SELECT devidos, POST gatekeeper `/send` (`whatsapp-dispatch`), 202 = sucesso, atualizar `once`/`cron`, sleep até `MIN(next_run_at)` ou Event (cap 5 min). Cliente httpx com `phone_number`/`content`/`x-api-key`. `POST /jobs/{id}/run` passa a 202/502 de verdade. Calcular `next_run_at` de cron no `TZ`. Teste: job +2s dispara sem esperar o cap.
+- **Sistema(s) Envolvido(s):** tick, skill `due-tick`, skill `whatsapp-dispatch`, skill global `whatsapp`
 - **Tipo de Ação:**
   - [ ] Somente leitura / Documentação
   - [x] Escrita de código-fonte
@@ -18,10 +18,11 @@
   *(Fluxo: `PRONTO PARA PLANEJAMENTO` → `EM PLANEJAMENTO` ao apresentar plano → aprovação → `EM EXECUÇÃO`)*
 
 ### Critérios de Aceite
-- [ ] Rotas alinhadas a ENDPOINTS.md (`/health`, GET/POST `/jobs`, GET `/jobs/{id}`, cancel; run-now sem disparo real se `[01.3]` ainda não existir — documentar)
-- [ ] Auth `x-api-key` em tudo exceto `/health`
-- [ ] Sem regra de negócio no router; Pydantic nos schemas
-- [ ] Tick / cliente WhatsApp ficam em `[01.3]`
+- [ ] Tick no lifespan; Event acorda job +2s
+- [ ] 202 do gatekeeper não reenvia; once → done; cron → próxima ocorrência futura
+- [ ] Catch-up once uma vez; cron coalesce uma vez
+- [ ] Run-now dispara sem substituir `next_run_at` de once futuro
+- [ ] Sem APScheduler
 
 ---
 
@@ -29,6 +30,7 @@
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [01.2] | HTTP `/health` e `/jobs` (CRUD mínimo + run now + Event) | *(este commit)* | 2026-09-11 |
 | [01.1] | Modelo de job + sqlite3 WAL + `CREATE TABLE` no connect | [`37073f3`] | 2026-09-11 |
 | [00.1] | Bootstrap UV, pyproject, ruff, mypy, pytest e layout `src/` | [`303a9c8`] | 2026-09-11 |
 | [00.0.1] | Constituição do produto, contratos e ADRs | [`a9d1766`] [`671ba19`] | 2026-09-11 |
@@ -38,7 +40,6 @@
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[01.3]** Tick `next_run_at` + cliente gatekeeper (`due-tick`, `whatsapp-dispatch`) — `[tick]`
 - [ ] **[02.1]** Loader `routines.yaml` (merge por `id` estável) — `[routines]`
 - [ ] **[02.2]** MCP stdio (quatro tools) — `[mcp]`
 - [ ] **[02.3]** Compose slim + logs NDJSON stdlib — `[docker]`

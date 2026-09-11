@@ -5,7 +5,10 @@ description = "Lightweight homelab agenda that dispatches WhatsApp reminders via
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "fastapi>=0.141.1",
     "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "uvicorn>=0.52.4",
 ]
 
 [build-system]
@@ -35,6 +38,7 @@ testpaths = ["tests"]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
     "ruff>=0.16.7",

@@ -32,6 +32,7 @@ uv sync
 uv run pytest -v
 uv run ruff check .
 uv run mypy .
+uv run uvicorn homelab_schedule.main:create_app --factory --reload --port 8002
 ```
 
 Compose (após existir `docker-compose.yml`):
