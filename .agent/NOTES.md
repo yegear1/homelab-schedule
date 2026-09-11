@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Skill `anotar-agenda` para o agente no Cursor
+
+- **Contexto:** `[02.4]` precisava de um playbook de *uso* do MCP, distinto de implementar tools (`mcp-tool`) e do contrato de campos (`agenda-job`).
+- **Decisão:** Skill `anotar-agenda` com gatilhos em português; MCP primeiro; YAML para permanente; confirmação id + BRT/UTC + destino + texto.
+- **Consequências:** Ciclo de produto v1 (00.x–02.x) fecha aqui. `[99.1]` só com permissão.
+
 ### [2026-09-11] Compose slim e NDJSON stdlib
 
 - **Contexto:** Homelab precisa de um container e logs que o Vector/VictoriaLogs parseiem.

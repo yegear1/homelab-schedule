@@ -19,7 +19,7 @@ Implementação neste repo: `uv run homelab-schedule-mcp` (stdio). Chama a HTTP 
 
 Reagendar = `cancel` + `schedule`. Sem `PATCH`. Confirmar ao humano: id, próximo disparo, destino, texto.
 
-Skill do repo: `agenda-job`. Skill de produto (quando o MCP existir): gatilho “anota / me lembra / agenda / o que tem marcado”.
+Skill do operador no Cursor: [`anotar-agenda`](skills/anotar-agenda/SKILL.md). Contrato de campos: [`agenda-job`](skills/agenda-job/SKILL.md).
 
 ---
 

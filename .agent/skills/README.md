@@ -9,7 +9,8 @@ Procedimentos passo a passo. Regras ficam no `AGENTS.md`; decisões no `NOTES.md
 | **`database-migration`** | [`database-migration/SKILL.md`](./database-migration/SKILL.md) | Schema sqlite3 no connect (sem Alembic) |
 | **`api-endpoint`** | [`api-endpoint/SKILL.md`](./api-endpoint/SKILL.md) | Rotas HTTP: router → service → repository |
 | **`mcp-tool`** | [`mcp-tool/SKILL.md`](./mcp-tool/SKILL.md) | Tools do MCP stdio (superfície fechada) |
-| **`agenda-job`** | [`agenda-job/SKILL.md`](./agenda-job/SKILL.md) | Anotar / listar / cancelar job no caderno |
+| **`anotar-agenda`** | [`anotar-agenda/SKILL.md`](./anotar-agenda/SKILL.md) | Anotar / listar / cancelar via MCP (pedido humano) |
+| **`agenda-job`** | [`agenda-job/SKILL.md`](./agenda-job/SKILL.md) | Contrato de campos do job (when/to/content) |
 | **`whatsapp-dispatch`** | [`whatsapp-dispatch/SKILL.md`](./whatsapp-dispatch/SKILL.md) | POST gatekeeper `/send`; 202 = sucesso |
 | **`due-tick`** | [`due-tick/SKILL.md`](./due-tick/SKILL.md) | Loop `next_run_at` + Event |
 

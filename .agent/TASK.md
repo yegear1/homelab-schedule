@@ -7,20 +7,7 @@
 
 ## Tarefa Ativa
 
-### 📌 Tarefa [02.4]: Skill Cursor de anotação (quando usar MCP)
-
-- **Descrição:** Skill do repo (a partir de `000-template.md`) ensinando o agente a anotar/listar/cancelar via MCP `homelab-schedule` (não curl ad-hoc, não `/send`). Gatilho: “anota / me lembra / agenda / o que tem marcado”. Apontar para `agenda-job` + CHANNELS. Listar no `AGENTS.md` e `.agent/skills/README.md`.
-- **Sistema(s) Envolvido(s):** `.agent/skills/`, skill `000-template`, `agenda-job`
-- **Tipo de Ação:**
-  - [x] Somente leitura / Documentação
-  - [ ] Escrita de código-fonte
-- **Status:** PRONTO PARA PLANEJAMENTO
-  *(Fluxo: `PRONTO PARA PLANEJAMENTO` → `EM PLANEJAMENTO` ao apresentar plano → aprovação → `EM EXECUÇÃO`)*
-
-### Critérios de Aceite
-- [ ] SKILL.md com quando usar MCP vs YAML vs HTTP
-- [ ] Confirmacão id + próximo disparo + destino + texto
-- [ ] Catalogada no README de skills e no AGENTS.md
+Nenhuma. Ciclo de produto v1 encerrado em `[02.4]`. Não iniciar `[99.1]` sem permissão explícita.
 
 ---
 
@@ -28,6 +15,7 @@
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [02.4] | Skill Cursor de anotação (quando usar MCP) | *(este commit)* | 2026-09-11 |
 | [02.3] | Compose slim + logs NDJSON stdlib | [`c41ff51`] | 2026-09-11 |
 | [02.2] | MCP stdio (quatro tools) | [`d212d6d`] | 2026-09-11 |
 | [02.1] | Loader `routines.yaml` (merge por `id` estável) | [`4d95ec6`] | 2026-09-11 |

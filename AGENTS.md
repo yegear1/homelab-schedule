@@ -96,7 +96,8 @@ Skills globais obrigatórias quando couber:
 | `database-migration` | Mudança de schema sqlite3 (`CREATE`/`ALTER` no connect) |
 | `api-endpoint` | Rotas HTTP: router fino → service → repository |
 | `mcp-tool` | Tools MCP stdio (schema, tokens, sem CRUD genérico) |
-| `agenda-job` | Criar/listar/cancelar job (contrato de anotação) |
+| `anotar-agenda` | Humano pede para anotar/lembrar/listar/cancelar (MCP, não `/send`) |
+| `agenda-job` | Contrato de campos do job (when/to/content) |
 | `whatsapp-dispatch` | Cliente do gatekeeper; 202 = sucesso |
 | `due-tick` | Loop `next_run_at` + Event; catch-up once/cron |
 

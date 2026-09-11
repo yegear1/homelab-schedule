@@ -22,8 +22,8 @@ Não usar: mandar WhatsApp na hora sem job (isso não é agenda). Bug de outro a
 
 ## 3. Ferramentas
 
-- **MCP `homelab-schedule`** quando existir (`schedule`, `list_agenda`, `get_item`, `cancel`).
-- **HTTP** se o MCP ainda não estiver no ar (mesmos campos, `.agent/ENDPOINTS.md`).
+- **MCP `homelab-schedule`:** caneta do agente no Cursor — ver skill `anotar-agenda`.
+- **HTTP** se o MCP ainda não estiver configurado (mesmos campos, `.agent/ENDPOINTS.md`).
 - **Nunca** `WHATSAPP_API_KEY` / `/send` para “anotar”.
 
 ---
