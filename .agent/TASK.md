@@ -29,7 +29,7 @@
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
-| [01.1] | Modelo de job + sqlite3 WAL + `CREATE TABLE` no connect | *(este commit)* | 2026-09-11 |
+| [01.1] | Modelo de job + sqlite3 WAL + `CREATE TABLE` no connect | [`37073f3`] | 2026-09-11 |
 | [00.1] | Bootstrap UV, pyproject, ruff, mypy, pytest e layout `src/` | [`303a9c8`] | 2026-09-11 |
 | [00.0.1] | Constituição do produto, contratos e ADRs | [`a9d1766`] [`671ba19`] | 2026-09-11 |
 | [00.0] | Scaffolding inicial (ADD greenfield) | [`2c7ba79`] | 2026-09-11 |
