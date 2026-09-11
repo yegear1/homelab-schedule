@@ -63,8 +63,6 @@ Cron: `"kind": "cron", "cron_expr": "0 9 * * 1"` (segunda 09:00 no `TZ`). `to` d
 
 Disparo imediato (não altera `once` para `done` se também houver `run_at` futuro — **run now não substitui o agendamento**). `202` `{ "status": "queued", "job_id": "..." }` se o gatekeeper aceitou. `404`. `502` se o gatekeeper falhar (não 202).
 
-**Até `[01.3]`:** a rota existe, autentica, localiza o job, sinaliza o `asyncio.Event` do caderno e responde **`501`** `{ "detail": "WhatsApp dispatch is not wired yet" }`. Não há POST `/send` ainda.
-
 ### `POST /jobs/{id}/cancel`
 
 Sqlite: pontual → remove ou `status=done` cancelado; cron → `enabled=false` / `paused`. YAML: `409` com mensagem para editar o arquivo. `404`. `204` ou `200` com Job.

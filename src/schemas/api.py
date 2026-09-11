@@ -54,3 +54,8 @@ class JobListItem(BaseModel):
 
 class JobListResponse(BaseModel):
     jobs: list[JobListItem]
+
+
+class RunNowResponse(BaseModel):
+    status: str
+    job_id: str

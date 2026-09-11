@@ -16,5 +16,5 @@ class YamlJobImmutable(AppError):
     pass
 
 
-class DispatchNotReady(AppError):
+class GatekeeperError(AppError):
     pass

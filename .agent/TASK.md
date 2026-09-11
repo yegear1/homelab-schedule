@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-### 📌 Tarefa [01.3]: Tick `next_run_at` + cliente gatekeeper
+### 📌 Tarefa [02.1]: Loader `routines.yaml` (merge por `id` estável)
 
-- **Descrição:** Loop asyncio (ADR-006 / skill `due-tick`): SELECT devidos, POST gatekeeper `/send` (`whatsapp-dispatch`), 202 = sucesso, atualizar `once`/`cron`, sleep até `MIN(next_run_at)` ou Event (cap 5 min). Cliente httpx com `phone_number`/`content`/`x-api-key`. `POST /jobs/{id}/run` passa a 202/502 de verdade. Calcular `next_run_at` de cron no `TZ`. Teste: job +2s dispara sem esperar o cap.
-- **Sistema(s) Envolvido(s):** tick, skill `due-tick`, skill `whatsapp-dispatch`, skill global `whatsapp`
+- **Descrição:** No boot, ler `ROUTINES_PATH`, validar rotinas (id estável, kind cron/once, to, content) e mergear no caderno sqlite por `id`. Edit no YAML atualiza o job `source=yaml`. Conflito com id sqlite existente → rejeitar. Cancel HTTP de yaml continua 409. Reload v1 só no boot (watch é débito).
+- **Sistema(s) Envolvido(s):** `routines.yaml`, skill `agenda-job`, ADR-002
 - **Tipo de Ação:**
   - [ ] Somente leitura / Documentação
   - [x] Escrita de código-fonte
@@ -18,11 +18,10 @@
   *(Fluxo: `PRONTO PARA PLANEJAMENTO` → `EM PLANEJAMENTO` ao apresentar plano → aprovação → `EM EXECUÇÃO`)*
 
 ### Critérios de Aceite
-- [ ] Tick no lifespan; Event acorda job +2s
-- [ ] 202 do gatekeeper não reenvia; once → done; cron → próxima ocorrência futura
-- [ ] Catch-up once uma vez; cron coalesce uma vez
-- [ ] Run-now dispara sem substituir `next_run_at` de once futuro
-- [ ] Sem APScheduler
+- [ ] Merge por `id` estável; `source=yaml`
+- [ ] Edit no arquivo reflete no job após boot
+- [ ] Conflito id sqlite vs yaml rejeitado
+- [ ] Sem watch em runtime
 
 ---
 
@@ -30,6 +29,7 @@
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [01.3] | Tick `next_run_at` + cliente gatekeeper | *(este commit)* | 2026-09-11 |
 | [01.2] | HTTP `/health` e `/jobs` (CRUD mínimo + run now + Event) | [`9d35bbe`] | 2026-09-11 |
 | [01.1] | Modelo de job + sqlite3 WAL + `CREATE TABLE` no connect | [`37073f3`] | 2026-09-11 |
 | [00.1] | Bootstrap UV, pyproject, ruff, mypy, pytest e layout `src/` | [`303a9c8`] | 2026-09-11 |
@@ -40,7 +40,6 @@
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[02.1]** Loader `routines.yaml` (merge por `id` estável) — `[routines]`
 - [ ] **[02.2]** MCP stdio (quatro tools) — `[mcp]`
 - [ ] **[02.3]** Compose slim + logs NDJSON stdlib — `[docker]`
 - [ ] **[02.4]** Skill Cursor de anotação (quando usar MCP) — `[docs]`

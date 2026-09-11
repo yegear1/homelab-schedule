@@ -2,18 +2,31 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 
-from homelab_schedule.errors import DispatchNotReady, EntityNotFound, YamlJobImmutable
+from homelab_schedule.aliases import resolve_destination
+from homelab_schedule.dispatch import Dispatcher
+from homelab_schedule.errors import EntityNotFound, GatekeeperError, YamlJobImmutable
 from homelab_schedule.repository import JobRepository
-from schemas.api import CreateJobRequest, JobListFilter, JobListItem
+from schemas.api import CreateJobRequest, JobListFilter, JobListItem, RunNowResponse
 from schemas.job import Job, JobKind, JobSource, JobStatus
 
 
 class JobService:
-    def __init__(self, repo: JobRepository, notebook_changed: asyncio.Event) -> None:
+    def __init__(
+        self,
+        repo: JobRepository,
+        notebook_changed: asyncio.Event,
+        dispatcher: Dispatcher,
+        aliases: dict[str, str],
+        now: Callable[[], datetime],
+    ) -> None:
         self._repo = repo
         self._notebook_changed = notebook_changed
+        self._dispatcher = dispatcher
+        self._aliases = aliases
+        self._now = now
 
     def create(self, payload: CreateJobRequest) -> Job:
         job = Job(
@@ -53,10 +66,24 @@ class JobService:
         self._repo.update(_cancelled(job))
         self._notebook_changed.set()
 
-    def run_now(self, job_id: str) -> None:
-        self.get(job_id)
+    async def run_now(self, job_id: str) -> RunNowResponse:
+        job = self.get(job_id)
+        dest = resolve_destination(job.to, self._aliases)
+        result = await self._dispatcher.send(phone_number=dest, content=job.content)
         self._notebook_changed.set()
-        raise DispatchNotReady("WhatsApp dispatch is not wired yet")
+        if not result.ok:
+            self._repo.update(job.model_copy(update={"last_error": result.last_error}))
+            raise GatekeeperError("gatekeeper did not accept the message")
+        self._repo.update(
+            job.model_copy(
+                update={
+                    "last_run_at": self._now(),
+                    "last_status": "queued",
+                    "last_error": None,
+                }
+            )
+        )
+        return RunNowResponse(status="queued", job_id=job.id)
 
 
 def _cancelled(job: Job) -> Job:

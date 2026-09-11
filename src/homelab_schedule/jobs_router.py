@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Header, Query, Request, status
 
 from homelab_schedule.errors import Unauthorized
 from homelab_schedule.jobs_service import JobService
-from schemas.api import CreateJobRequest, JobListFilter, JobListResponse
+from schemas.api import CreateJobRequest, JobListFilter, JobListResponse, RunNowResponse
 from schemas.job import Job
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -57,6 +57,6 @@ def cancel_job(request: Request, _: Auth, job_id: str) -> None:
     _service(request).cancel(job_id)
 
 
-@router.post("/{job_id}/run", status_code=status.HTTP_202_ACCEPTED)
-def run_job_now(request: Request, _: Auth, job_id: str) -> None:
-    _service(request).run_now(job_id)
+@router.post("/{job_id}/run", response_model=RunNowResponse, status_code=status.HTTP_202_ACCEPTED)
+async def run_job_now(request: Request, _: Auth, job_id: str) -> RunNowResponse:
+    return await _service(request).run_now(job_id)

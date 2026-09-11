@@ -10,3 +10,6 @@ class Settings(BaseSettings):
     service_name: str = "homelab-schedule"
     tz: str = "America/Sao_Paulo"
     app_port: int = 8002
+    whatsapp_api_url: str = "http://localhost:8001"
+    whatsapp_api_key: str = ""
+    whatsapp_aliases: str = "eu=5511999998888@c.us"

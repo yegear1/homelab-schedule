@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Tick `next_run_at` + gatekeeper httpx
+
+- **Contexto:** `[01.3]` precisava disparar no tempo sem APScheduler e sem mentir 202.
+- **Decisão:** Loop asyncio no lifespan (cap 5 min, Event nas escritas). Cron de 5 campos no `TZ` com walker stdlib (sem croniter). Alias `WHATSAPP_ALIASES` → JID; POST `/send` com `phone_number`/`content`/`quote_id`/`x-api-key`. 202 → `last_status=queued`; 401/422 → `status=error` sem retry; 5xx → backoff 5s. Run-now não altera `next_run_at`.
+- **Consequências:** YAML merge ainda é `[02.1]`. Logs de falha não incluem JID/`content` como dimensão.
+
 ### [2026-09-11] HTTP `/health` e `/jobs`; run-now 501 até o tick
 
 - **Contexto:** `[01.2]` precisava da caneta HTTP sem o cliente do gatekeeper.

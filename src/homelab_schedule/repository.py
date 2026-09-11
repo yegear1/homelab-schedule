@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
+from datetime import UTC, datetime
 
-from homelab_schedule.store import _dt_to_db, _row_to_job
+from homelab_schedule.cron import next_cron_utc
+from homelab_schedule.store import _dt_from_db, _dt_to_db, _row_to_job
 from schemas.api import JobListFilter
 from schemas.job import Job, JobKind, JobStatus
 
@@ -85,6 +86,31 @@ class JobRepository:
             raise RuntimeError("update did not persist job")
         return stored
 
+    def list_due(self, now: datetime) -> list[Job]:
+        encoded = _dt_to_db(now)
+        rows = self._conn.execute(
+            """
+            SELECT * FROM jobs
+            WHERE enabled = 1 AND status = ? AND next_run_at IS NOT NULL
+              AND next_run_at <= ?
+            ORDER BY next_run_at ASC
+            """,
+            (JobStatus.SCHEDULED.value, encoded),
+        ).fetchall()
+        return [_row_to_job(row) for row in rows]
+
+    def earliest_next_run(self) -> datetime | None:
+        row = self._conn.execute(
+            """
+            SELECT MIN(next_run_at) AS nxt FROM jobs
+            WHERE enabled = 1 AND status = ? AND next_run_at IS NOT NULL
+            """,
+            (JobStatus.SCHEDULED.value,),
+        ).fetchone()
+        if row is None or row["nxt"] is None:
+            return None
+        return _dt_from_db(row["nxt"])
+
 
 def _apply_status_filter(
     clauses: list[str],
@@ -105,10 +131,15 @@ def _apply_status_filter(
     params.append(JobStatus.PAUSED.value)
 
 
-def _with_next_run(job: Job) -> Job:
-    if job.next_run_at is not None or job.kind is not JobKind.ONCE or job.run_at is None:
+def _with_next_run(job: Job, now: datetime | None = None) -> Job:
+    if job.next_run_at is not None:
         return job
-    return job.model_copy(update={"next_run_at": job.run_at})
+    if job.kind is JobKind.ONCE and job.run_at is not None:
+        return job.model_copy(update={"next_run_at": job.run_at})
+    if job.kind is JobKind.CRON and job.cron_expr is not None:
+        instant = now if now is not None else datetime.now(UTC)
+        return job.model_copy(update={"next_run_at": next_cron_utc(job.cron_expr, instant)})
+    return job
 
 
 def _job_params(job: Job) -> tuple[

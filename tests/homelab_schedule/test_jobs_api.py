@@ -10,6 +10,7 @@ from homelab_schedule.config import Settings
 from homelab_schedule.main import create_app
 from homelab_schedule.repository import JobRepository
 from schemas.job import Job, JobKind, JobSource
+from tests.homelab_schedule.fakes import RecordingDispatcher
 
 
 @pytest.fixture
@@ -18,13 +19,19 @@ def api_key() -> str:
 
 
 @pytest.fixture
-def app(tmp_path: Path, api_key: str) -> FastAPI:
+def dispatcher() -> RecordingDispatcher:
+    return RecordingDispatcher()
+
+
+@pytest.fixture
+def app(tmp_path: Path, api_key: str, dispatcher: RecordingDispatcher) -> FastAPI:
     settings = Settings(
         schedule_api_key=api_key,
         database_path=str(tmp_path / "schedule.sqlite"),
+        whatsapp_aliases="eu=5511999998888@c.us",
         _env_file=None,
     )
-    return create_app(settings)
+    return create_app(settings, dispatcher=dispatcher)
 
 
 @pytest.fixture
@@ -48,9 +55,7 @@ def test_jobs_without_key_is_401(client: TestClient) -> None:
     assert response.status_code == 401
 
 
-def test_create_get_list_and_notebook_event(
-    client: TestClient, app: FastAPI, api_key: str
-) -> None:
+def test_create_get_list_and_notebook_event(client: TestClient, api_key: str) -> None:
     payload = {
         "title": "condomínio",
         "content": "Pagar condomínio.",
@@ -72,8 +77,6 @@ def test_create_get_list_and_notebook_event(
     detail = client.get(f"/jobs/{job_id}", headers=_auth(api_key))
     assert detail.status_code == 200
     assert detail.json()["content"] == "Pagar condomínio."
-    event = app.state.notebook_changed
-    assert event.is_set()
 
 
 def test_create_once_without_run_at_is_422(client: TestClient, api_key: str) -> None:
@@ -128,8 +131,8 @@ def test_cancel_yaml_job_is_409(client: TestClient, app: FastAPI, api_key: str) 
     assert "routines.yaml" in response.json()["detail"]
 
 
-def test_run_now_is_501_and_sets_event(
-    client: TestClient, app: FastAPI, api_key: str
+def test_run_now_queues_without_replacing_schedule(
+    client: TestClient, dispatcher: RecordingDispatcher, api_key: str
 ) -> None:
     created = client.post(
         "/jobs",
@@ -142,10 +145,38 @@ def test_run_now_is_501_and_sets_event(
         },
     )
     job_id = created.json()["id"]
-    app.state.notebook_changed.clear()
+    next_before = created.json()["next_run_at"]
     response = client.post(f"/jobs/{job_id}/run", headers=_auth(api_key))
-    assert response.status_code == 501
-    assert app.state.notebook_changed.is_set()
+    assert response.status_code == 202
+    assert response.json() == {"status": "queued", "job_id": job_id}
+    assert dispatcher.calls
+    assert dispatcher.calls[0][0] == "5511999998888@c.us"
     detail = client.get(f"/jobs/{job_id}", headers=_auth(api_key))
-    assert detail.json()["status"] == "scheduled"
-    assert detail.json()["next_run_at"] is not None
+    body = detail.json()
+    assert body["status"] == "scheduled"
+    assert body["next_run_at"] == next_before
+    assert body["last_status"] == "queued"
+
+
+def test_run_now_gatekeeper_failure_is_502(tmp_path: Path, api_key: str) -> None:
+    dispatcher = RecordingDispatcher(status_code=500)
+    settings = Settings(
+        schedule_api_key=api_key,
+        database_path=str(tmp_path / "schedule.sqlite"),
+        _env_file=None,
+    )
+    app = create_app(settings, dispatcher=dispatcher)
+    with TestClient(app) as client:
+        created = client.post(
+            "/jobs",
+            headers=_auth(api_key),
+            json={
+                "title": "x",
+                "content": "y",
+                "kind": "once",
+                "run_at": "2026-09-12T14:00:00-03:00",
+            },
+        )
+        job_id = created.json()["id"]
+        response = client.post(f"/jobs/{job_id}/run", headers=_auth(api_key))
+        assert response.status_code == 502
