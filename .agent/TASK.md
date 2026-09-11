@@ -17,6 +17,7 @@ Ciclo `v0.1.0` arquivado em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [01.3] | Watch / Reload de `routines.yaml` em runtime via `/routines/reload` e mtime | [`223ac9b`] | 2026-09-11 |
 | [01.2] | Suporte a `reschedule` / `snooze` de recados pontuais no MCP e HTTP | [`ddb85e1`] | 2026-09-11 |
 | [01.1] | Persistir `target_number` normalizado no job e documentar gateway agnóstico | [`33fe49b`] | 2026-09-11 |
 
@@ -24,7 +25,7 @@ Ciclo `v0.1.0` arquivado em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[01.3]** Watch / Reload de `routines.yaml` em runtime via endpoint `POST /routines/reload` ou mtime (PRONTO PARA PLANEJAMENTO)
+- [ ] **[01.4]** Housekeeping e expurgo automático de jobs antigos no SQLite (PRONTO PARA PLANEJAMENTO)
 
 
 
