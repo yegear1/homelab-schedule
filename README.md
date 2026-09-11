@@ -1,106 +1,54 @@
-# Template Core/Greenfield de Desenvolvimento Orientado a Agentes (ADD)
+# homelab-schedule
 
-Este repositório é o starter kit canônico (**Core / Greenfield**) projetado para potencializar o desenvolvimento de software colaborativo do zero com **agentes de Inteligência Artificial** (ex: Antigravity, Claude Code, Cursor, Windsurf, Roo Code, Aider, etc.).
+Agenda leve do homelab: um container Python agenda recados **pontuais** e **recorrentes** e dispara `POST /send` na [WhatsApp API](https://github.com/yegear/whatsapp-api) (`gatekeeper-py`).
 
-A estrutura foi desenhada para resolver os maiores problemas no uso de agentes em projetos reais: **perda de contexto**, **alucinações em tarefas longas**, **violação de padrões de código** e **retrabalho**.
+O envio é assíncrono. `202 Accepted` significa que a mensagem entrou na fila. O gateway aplica delay anti-ban; este serviço **não** faz polling nem reenvia na hora.
 
----
+## Canetas (mesmo caderno)
 
-## 📁 Estrutura do Template
+| Canal | Quem usa | v1 neste repo |
+| :--- | :--- | :--- |
+| **MCP** (`schedule`, `list_agenda`, `get_item`, `cancel`) | Agente no Cursor | Sim |
+| **HTTP** (`/jobs`, `/health`) | Scripts e o próprio MCP | Sim |
+| **YAML** (`routines.yaml`) | Rotinas permanentes do homelab | Sim |
+| **WhatsApp** (`!lembra` / `!agenda`) | Você no celular | Só [contrato](.agent/CHANNELS.md); implementação no `whatsapp-api` |
 
-```text
-├── AGENTS.md                 # A "Constituição" do projeto (regras inegociáveis, stack, MCPs e comandos)
-├── .agent/
-│   ├── TASK.md               # Tarefa ativa, critérios de aceite e roadmap imediato
-│   ├── NOTES.md              # Decisões arquiteturais rápidas, contratos de dados e armadilhas
-│   ├── ARCHIVE.md            # Histórico de tarefas antigas (preserva contexto enxuto)
-│   ├── adr/                  # Registros de Decisões Arquiteturais complexas (ADRs formais)
-│   │   └── 000-template.md   # Template padrão de ADR
-│   └── skills/               # Habilidades procedurais especializadas do projeto
-│       ├── README.md         # Guia de quando e como criar skills
-│       └── 000-template.md   # Template padrão de SKILL.md
-├── .env.example              # Exemplo de variáveis de ambiente do projeto
-├── .gitignore                # Padrão amplo (Node, Python, Docker, caches de agentes)
-└── README.md                 # Este guia (para desenvolvedores humanos)
-```
+Você anota em português (*“amanhã 14h, pagar condomínio”*). O agente (MCP) ou o bot grava um job. Destinos usam **alias** (`eu`, `grupo-homelab`), não JID cru no dia a dia.
 
----
+## Stack
 
-## 🚀 Como Iniciar um Novo Projeto com este Template
+- Python 3.13+, UV, FastAPI, sqlite3 WAL, tick `next_run_at` (sem APScheduler/Alembic)
+- Um processo: API HTTP + scheduler
+- Logs NDJSON (VictoriaLogs / Vector)
+- Compose no homelab; `TZ=America/Sao_Paulo`
 
-### Opção 1: Via Inicializador Automático One-Liner (Recomendado)
+Detalhe para agentes: [`AGENTS.md`](./AGENTS.md), [`.agent/NOTES.md`](./.agent/NOTES.md), [`.agent/TASK.md`](./.agent/TASK.md).
 
-Crie um novo projeto instantaneamente a partir do seu terminal:
+## Desenvolvimento (quando o código existir)
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/ye-sandbox/template-agent/greenfield/init.sh | bash -s -- meu-novo-projeto
-```
-
-O script clonará a branch `greenfield` e inicializará automaticamente um repositório Git novo e limpo, pronto para uso.
-
----
-
-### Opção 2: Clone Manual do Git
-
-```bash
-git clone --depth 1 -b greenfield https://github.com/ye-sandbox/template-agent.git meu-novo-projeto
-cd meu-novo-projeto
-rm -rf .git && git init -b main
-git add . && git commit -m "chore: initial template setup"
-```
-
-### Passo 2: Configurar o `AGENTS.md`
-Abra o arquivo [`AGENTS.md`](./AGENTS.md) e substitua todos os campos entre `[COLCHETES]`:
-1. Nome do projeto e resumo da arquitetura.
-2. Sistema operacional e **Shell padrão** do ambiente (ex: PowerShell ou Bash).
-3. Stack tecnológico de cada serviço/módulo (linguagens, versões e gerenciadores de pacote).
-4. Servidores MCP autorizados e Habilidades (Skills) do projeto.
-5. Comandos exatos de validação (`testes`, `linter`, `checagem de tipos`, `build`).
-6. Apague as seções que não se aplicarem (ex: seção Docker se o projeto não utilizar contêineres).
-7. Remova a seção `Checklist Rápido de Adaptação` ao terminar.
-
-### Passo 3: Configurar Variáveis de Ambiente e MCPs
-Copie o arquivo de exemplo e ajuste os valores necessários para seu ambiente local:
 ```bash
 cp .env.example .env
-```
-Se o projeto utilizar servidores MCP (ex: banco de dados local, APIs, observabilidade), configure-os no arquivo de configuração do seu agente/IDE (`antigravity`, `claude_desktop`, etc.).
-
-### Passo 4: Definir a Primeira Tarefa no `.agent/TASK.md`
-Abra [`.agent/TASK.md`](./.agent/TASK.md):
-1. Preencha a seção **📌 Tarefa Ativa** com o primeiro objetivo real (ex: `Setup do esqueleto da API`).
-2. Defina **Critérios de Aceite** claros e mensuráveis.
-3. Marque o status inicial como `PRONTO PARA PLANEJAMENTO`.
-
-### Passo 5: Iniciar o Trabalho com o Agente de IA
-No prompt da sua ferramenta de IA favorita, instrua o agente:
-> *"Leia o AGENTS.md, .agent/TASK.md, .agent/NOTES.md e as skills em .agent/skills/. Apresente seu plano de implementação para a Tarefa Ativa do TASK.md antes de alterar qualquer código."*
-
----
-
-## 🔄 Fluxo de Trabalho (Ciclo de Vida de uma Tarefa)
-
-```mermaid
-graph TD
-    A[Usuário define Tarefa no TASK.md] --> B[Agente lê docs e muda status para EM PLANEJAMENTO]
-    B --> C[Agente elabora Plano de Implementação]
-    C --> D{Usuário aprovou?}
-    D -- Não / Ajustes --> C
-    D -- Sim --> E[Status: EM EXECUÇÃO]
-    E --> F[Implementação com Tipagem Estrita]
-    F --> G[Execução dos Comandos de Validação 100% OK]
-    G --> H[Commit Semântico em Inglês]
-    H --> I[Registro no Log de Concluídas do TASK.md]
-    I --> J[Promover Próxima Tarefa do Backlog]
+uv sync
+uv run pytest -v
+uv run ruff check .
+uv run mypy .
 ```
 
----
+Compose (após existir `docker-compose.yml`):
 
-## 💡 Melhores Práticas para Trabalhar com Agentes
+```bash
+docker compose up -d
+docker compose logs -f
+```
 
-1. **Uma coisa por vez:** Mantenha cada tarefa atômica. Se um pedido crescer, quebre em sub-tarefas no `TASK.md`.
-2. **Confie no DoD (Definition of Done):** Não aceite tarefas com testes ou linter pendentes.
-3. **Mantenha os arquivos enxutos:**
-   - O `TASK.md` deve conter apenas a tarefa atual e títulos das próximas.
-   - O `NOTES.md` guarda decisões e contratos que **não são óbvios olhando o diff do Git**.
-   - Detalhes profundos de implementação pertencem às mensagens de commit e ao histórico do Git.
+## MCP (Cursor)
+
+Não versione `.cursor/mcp.json`. Depois da tarefa do servidor stdio, aponte o Cursor para o script do repo com `SCHEDULE_API_URL` e `SCHEDULE_API_KEY` no ambiente do MCP — o servidor só encapsula a HTTP.
+
+## Integração WhatsApp
+
+Variáveis `WHATSAPP_API_URL` e `WHATSAPP_API_KEY`. Payload canônico: `phone_number` (JID `@c.us` / `@g.us`), `content`, header `x-api-key`. Playbook: skill global `whatsapp`.
+
+## Repositório
+
+GitHub: `yegear/homelab-schedule`.

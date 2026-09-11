@@ -3,14 +3,26 @@
 .env.*
 !.env.example
 
-# High-frequency junk (safe before you pick a stack)
-node_modules/
+# Python
 .venv/
 venv/
 __pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.egg-info/
 dist/
 build/
 *.log
+
+# SQLite runtime (keep schema/migrations in git)
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
 
 # OS / IDE / agent scratch
 .DS_Store
@@ -20,19 +32,4 @@ Thumbs.db
 .agent/scratch/
 .gemini/
 .claude/
-
-# Uncomment extras for your stack:
-# --- Python ---
-# *.py[cod]
-# .pytest_cache/
-# .mypy_cache/
-# .ruff_cache/
-# htmlcov/
-# .coverage
-# *.egg-info/
-# --- Node ---
-# .next/
-# .nuxt/
-# .turbo/
-# .parcel-cache/
-# npm-debug.log*
+.cursor/mcp.json

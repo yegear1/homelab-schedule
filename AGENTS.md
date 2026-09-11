@@ -1,8 +1,8 @@
 # Diretrizes e Regras do Agente
 
-Você é o(a) engenheiro(a) sênior responsável pelo desenvolvimento deste projeto: **[NOME_DO_PROJETO]**.
+Você é o engenheiro sênior responsável pelo desenvolvimento deste projeto: **homelab-schedule**.
 
-> Base **greenfield** (projeto do zero): contratos claros, ADRs, tipagem estrita. Substitua `[COLCHETES]`, apague seções que não se aplicam e delete o checklist no final após o setup.
+Agenda leve em um container: jobs pontuais e recorrentes que disparam `POST /send` no **gatekeeper** da WhatsApp API. Canetas (MCP, HTTP, YAML de rotinas; contrato de comando WhatsApp) escrevem no mesmo caderno. Repo: `yegear/homelab-schedule`.
 
 ---
 
@@ -11,7 +11,7 @@ Você é o(a) engenheiro(a) sênior responsável pelo desenvolvimento deste proj
 1. Antes de alterar arquivos, leia `AGENTS.md`, `.agent/TASK.md` e `.agent/NOTES.md`.
 2. **Planejamento primeiro:** `Status` → `EM PLANEJAMENTO`; apresente o plano; espere aprovação; então `EM EXECUÇÃO`.
 3. Uma tarefa por vez.
-4. **DoD:** código tipado (sem `any`/`Any`); `feat` com testes; validação 100%; commit Conventional Commits em inglês; log no `TASK.md` + promoção da próxima; decisões/armadilhas no `NOTES.md`.
+4. **DoD:** código tipado (sem `Any`); `feat` com testes; validação 100%; commit Conventional Commits em inglês; log no `TASK.md` + promoção da próxima; decisões/armadilhas no `NOTES.md`.
 
 ---
 
@@ -21,9 +21,9 @@ Formato `[Épico].[Sequencial]` com épico de **dois dígitos**. Subtarefas: `[X
 
 | Prefixo | Fase | Foco |
 | :---: | :--- | :--- |
-| **`00.x`** | Bootstrap & Setup | Linters, tipos, MCPs, skills |
-| **`01.x`** | Fundação & Arquitetura | ADRs, contratos, infra base, smoke tests |
-| **`02.x`–`89.x`** | Épicos | Features por domínio |
+| **`00.x`** | Bootstrap & Setup | `pyproject`, linters, layout `src/`, Compose |
+| **`01.x`** | Fundação | Job store SQLite, HTTP, tick `next_run_at`, cliente WhatsApp |
+| **`02.x`** | Canetas | YAML de rotinas, MCP stdio, skill de anotação |
 | **`90.x`** | Refatoração | Performance e dívida técnica |
 | **`99.x`** | Hardening & Release | Auditoria e tag — só com permissão humana |
 
@@ -35,77 +35,116 @@ Não está preso à fase `99.x`. Ao publicar `vX.Y.Z`:
 
 1. **Arquivar:** log do ciclo de `TASK.md` → `ARCHIVE.md` sob `## [vX.Y.Z] - AAAA-MM-DD`.
 2. **Consolidar:** decisões definitivas → ADRs; apagar dumps e notas efêmeras no `NOTES.md`.
-3. **Borda:** `.env.example` e `README.md` alinhados à tag.
+3. **Borda:** `.env.example` e `README.md` sincronizados com a tag.
 4. **Reset:** reiniciar numeração; corrigir ID da tarefa ativa; promover a próxima (`PRONTO PARA PLANEJAMENTO`); manter `[99.1]` no Backlog Futuro.
 
 ---
 
-## Stack (preencha ou apague)
+## Stack
 
-- **OS / shell:** `[Bash / PowerShell / Zsh]` — use essa sintaxe no terminal.
-- **Arquitetura:** `[monólito modular / serviços / eventos]`.
-- **Módulos:** para cada um, registre linguagem, gerenciador de pacotes **oficial** (proibido o antigo), frameworks e linter.
-- **Persistência / fila:** `[PostgreSQL / Redis / …]`.
+- **OS / shell:** Linux (WSL2) / Bash — use essa sintaxe no terminal.
+- **Arquitetura:** monólito modular, **um processo / um container**: FastAPI (HTTP) + tick asyncio (disparos) + sqlite3 WAL + merge de `routines.yaml`.
+- **Linguagem:** Python 3.13+.
+- **Gerenciador:** **UV** — proibido `pip` direto. Use `uv add`, `uv sync`, `uv run`.
+- **Frameworks:** FastAPI, Pydantic v2, Pydantic-Settings, httpx. Logs NDJSON com `logging` stdlib (sem Loguru).
+- **Schema SQLite:** `CREATE TABLE IF NOT EXISTS` no connect. Sem Alembic. Sem APScheduler.
+- **Linter / tipos / testes:** Ruff, mypy (estrito), pytest.
+- **Persistência:** SQLite 3 WAL em volume (`DATABASE_PATH`). Sem Redis neste repo — a fila anti-ban vive no `whatsapp-api`.
+- **Integração WhatsApp:** HTTP `POST {WHATSAPP_API_URL}/send` com header `x-api-key` (skill global `whatsapp`). `202 Accepted` = sucesso; não polling, não reenvio imediato.
+- **Importações:** explícitas, sem `__init__.py` barrel. Schemas globais em `src/schemas/`. Helpers internos de feature prefixo `_`.
 
 ---
 
-## Docker (apague se o projeto não usar)
+## Docker
 
-Marque **uma**: execução diária via Compose **ou** só deploy/CI (dev nativo).
+Compose é o ambiente de execução diária no homelab. Validação rápida de código: `uv run` no host. Compose quando a tarefa for imagem, volume, rede ou disparo real.
 
-Permitido: `up -d`, `logs`, `build <svc>`, `restart`, `exec`, `down` (sem `-v`).
+Permitido: `up -d`, `logs`, `build`, `restart`, `exec`, `down` (sem `-v`).
 
-**NUNCA:** `system/builder prune`; `down -v` / `volume rm`; `rmi` de imagens alheias; senha em YAML/Dockerfile; commit de `.env` real. Rebuild só se mudou dependência/`Dockerfile`/arquivos copiados no build; com bind mount + hot-reload, `restart` basta. Homelab/Compose como produto → use o template `infra`, não este.
+**NUNCA:** `system/builder prune`; `down -v` / `volume rm`; `rmi` de imagens alheias; senha em YAML/Dockerfile; commit de `.env` real. Rebuild só se mudou dependência/`Dockerfile`/arquivos copiados no build; com bind mount, `restart` basta.
+
+Todo serviço de aplicação no compose **deve**: `container_name` estável; `LOG_FORMAT=json`; `NO_COLOR=1`; `ENV`/`ENVIRONMENT`; `SERVICE_NAME=homelab-schedule`; driver `json-file` `max-size: 10m`, `max-file: 3`. Skill global `victorialogs-integration` ao tocar logs ou compose.
 
 ---
 
 ## MCP
 
-Liste os servidores deste projeto ou escreva `nenhum`. Prefira MCP a scripts ad-hoc. Mutação em staging/produção via MCP é **proibida** sem consentimento. Não logue tokens.
+| Servidor | Papel |
+| :--- | :--- |
+| **`homelab-schedule`** (deste repo, stdio) | Caneta do agente: `schedule`, `list_agenda`, `get_item`, `cancel`. Fala com a HTTP local. **Ainda não implementado** até a tarefa `[02.2]`. |
+| **`victorialogs`** (global) | Diagnóstico de runtime. Não substitui `list_agenda`. |
+
+Prefira MCP a curl ad-hoc depois que o servidor existir. Mutação em produção via MCP só com consentimento. Não logue tokens. `mcp.json` do Cursor é local — **não** versione.
+
+Tools do MCP deste projeto: superfície fechada (ver [ADR-005](./.agent/adr/005-mcp-superficie-fechada.md)). Sem CRUD genérico, sem `PATCH` solto.
 
 ---
 
 ## Skills
 
-Leia `.agent/skills/<nome>/SKILL.md` quando a tarefa cair no domínio. Fluxo repetitivo (>3 passos) → nova skill a partir de `.agent/skills/000-template.md` (guia em `.agent/skills/README.md`). Infra de host (logs, hypervisor) é skill **global**, não deste repo.
+Leia `.agent/skills/<nome>/SKILL.md` quando a tarefa cair no domínio. Fluxo repetitivo (>3 passos) → nova skill a partir de `.agent/skills/000-template.md`. Infra de host (VictoriaLogs, hypervisor) é skill **global**.
 
-| Skill | Quando |
+Skills globais obrigatórias quando couber:
+
+- `victorialogs-integration` — logs, compose, stdout.
+- `victorialogs-troubleshooting` — investigar erros via MCP VictoriaLogs.
+- `whatsapp` — payload `phone_number` / `content` / `x-api-key`.
+- `github-bug-issue` — anotar bug para depois (issue no GitHub; não usar `TASK.md` como fila).
+
+| Skill do repo | Quando |
 | :--- | :--- |
-| `database-migration` | Migrations com expand/contract e rollback testado |
+| `database-migration` | Mudança de schema sqlite3 (`CREATE`/`ALTER` no connect) |
 | `api-endpoint` | Rotas HTTP: router fino → service → repository |
+| `mcp-tool` | Tools MCP stdio (schema, tokens, sem CRUD genérico) |
+| `agenda-job` | Criar/listar/cancelar job (contrato de anotação) |
+| `whatsapp-dispatch` | Cliente do gatekeeper; 202 = sucesso |
+| `due-tick` | Loop `next_run_at` + Event; catch-up once/cron |
 
 ---
 
-## Validação (preencha os comandos reais)
+## Validação
 
-Por serviço: sync/install de deps, testes, lint, types/build, dev server. Nova dependência só com permissão. **Circuit breaker:** 2 falhas seguidas com a mesma causa-raiz → pare e pergunte.
+Na raiz do repo:
+
+- **Deps:** `uv sync`
+- **Add (só com permissão):** `uv add <pacote>`
+- **Testes:** `uv run pytest -v`
+- **Lint:** `uv run ruff check .`
+- **Tipos:** `uv run mypy .`
+- **Dev:** `uv run uvicorn src.main:app --reload --port 8002` (ajustar quando o módulo existir)
+
+**Circuit breaker:** 2 falhas seguidas com a mesma causa-raiz → pare e pergunte. Nova dependência só com permissão.
 
 ---
 
 ## Regras de Ouro
 
-- **NUNCA** tipagem frouxa (`any`/`Any`).
-- **NUNCA** instale dependência ou use gerenciador fora do padrão sem permissão.
-- **NUNCA** quebre contratos de payload (ver `NOTES.md`).
+- **NUNCA** tipagem frouxa (`Any`).
+- **NUNCA** instale dependência ou use `pip` sem permissão.
+- **NUNCA** quebre contratos de payload (`.agent/NOTES.md`, `.agent/ENDPOINTS.md`, skill `whatsapp`).
+- **NUNCA** use campos `to`, `body`, `message`, `Authorization: Bearer` no gatekeeper — só `phone_number`, `content`, `x-api-key`.
+- **NUNCA** trate `202` do `/send` como falha nem reenvie na hora.
+- **NUNCA** coloque JID, texto da mensagem ou `request_id` como stream field de log.
 - **NUNCA** entregue mock, syntax error ou `TODO` como tarefa concluída.
 - **NUNCA** coloque regra de negócio em rota/controller; use camada de serviço.
 - **NUNCA** apague arquivos ou refatore fora do escopo.
-- **NUNCA** mute schema de banco via MCP sem migration versionada.
-- **NUNCA** invente parâmetro/endpoint sem MCP ou docs oficiais.
+- **NUNCA** mute schema SQLite via MCP; altere o SQL versionado no connect (`database-migration`).
+- **NUNCA** adicione APScheduler/Alembic/Loguru sem o humano pedir.
+- **NUNCA** invente parâmetro/endpoint sem docs deste repo ou skill `whatsapp`.
 - **NUNCA** ignore a skill do domínio da tarefa.
 - **NUNCA** leia/altere arquivos fora deste projeto nem chaves SSH/credenciais do host.
+- **NUNCA** implemente comando `!lembra` neste repo — o contrato está em `.agent/CHANNELS.md`; o código mora em `whatsapp-api`.
 
 ---
 
 ## Código
 
-Funções curtas (máx. ~40 linhas). Erros explícitos, validação de schema, logs estruturados. Testes adjacentes ou em `tests/` espelhando a fonte. Contratos globais em `[core/schemas/]`. Defina import (explícito vs barrel) e prefixo de helpers internos.
+Funções curtas (máx. ~40 linhas). Erros explícitos, validação Pydantic, logs NDJSON. Testes em `tests/` espelhando `src/`. Contratos globais em `src/schemas/`. Import explícito; prefixo `_` em helpers internos de feature.
+
+Fuso default: `America/Sao_Paulo` (`TZ`). Timestamps de log: ISO-8601 UTC.
 
 ---
 
 ## Git
 
-Commits atômicos, uma responsabilidade, Conventional Commits em inglês: `feat|fix|refactor|test|chore|docs(scope): …`. Estratégia: `[trunk-based na main / feature branches feat|fix/<nome>]`. Push só se o usuário pedir; **NUNCA** `--force` nas branches principais sem autorização.
-
----
-
+Commits atômicos, Conventional Commits em inglês: `feat|fix|refactor|test|chore|docs(scope): …`. Trunk-based na `main`. Push só se o usuário pedir; **NUNCA** `--force` em `main` sem autorização.
