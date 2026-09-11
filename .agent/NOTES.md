@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Job store sqlite3 WAL e schemas em `src/schemas/`
+
+- **Contexto:** `[01.1]` precisava do caderno sem HTTP. AGENTS manda contratos globais em `src/schemas/`.
+- **Decisão:** Pacote irmão `schemas` (hatch inclui `src/schemas` + `src/homelab_schedule`). Tabela `jobs` completa (campos do recurso Job), índice `idx_jobs_due`, `PRAGMA user_version=1`. Timestamps no banco em UTC ISO-8601; `run_at` ingênuo assume `America/Sao_Paulo`. `once` sem `next_run_at` copia `run_at`. YAML ainda não faz merge (`[02.1]`).
+- **Consequências:** HTTP `[01.2]` reusa `Job` + `JobRepository`. Pydantic v2 é dependência de runtime.
+
 ### [2026-09-11] Pacote `homelab_schedule` sob `src/`
 
 - **Contexto:** Bootstrap `[00.1]` precisava de um import instalável sem FastAPI.
