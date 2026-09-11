@@ -10,6 +10,7 @@ class JobListFilter(StrEnum):
     UPCOMING = "upcoming"
     DONE = "done"
     PAUSED = "paused"
+    ERROR = "error"
     ALL = "all"
 
 

@@ -60,7 +60,7 @@ Mutação em produção via MCP só com consentimento do humano (`AGENTS.md`).
 ### Passo 3: Chamar a tool e confirmar
 
 - Criar: `schedule` (`when`, `content`, `to`, `title` opcional).
-- Listar: `list_agenda` (lista curta, sem `content` de todos).
+- Listar: `list_agenda` (lista curta, sem `content`; aceita `status: upcoming|done|error|paused|all` e `limit`).
 - Detalhe: `get_item` com o `id`.
 - Cancelar sqlite: `cancel` + `id`. YAML → diga para editar `routines.yaml`.
 - Remarcar/adiar sqlite: `reschedule` (`job_id`, `when`). YAML → edite `routines.yaml`.

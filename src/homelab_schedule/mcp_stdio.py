@@ -28,9 +28,9 @@ def build_mcp(api: AgendaApi) -> MCPServer:
         return handle_schedule(api, when, content, to, title)
 
     @mcp.tool()
-    def list_agenda() -> str:
-        """List upcoming jobs as a short list without full message content."""
-        return handle_list_agenda(api)
+    def list_agenda(status: str = "upcoming", limit: int = 20) -> str:
+        """List jobs with optional status filter (upcoming, done, error, paused, all) and limit."""
+        return handle_list_agenda(api, status=status, limit=limit)
 
     @mcp.tool()
     def get_item(job_id: str) -> str:

@@ -45,12 +45,17 @@ class AgendaApi:
         response = self._request("POST", "/jobs", json=payload)
         return _json_object(response)
 
-    def list_agenda(self) -> dict[str, object]:
-        response = self._request("GET", "/jobs", params={"status": "upcoming"})
+    def list_agenda(self, status: str = "upcoming", limit: int = 20) -> dict[str, object]:
+        effective_limit = max(1, min(limit, _LIST_LIMIT))
+        response = self._request(
+            "GET",
+            "/jobs",
+            params={"status": status, "limit": str(effective_limit)},
+        )
         body = _json_object(response)
         jobs = _json_list(body.get("jobs"))
         short: list[dict[str, object]] = []
-        for raw in jobs[:_LIST_LIMIT]:
+        for raw in jobs[:effective_limit]:
             item = _json_object_from_mapping(raw)
             short.append(
                 {

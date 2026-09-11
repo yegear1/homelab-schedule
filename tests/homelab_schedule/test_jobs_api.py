@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from homelab_schedule.config import Settings
 from homelab_schedule.main import create_app
 from homelab_schedule.repository import JobRepository
-from schemas.job import Job, JobKind, JobSource
+from schemas.job import Job, JobKind, JobSource, JobStatus
 from tests.homelab_schedule.fakes import RecordingDispatcher
 
 
@@ -81,6 +81,61 @@ def test_create_get_list_and_notebook_event(client: TestClient, api_key: str) ->
     assert detail.status_code == 200
     assert detail.json()["content"] == "Pagar condomínio."
     assert detail.json()["target_number"] == "5511999998888@c.us"
+
+
+def test_list_jobs_filter_by_error_and_limit(
+    client: TestClient, api_key: str, app: FastAPI
+) -> None:
+    repo: JobRepository = app.state.repo
+    # Create two jobs with status=error and one with status=done
+    job1 = Job(
+        id="err-1",
+        title="Error 1",
+        content="Error 1",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.ONCE,
+        run_at=datetime(2026, 9, 12, 10, 0, tzinfo=UTC),
+        source=JobSource.SQLITE,
+        status=JobStatus.ERROR,
+    )
+    job2 = Job(
+        id="err-2",
+        title="Error 2",
+        content="Error 2",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.ONCE,
+        run_at=datetime(2026, 9, 12, 11, 0, tzinfo=UTC),
+        source=JobSource.SQLITE,
+        status=JobStatus.ERROR,
+    )
+    job3 = Job(
+        id="done-1",
+        title="Done 1",
+        content="Done 1",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.ONCE,
+        run_at=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+        source=JobSource.SQLITE,
+        status=JobStatus.DONE,
+    )
+    repo.insert(job1)
+    repo.insert(job2)
+    repo.insert(job3)
+
+    # Filter status=error without limit
+    resp_err = client.get("/jobs?status=error", headers=_auth(api_key))
+    assert resp_err.status_code == 200
+    err_jobs = resp_err.json()["jobs"]
+    assert len(err_jobs) == 2
+    assert all(j["status"] == "error" for j in err_jobs)
+
+    # Filter status=error with limit=1
+    resp_lim = client.get("/jobs?status=error&limit=1", headers=_auth(api_key))
+    assert resp_lim.status_code == 200
+    assert len(resp_lim.json()["jobs"]) == 1
 
 
 def test_create_with_explicit_target_number(client: TestClient, api_key: str) -> None:

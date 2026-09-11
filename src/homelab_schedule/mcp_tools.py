@@ -23,9 +23,13 @@ def handle_schedule(
         return compact_json({"error": exc.message})
 
 
-def handle_list_agenda(api: AgendaApi) -> str:
+def handle_list_agenda(
+    api: AgendaApi,
+    status: str = "upcoming",
+    limit: int = 20,
+) -> str:
     try:
-        return compact_json(api.list_agenda())
+        return compact_json(api.list_agenda(status=status, limit=limit))
     except AgendaToolError as exc:
         return compact_json({"error": exc.message})
 

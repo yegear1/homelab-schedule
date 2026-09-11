@@ -69,24 +69,30 @@ def test_schedule_posts_once_job_without_gatekeeper_fields() -> None:
 
 
 def test_list_agenda_omits_content_and_caps() -> None:
+    seen: list[httpx.Request] = []
+
     def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
         jobs = [
             {
                 "id": f"j{i}",
                 "title": f"t{i}",
                 "to": "eu",
-                "status": "scheduled",
+                "status": "error",
                 "next_run_at": "2026-09-12T17:00:00+00:00",
                 "content": "secret-should-not-leak",
             }
-            for i in range(3)
+            for i in range(5)
         ]
         return httpx.Response(200, json={"jobs": jobs})
 
-    text = handle_list_agenda(_api(handler))
+    text = handle_list_agenda(_api(handler), status="error", limit=2)
     payload = json.loads(text)
     assert "content" not in json.dumps(payload)
-    assert len(payload["jobs"]) == 3
+    assert len(payload["jobs"]) == 2
+    assert len(seen) == 1
+    assert seen[0].url.params["status"] == "error"
+    assert seen[0].url.params["limit"] == "2"
 
 
 def test_cancel_yaml_returns_edit_file_error() -> None:

@@ -68,8 +68,9 @@ class JobService:
         status_filter: JobListFilter,
         range_from: datetime | None,
         range_to: datetime | None,
+        limit: int | None = None,
     ) -> list[JobListItem]:
-        jobs = self._repo.list_jobs(status_filter, range_from, range_to)
+        jobs = self._repo.list_jobs(status_filter, range_from, range_to, limit=limit)
         return [JobListItem.model_validate(job.model_dump()) for job in jobs]
 
     def cancel(self, job_id: str) -> None:

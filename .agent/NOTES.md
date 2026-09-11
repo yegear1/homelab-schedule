@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-11] Filtros e Paginação na Listagem do MCP e HTTP (`[02.1]`)
+
+- **Contexto:** O agente no Cursor precisava inspecionar jobs que falharam (`error`) ou concluídos (`done`), e poder limitar o número de itens retornados para economizar contexto e tokens.
+- **Decisão:** Extensão do enum `JobListFilter` adicionando `ERROR = "error"`. Suporte a `limit` defensivo (1 a 100) na API HTTP e no repositório SQLite. Tool MCP `list_agenda(status="upcoming", limit=20)` com repasse direto para os parâmetros HTTP e cap de 50.
+- **Consequências:** Operadores e agentes agora podem auditar falhas e históricos recentes da agenda sem inflar tokens nem recorrer a comandos curl ad-hoc.
+
 ### [2026-09-11] Housekeeping e Expurgo de Jobs Antigos no SQLite (`[01.4]`)
 
 - **Contexto:** Jobs pontuais concluídos (`done`) ou com falha (`error`) se acumulavam indefinidamente no banco SQLite.

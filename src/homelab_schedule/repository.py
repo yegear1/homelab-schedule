@@ -45,9 +45,10 @@ class JobRepository:
         status_filter: JobListFilter,
         range_from: datetime | None,
         range_to: datetime | None,
+        limit: int | None = None,
     ) -> list[Job]:
         clauses: list[str] = []
-        params: list[str] = []
+        params: list[str | int] = []
         _apply_status_filter(clauses, params, status_filter)
         if range_from is not None:
             encoded = _dt_to_db(range_from)
@@ -63,7 +64,10 @@ class JobRepository:
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
         sql += " ORDER BY next_run_at IS NULL, next_run_at ASC"
-        rows = self._conn.execute(sql, params).fetchall()
+        if limit is not None and limit > 0:
+            sql += " LIMIT ?"
+            params.append(limit)
+        rows = self._conn.execute(sql, tuple(params)).fetchall()
         return [_row_to_job(row) for row in rows]
 
     def update(self, job: Job) -> Job:
@@ -144,7 +148,7 @@ class JobRepository:
 
 def _apply_status_filter(
     clauses: list[str],
-    params: list[str],
+    params: list[str | int],
     status_filter: JobListFilter,
 ) -> None:
     if status_filter is JobListFilter.ALL:
@@ -156,6 +160,10 @@ def _apply_status_filter(
     if status_filter is JobListFilter.DONE:
         clauses.append("status = ?")
         params.append(JobStatus.DONE.value)
+        return
+    if status_filter is JobListFilter.ERROR:
+        clauses.append("status = ?")
+        params.append(JobStatus.ERROR.value)
         return
     clauses.append("status = ?")
     params.append(JobStatus.PAUSED.value)

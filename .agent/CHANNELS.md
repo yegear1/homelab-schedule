@@ -13,11 +13,10 @@ Implementação neste repo: `uv run homelab-schedule-mcp` (stdio). Chama a HTTP 
 | Tool | Papel |
 | :--- | :--- |
 | `schedule` | Cria. `when` (ISO ou cron humano), `content`, `to` (default `eu`), `title` opcional |
-| `list_agenda` | Lista curta: id, when, to, title, status |
+| `list_agenda` | Lista curta: id, when, to, title, status (filtros opcionais `status`: upcoming/done/error/paused/all, e `limit`) |
 | `get_item` | Um id, com `content` |
 | `cancel` | Um id (sqlite). YAML → erro explícito “edite routines.yaml” |
-
-Reagendar = `cancel` + `schedule`. Sem `PATCH`. Confirmar ao humano: id, próximo disparo, destino, texto.
+| `reschedule` | Reativa/adia recado (`when` novo) com mesmo id |
 
 Skill do operador no Cursor: [`anotar-agenda`](skills/anotar-agenda/SKILL.md). Contrato de campos: [`agenda-job`](skills/agenda-job/SKILL.md).
 
