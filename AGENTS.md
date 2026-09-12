@@ -46,7 +46,7 @@ Não está preso à fase `99.x`. Ao publicar `vX.Y.Z`:
 - **Arquitetura:** monólito modular, **um processo / um container**: FastAPI (HTTP) + tick asyncio (disparos) + sqlite3 WAL + merge de `routines.yaml`.
 - **Linguagem:** Python 3.13+.
 - **Gerenciador:** **UV** — proibido `pip` direto. Use `uv add`, `uv sync`, `uv run`.
-- **Frameworks:** FastAPI, Pydantic v2, Pydantic-Settings, httpx. Logs NDJSON com `logging` stdlib (sem Loguru).
+- **Frameworks:** FastAPI, Pydantic v2, Pydantic-Settings, httpx. Logs NDJSON com `logging` stdlib (skill `victorialogs-integration`, Padrão 2 Opção B — sem Loguru).
 - **Schema SQLite:** `CREATE TABLE IF NOT EXISTS` no connect. Sem Alembic. Sem APScheduler.
 - **Linter / tipos / testes:** Ruff, mypy (estrito), pytest.
 - **Persistência:** SQLite 3 WAL em volume (`DATABASE_PATH`). Sem Redis neste repo — a fila anti-ban vive no `whatsapp-api`.
@@ -63,7 +63,7 @@ Permitido: `up -d`, `logs`, `build`, `restart`, `exec`, `down` (sem `-v`).
 
 **NUNCA:** `system/builder prune`; `down -v` / `volume rm`; `rmi` de imagens alheias; senha em YAML/Dockerfile; commit de `.env` real. Rebuild só se mudou dependência/`Dockerfile`/arquivos copiados no build; com bind mount, `restart` basta.
 
-Todo serviço de aplicação no compose **deve**: `container_name` estável; `LOG_FORMAT=json`; `NO_COLOR=1`; `ENV`/`ENVIRONMENT`; `SERVICE_NAME=homelab-schedule`; driver `json-file` `max-size: 10m`, `max-file: 3`. Skill global `victorialogs-integration` ao tocar logs ou compose.
+Todo serviço de aplicação no compose **deve**: `container_name` estável; `LOG_FORMAT=json`; `NO_COLOR=1`; `ENV`/`ENVIRONMENT`; `SERVICE_NAME=homelab-schedule`; `APP=homelab-schedule`; driver `json-file` `max-size: 10m`, `max-file: 3`. Imagem: uvicorn `--no-access-log` (`GET /health` o Vector pode descartar no perfil HDD). Skill global `victorialogs-integration` ao tocar logs ou compose.
 
 ---
 
@@ -86,7 +86,7 @@ Leia `.agent/skills/<nome>/SKILL.md` quando a tarefa cair no domínio. Fluxo rep
 
 Skills globais obrigatórias quando couber:
 
-- `victorialogs-integration` — logs, compose, stdout.
+- `victorialogs-integration` — logs, compose, stdout; neste repo é stdlib NDJSON (não Loguru).
 - `victorialogs-troubleshooting` — investigar erros via MCP VictoriaLogs.
 - `whatsapp` — payload `phone_number` / `content` / `x-api-key`.
 - `github-bug-issue` — anotar bug para depois (issue no GitHub; não usar `TASK.md` como fila).
@@ -141,6 +141,8 @@ Na raiz do repo:
 ## Código
 
 Funções curtas (máx. ~40 linhas). Erros explícitos, validação Pydantic, logs NDJSON. Testes em `tests/` espelhando `src/`. Contratos globais em `src/schemas/`. Import explícito; prefixo `_` em helpers internos de feature.
+
+NDJSON: um objeto por linha, sem pretty-print; `level` minúsculo (`WARNING`→`warn`); traceback no mesmo evento (`stack_trace`); extras não canônicos em `context`.
 
 Fuso default: `America/Sao_Paulo` (`TZ`). Timestamps de log: ISO-8601 UTC.
 

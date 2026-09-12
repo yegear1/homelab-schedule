@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-12] `AGENTS.md` alinhado ao contrato VictoriaLogs (`[02.4]`)
+
+- **Contexto:** Runtime, Compose e formatter já seguiam a skill global `victorialogs-integration` (Padrão 1 + Opção B stdlib). O `AGENTS.md` omitia `APP`, a regra “uma linha = um evento”, traceback no mesmo evento e `--no-access-log` / descarte de `/health`.
+- **Decisão:** Completar a lista Docker e o parágrafo de código no `AGENTS.md`. Sem mudança de runtime. Loguru continua proibido (ADR-001).
+- **Consequências:** Agente que mexer em compose/logs encontra o contrato local no `AGENTS.md` e o detalhe na skill global.
+
 ### [2026-09-11] Retentativas de Disparo para Falhas Transitórias do Gateway (`[02.3]`)
 
 - **Contexto:** Instabilidades temporárias de rede ou do gateway (ex: reinício do container do WhatsApp, HTTP 500/502/503) marcavam imediatamente o job pontual como `error` definitivo, perdendo o disparo.
