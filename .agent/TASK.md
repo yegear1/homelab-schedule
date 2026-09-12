@@ -20,7 +20,7 @@ Ciclo `v0.1.0` arquivado em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
-| [02.4] | Fechar lacunas do `AGENTS.md` vs `victorialogs-integration` | — | 2026-09-12 |
+| [02.4] | Fechar lacunas do `AGENTS.md` vs `victorialogs-integration` | [`d529b25`] | 2026-09-12 |
 | [02.3] | Retentativas de disparo para falhas transitórias do gateway | [`1f2eb5a`] | 2026-09-11 |
 | [02.2] | Templates dinâmicos de mensagem no disparo (placeholders de data/hora) | [`a6c2535`] | 2026-09-11 |
 | [02.1] | Filtros e paginação na listagem do MCP (status e limit) | [`6f00be3`] | 2026-09-11 |
