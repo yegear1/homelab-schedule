@@ -112,7 +112,7 @@ Na raiz do repo:
 - **Testes:** `uv run pytest -v`
 - **Lint:** `uv run ruff check .`
 - **Tipos:** `uv run mypy .`
-- **Dev:** `uv run uvicorn src.main:app --reload --port 8002` (ajustar quando o módulo existir)
+- **Dev:** `uv run uvicorn homelab_schedule.main:create_app --factory --reload --port 8003`
 
 **Circuit breaker:** 2 falhas seguidas com a mesma causa-raiz → pare e pergunte. Nova dependência só com permissão.
 

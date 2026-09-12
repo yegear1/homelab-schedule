@@ -11,7 +11,7 @@ O envio é assíncrono. `202 Accepted` significa que a mensagem entrou na fila. 
 | **MCP** (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`) | Agente no Cursor | Sim |
 | **HTTP** (`/jobs`, `/health`, `/routines/reload`, `/housekeeping/purge`) | Scripts e o próprio MCP | Sim |
 | **YAML** (`routines.yaml`) | Rotinas permanentes do homelab (reload automático por mtime ou `/routines/reload`) | Sim |
-| **WhatsApp** (`!lembra` / `!agenda`) | Você no celular | Só [contrato](.agent/CHANNELS.md); implementação no `whatsapp-api` |
+| **WhatsApp** (`!lembra` / `!agenda` / `!cancela`; `!agenda all` admin) | Celular; lista pessoal por número | Só [contrato](.agent/CHANNELS.md); implementação no `whatsapp-api` |
 
 Você anota em português (*“amanhã 14h, pagar condomínio”*). O agente (MCP) ou o bot grava um job. Destinos usam **alias** (`eu`, `grupo-homelab`), não JID cru no dia a dia.
 
@@ -32,7 +32,7 @@ uv sync
 uv run pytest -v
 uv run ruff check .
 uv run mypy .
-uv run uvicorn homelab_schedule.main:create_app --factory --reload --port 8002
+uv run uvicorn homelab_schedule.main:create_app --factory --reload --port 8003
 ```
 
 Compose:

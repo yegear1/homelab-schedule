@@ -2,7 +2,7 @@
 
 Fonte para a skill `api-endpoint`. Auth em todas as rotas exceto `/health`: header `x-api-key: <SCHEDULE_API_KEY>`. Sem `Authorization: Bearer`.
 
-Base local: `http://localhost:8002`.
+Base local: `http://localhost:8003`.
 
 ## Ops
 
@@ -22,6 +22,7 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 | `title` | string | Uma linha para listar |
 | `content` | string | Texto do WhatsApp |
 | `to` | string | Alias (`eu`) ou JID |
+| `target_number` | string | JID normalizado do destino (preenchido no create). Caneta WhatsApp filtra por este campo |
 | `kind` | `once` \| `cron` | |
 | `run_at` | string ISO-8601 \| null | Obrigatório se `once`. Interpretação no `TZ` da app se sem offset |
 | `cron_expr` | string \| null | Cinco campos (min hour dom mon dow). Obrigatório se `cron` |
@@ -35,7 +36,9 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 
 ### `GET /jobs`
 
-Query: `status` (`upcoming` \| `done` \| `paused` \| `all`, default `upcoming`), `from`, `to` (ISO). Lista **curta**: sem `content` completo (truncar ou omitir; `GET /jobs/{id}` tem o texto).
+Query: `status` (`upcoming` \| `done` \| `paused` \| `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino). Lista **curta**: sem `content` completo (truncar ou omitir; `GET /jobs/{id}` tem o texto).
+
+Não há query de destino no v1. A caneta WhatsApp filtra no worker pelo `target_number` / alias do remetente ([CHANNELS.md](CHANNELS.md) §4). Não use `?to=<jid>`.
 
 `200` → `{ "jobs": [ JobListItem ] }`
 

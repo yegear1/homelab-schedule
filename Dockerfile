@@ -18,6 +18,6 @@ COPY routines.yaml ./routines.yaml
 
 RUN uv sync --frozen --no-dev
 
-EXPOSE 8002
+EXPOSE 8003
 
-CMD ["uvicorn", "homelab_schedule.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8002", "--workers", "1", "--no-access-log"]
+CMD ["uvicorn", "homelab_schedule.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8003", "--workers", "1", "--no-access-log"]

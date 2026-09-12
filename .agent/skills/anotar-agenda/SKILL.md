@@ -48,7 +48,7 @@ Mutação em produção via MCP só com consentimento do humano (`AGENTS.md`).
 | Recado pontual ou cron ad-hoc (“amanhã 14h”, “toda segunda 9h”) | MCP `schedule` |
 | Adiar ou remarcar recado pontual (“adia em 2h”, “remarca para amanhã 10h”) | MCP `reschedule` |
 | Política permanente do homelab (backup, status semanal no git) | Editar `routines.yaml` (id estável); não SQLite |
-| Celular `!lembra` / `!agenda` | Fora deste repo ([CHANNELS.md](../CHANNELS.md)) |
+| Celular `!lembra` / `!agenda` / `!cancela` (lista do remetente; `!agenda all` só admin) | Fora deste repo ([CHANNELS.md](../CHANNELS.md) §4) |
 
 ### Passo 2: Extrair quatro campos
 

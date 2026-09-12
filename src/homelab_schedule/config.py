@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     app: str = "homelab-schedule"
     log_format: str = "json"
     tz: str = "America/Sao_Paulo"
-    app_port: int = 8002
+    app_port: int = 8003
     whatsapp_api_url: str = "http://localhost:8001"
     whatsapp_api_key: str = ""
     whatsapp_aliases: str = "eu=5511999998888@c.us"

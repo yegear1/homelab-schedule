@@ -39,7 +39,7 @@ Ciclo `v0.1.0` arquivado em `ARCHIVE.md`.
 ## Backlog Futuro / Ideias (não priorizadas)
 
 - [ ] **[99.1]** Preparar Release (Tag Git) e Sanitizar Contexto (Apenas executar com permissão explícita do usuário)
-- [ ] Comando WhatsApp `!lembra` / `!agenda` no repo `whatsapp-api` (contrato: `.agent/CHANNELS.md`)
+- [ ] Comando WhatsApp no repo `whatsapp-api` (contrato: `.agent/CHANNELS.md` §4 — escopo por remetente; `!agenda all` admin)
 - [ ] Expressões de intervalo amigáveis no MCP (`when`)
 
 

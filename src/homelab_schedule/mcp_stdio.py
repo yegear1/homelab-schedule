@@ -15,7 +15,7 @@ from homelab_schedule.mcp_tools import (
 class McpSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    schedule_api_url: str = "http://localhost:8002"
+    schedule_api_url: str = "http://localhost:8003"
     schedule_api_key: str
 
 

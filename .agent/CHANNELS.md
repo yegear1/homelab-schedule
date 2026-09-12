@@ -50,17 +50,27 @@ Jobs **permanentes** do homelab. Versionáveis. Não nascem de um chat.
 
 ## 4. WhatsApp — contrato para o `whatsapp-api` (não implementar neste repo)
 
-O logic-worker chama a HTTP deste serviço (não o gatekeeper). Destino default: JID de quem mandou, mapeado ao alias `eu` se coincidir.
+O logic-worker chama a HTTP deste serviço (não o gatekeeper). A `SCHEDULE_API_KEY` no worker é chave de máquina (vê o caderno inteiro). **Isolamento é da caneta**, não da API: comandos pessoais só operam jobs do remetente.
 
-| Comando | Semântica |
-| :--- | :--- |
-| `!lembra <quando> <texto>` | `POST /jobs` `kind=once` (ou cron se o quando for recorrente) |
-| `!agenda <quando> <texto>` | alias de criar (igual `!lembra`) |
-| `!agenda` | `GET /jobs?status=upcoming` — lista curta no chat |
-| `!cancela <id>` | `POST /jobs/{id}/cancel` |
+### Escopo por número
+
+- **Criar:** `to` = JID de quem mandou; se esse JID for o valor do alias `eu` em `WHATSAPP_ALIASES`, pode gravar `to=eu` (o servidor preenche `target_number`).
+- **Listar / cancelar (não-admin):** só jobs cujo `target_number` (JID normalizado) é o remetente, **ou** cujo `to` é um alias que resolve para esse JID. Rotinas YAML para `grupo-homelab` (ou outro destino) **não** aparecem no `!agenda` privado.
+- **Não** passar o JID no query `to` de `GET /jobs` — nesse endpoint `to` é **fim de intervalo de data** (ISO). Até existir filtro `destination` na API: `GET /jobs?status=upcoming` e filtrar no worker.
+- `ADMIN_ONLY` **não** vale nos comandos pessoais (`!lembra`, `!agenda`, `!cancela`). Qualquer membro pode anotar **a própria** agenda.
+
+### Comandos
+
+| Comando | Quem | Semântica |
+| :--- | :--- | :--- |
+| `!lembra <quando> <texto>` | qualquer um | `POST /jobs` `kind=once` (ou cron se o quando for recorrente), `to` = remetente |
+| `!agenda <quando> <texto>` | qualquer um | igual `!lembra` |
+| `!agenda` | qualquer um | lista curta **só** dos jobs do remetente (`upcoming`) |
+| `!agenda all` | **admin only** (mesmo gate de `!send` / `!status`) | lista curta **global** (`GET /jobs?status=upcoming` sem filtro de destino). Visão ops; inclui YAML/homelab |
+| `!cancela <id>` | qualquer um | `POST /jobs/{id}/cancel` **somente** se o job for do remetente; senão responder como não encontrado (não vazar que o id existe). Cancelar job alheio ou YAML: MCP/HTTP, não o chat |
 
 Resposta no WhatsApp: ecoar id + próximo disparo + texto, como o MCP. Erros 401/422 viram mensagem curta, sem stack.
 
 Auth: o worker usa `SCHEDULE_API_KEY` no env do `whatsapp-api`, não a `WHATSAPP_API_KEY` do gatekeeper.
 
-Este arquivo é a spec. Código do comando: skill `bot-command` no outro repo, depois que `[01.2]` existir.
+Este arquivo é a spec. Código do comando: skill `bot-command` no outro repo.

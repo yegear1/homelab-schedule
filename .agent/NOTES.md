@@ -138,6 +138,18 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 - **Alternativas:** Org `ye-sandbox` (rejeitada pelo humano). YAML só depois (rejeitada: YAML entra no v1).
 - **Consequências:** Código ainda não existe; próxima tarefa é bootstrap `uv`/`pyproject`.
 
+### [2026-09-12] Porta HTTP 8003
+
+- **Contexto:** No mothership, `stock-monitoring-api` já publica `8002→8000`. `homelab-schedule` ficou em `Created` (`Bind for :::8002 failed`).
+- **Decisão:** Padrão deste serviço passa a `8003` (compose, Dockerfile, `APP_PORT`, MCP `SCHEDULE_API_URL`). Gatekeeper permanece `8001`; stock-monitoring fica com `8002`.
+- **Consequências:** `.env` no host precisa `APP_PORT=8003` e `SCHEDULE_API_URL=http://localhost:8003` (e o mesmo no `whatsapp-api` se apontar para esta API). Rebuild da imagem após mudar `EXPOSE`/`CMD`.
+
+### [2026-09-12] WhatsApp: agenda do remetente; `!agenda all` só admin
+
+- **Contexto:** A `SCHEDULE_API_KEY` no logic-worker lê `GET /jobs` inteiro. Proposta no `whatsapp-api`: `ADMIN_ONLY` em `!lembra` / `!agenda` / `!cancela` (evitar membro de grupo listar/cancelar o homelab).
+- **Decisão:** Isolamento na caneta, não na chave. Comandos pessoais escopam pelo JID do remetente (`target_number` ou alias que resolve para ele). `!agenda all` é o único comando de visão global e é `ADMIN_ONLY`. `GET /jobs?to=` continua sendo range de data; filtro de destino no worker até existir query `destination`.
+- **Consequências:** Qualquer número pode anotar a própria agenda. Rotinas YAML (`grupo-homelab`) não saem no `!agenda` privado. Cancelar job alheio fica no MCP/HTTP.
+
 ### [2026-09-11] Anotação em linguagem natural, store estruturado
 
 - **Contexto:** O que importa para o humano é *como anotar*, não cron cru.
@@ -175,6 +187,7 @@ Alteração de contrato = atualizar schemas dos lados na mesma tarefa.
 - **VictoriaLogs:** JID e `content` são campo de evento, nunca stream field. Health `/health` o Vector pode descartar no HDD.
 - **SQLite:** um writer (este processo). Não expor o arquivo a outro container com write. Esquecer o `Event` após `POST /jobs` atrasa o aviso até o cap de 5 min.
 - **YAML vs SQLite:** rotina YAML não deve ser “copiada e esquecida” no SQLite de forma que um edit no git não atualize o job. Merge por `id` estável da rotina (campo `id` no YAML).
+- **Caneta WhatsApp:** não mandar JID no query `to` de `GET /jobs`. `!agenda` sem `all` nunca despeja a lista global no chat.
 
 ---
 
