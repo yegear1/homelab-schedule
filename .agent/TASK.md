@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[00.10]`
+- **ID:** `[00.11]`
 - **Título:** Expressões de intervalo amigáveis no MCP (`when`)
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Permitir expressões amigáveis de intervalo (ex: 'em 10 minutos', 'amanhã às 14h') na tool MCP de agendamento.
+- **Contexto:** Suporte a intervalos relativos e expressões amigáveis no MCP (`when`), expandindo a sintaxe aceita além de ISO-8601 estrito e cron 5 campos sem quebrar compatibilidade.
 
 ---
 
@@ -20,6 +20,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [00.10] | Remediação de apontamentos do QA Audit da UI (BUG-001 a BUG-013) | [`7be12ba`] | 2026-09-13 |
 | [00.9] | Grupos de Envio (Múltiplos Destinatários, SQLite v7, Batch API & UI) | [`221997e`] | 2026-09-13 |
 | [00.8] | Exibição de Alias/Nome na Agenda + Link para Perfil | [`c55bf82`] | 2026-09-13 |
 | [00.7] | StaticFiles + stage Node na imagem Docker | [`95c9d91`, `c3822d6`] | 2026-09-13 |
