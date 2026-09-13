@@ -1,28 +1,20 @@
 # NOTES.md — Decisões, Contexto e Contratos do Projeto
 
 > O PORQUÊ. O QUE fica no `git log` / `TASK.md`. Só escreva aqui se explicar uma
-> decisão; changelog não entra.
-
----
-
-## Como usar
-
-1. Leia antes de planejar. Decisões aqui vencem a “forma óbvia”, salvo o usuário pedir para revisitar.
-2. Registre: trade-off, contrato, armadilha, skill nova, débito consciente.
-3. Entrada longa → ADR em `.agent/adr/` e aqui uma linha + link.
+> decisão; changelog não entra. Dumps de tarefa já em ADR/`git log` não se repetem.
 
 ---
 
 ## Visão
 
 ```text
-caneta MCP / HTTP / YAML
-        → caderno (SQLite jobs + routines.yaml)
+caneta MCP / HTTP / YAML (+ UI no mesmo container, épico 03.x)
+        → caderno (SQLite + routines.yaml)
             → tick: next_run_at UTC + asyncio.Event
                 → POST {WHATSAPP_API_URL}/send  →  202 queued
 ```
 
-Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1. Sem cliente de mensageiro neste repo.
+Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro neste repo. UI web não entra no v0.2.0; backend para o front é o ciclo `03.x`.
 
 ---
 
@@ -34,171 +26,58 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1. Sem cli
 | [ADR-002](adr/002-sqlite-e-yaml.md) | SQLite WAL para recados; YAML para rotinas permanentes | Aprovado | 2026-09-11 |
 | [ADR-003](adr/003-canetas.md) | Três canetas neste repo; callers HTTP fora da árvore | Aprovado | 2026-09-11 |
 | [ADR-004](adr/004-dispatch-gatekeeper.md) | Dispatch só via POST /send; 202 = sucesso | Aprovado | 2026-09-11 |
-| [ADR-005](adr/005-mcp-superficie-fechada.md) | MCP com quatro tools; sem CRUD genérico | Aprovado | 2026-09-11 |
+| [ADR-005](adr/005-mcp-superficie-fechada.md) | MCP superfície fechada (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`) | Aprovado | 2026-09-11 |
 | [ADR-006](adr/006-tick-next-run.md) | Avisos no tempo: `next_run_at` + tick asyncio | Aprovado | 2026-09-11 |
 
 ---
 
-## Decisões rápidas
+## Decisões que não estão só no ADR
 
-### [2026-09-12] Release pública `v0.2.0` (não reusar `v0.1.0`)
+### [2026-09-12] Higiene pós-`v0.2.0`
 
-- **Contexto:** Tag e GitHub Release `v0.1.0` já existiam (2026-09-11). O `main` acumulou features (reschedule, housekeeping, templates temporais, retries, porta 8003). Pedido humano de “versionar 0.1.0” choca com a tag já publicada.
-- **Decisão:** Publicar o HEAD atual como **`v0.2.0`**. Não mover/apagar `v0.1.0`. Asset de release: wheel Python. Repositório GitHub: `yegear1/homelab-schedule`.
-- **Consequências:** `pyproject.toml` `version = "0.2.0"`. Numeração de tarefas do ciclo pós-`v0.1.0` arquivada; `[99.1]` volta ao Backlog Futuro.
+- **Contexto:** Tag + GitHub Release + README/env já existiam; `NOTES.md` ainda era dump de todo o ciclo e o backlog não tinha sido promovido.
+- **Decisão:** Enxugar NOTES (o detalhe vive no `git log` e nos ADRs). Corrigir ADR-002 (watch YAML) e ADR-005 (`reschedule`). Promover `[03.1]` como próxima.
 
-### [2026-09-12] Docs públicos sem contrato de bot / repo irmão
+### [2026-09-12] Release `v0.2.0` (não reusar `v0.1.0`)
 
-- **Contexto:** Abrir o git não deve vazar spec de comandos de chat nem apontar para outro repositório privado.
-- **Decisão:** Canetas versionadas = MCP, HTTP, YAML. Dispatch = `POST /send` genérico. Nomes `WHATSAPP_*` permanecem no código (históricos).
-- **Consequências:** Callers externos usam `/jobs` por conta própria; este git não versiona spec de bot de chat.
+Tag `v0.1.0` já publicada. HEAD de 12/09 → **`v0.2.0`**. Owner GitHub `yegear1`. Porta HTTP **8003**. Docs públicos sem spec de bot nem repo irmão. Nomes `WHATSAPP_*` no código são históricos.
 
-### [2026-09-12] `AGENTS.md` alinhado ao contrato VictoriaLogs (`[02.4]`)
+### [2026-09-12] Docs sem contrato de chat
 
-- **Contexto:** Runtime, Compose e formatter já seguiam a skill global `victorialogs-integration` (Padrão 1 + Opção B stdlib). O `AGENTS.md` omitia `APP`, a regra “uma linha = um evento”, traceback no mesmo evento e `--no-access-log` / descarte de `/health`.
-- **Decisão:** Completar a lista Docker e o parágrafo de código no `AGENTS.md`. Sem mudança de runtime. Loguru continua proibido (ADR-001).
-- **Consequências:** Agente que mexer em compose/logs encontra o contrato local no `AGENTS.md` e o detalhe na skill global.
+Canetas versionadas = MCP, HTTP, YAML. Dispatch = `POST /send` genérico. Callers externos usam `/jobs` por conta própria.
 
-### [2026-09-11] Retentativas de Disparo para Falhas Transitórias do Gateway (`[02.3]`)
+### Schema e produto (ciclo até v0.2.0)
 
-- **Contexto:** Instabilidades temporárias de rede ou do gateway de envio (HTTP 500/502/503) marcavam imediatamente o job pontual como `error` definitivo, perdendo o disparo.
-- **Decisão:** Coluna `retry_count INTEGER NOT NULL DEFAULT 0` no SQLite (migração v2 → v3 no connect). Erros permanentes (401, 422) continuam falhando imediatamente. Erros transitórios reagendam o job até 3 vezes (`_MAX_RETRIES = 3`) com backoff exponencial (`2^retry_count` minutos: +2m, +4m, +8m). Sucesso (`202`) zera o `retry_count`. Rotinas YAML esgotam retentativas transitórias e saltam para o próximo ciclo cron regular.
-- **Consequências:** Lembretes tornam-se tolerantes a quedas curtas de conectividade sem risco de envio duplicado no mesmo instante.
-
-### [2026-09-11] Templates Dinâmicos de Mensagem no Disparo (`[02.2]`)
-
-- **Contexto:** Lembretes recorrentes e rotinas fixas no YAML precisavam exibir a data, hora ou dia da semana corrente no corpo do texto sem intervenção manual.
-- **Decisão:** Criação do módulo `templates.py` com `render_template(content, when, tz)`. Suporte a placeholders temporais (`{{date}}`, `{{date_iso}}`, `{{time}}`, `{{weekday}}`, `{{day_name}}`, `{{month_name}}`, `{{year}}`) avaliados no momento do disparo via tick (`fire_due`) ou disparo imediato (`run_now`). O conteúdo original gravado no SQLite ou YAML permanece com as tags intactas para os próximos ciclos.
-- **Consequências:** Rotinas periódicas tornam-se contextuais e humanas sem complexidade de templates externos pesados como Jinja2.
-
-### [2026-09-11] Filtros e Paginação na Listagem do MCP e HTTP (`[02.1]`)
-
-- **Contexto:** O agente no Cursor precisava inspecionar jobs que falharam (`error`) ou concluídos (`done`), e poder limitar o número de itens retornados para economizar contexto e tokens.
-- **Decisão:** Extensão do enum `JobListFilter` adicionando `ERROR = "error"`. Suporte a `limit` defensivo (1 a 100) na API HTTP e no repositório SQLite. Tool MCP `list_agenda(status="upcoming", limit=20)` com repasse direto para os parâmetros HTTP e cap de 50.
-- **Consequências:** Operadores e agentes agora podem auditar falhas e históricos recentes da agenda sem inflar tokens nem recorrer a comandos curl ad-hoc.
-
-### [2026-09-11] Housekeeping e Expurgo de Jobs Antigos no SQLite (`[01.4]`)
-
-- **Contexto:** Jobs pontuais concluídos (`done`) ou com falha (`error`) se acumulavam indefinidamente no banco SQLite.
-- **Decisão:** Configuração `JOB_RETENTION_DAYS` (padrão de 365 dias / 1 ano, conforme alinhamento humano; `0` desativa). Expurgo automático diário no loop `run_tick` + endpoint operacional autenticado `POST /housekeeping/purge?days=...`. Expurgo restrito a `status IN ('done', 'error')` e `source = 'sqlite'`. Jobs `scheduled` e rotinas `yaml` são estritamente preservados.
-- **Consequências:** Banco de dados mantém footprint reduzido automaticamente ao longo dos anos, sem risco de expurgar lembretes agendados ou rotinas de arquivo.
-
-### [2026-09-11] Watch e Reload de `routines.yaml` em runtime (`[01.3]`)
-
-- **Contexto:** Alterações no `routines.yaml` no host/homelab exigiam reiniciar o container para surtir efeito.
-- **Decisão:** Dupla via: verificação de `st_mtime` stdlib a cada iteração do tick + endpoint operacional autenticado `POST /routines/reload`. Merge atualiza agendamentos e dispara `notebook_changed.set()`. Sem dependências adicionais de inotify/watchfiles.
-- **Consequências:** Rotinas permanentes podem ser alteradas no git ou host montado sem interrupção do container.
-
-### [2026-09-11] Suporte a `reschedule` / `snooze` no MCP e HTTP (`[01.2]`)
-
-- **Contexto:** Adiar ou remarcar um aviso pontual exigia cancelá-lo e recriá-lo, gerando outro ID e perdendo contexto.
-- **Decisão:** Endpoint `POST /jobs/{id}/reschedule` e tool MCP `reschedule(job_id, when)`. Reativa jobs finalizados/cancelados com novo horário e acorda o tick. Rotinas YAML continuam protegidas (retornam 409).
-- **Consequências:** Agentes e usuários podem prorrogar ou remarcar avisos pontuais mantendo o ID estável.
-
-### [2026-09-11] Persistência de `target_number` normalizado e gateway agnóstico
-
-- **Contexto:** `[01.1]` precisava salvar o destino resolvido no próprio aviso para evitar resoluções dinâmicas ambíguas no tick. O scheduler permanece aberto a qualquer gateway HTTP compatível.
-- **Decisão:** Coluna `target_number TEXT` no SQLite (migração v1→v2 com backfill de `"to"`). Normalização aplicada no momento da criação (`CreateJobRequest.target_number` ou resolução de `to`). O tick e `run_now` utilizam diretamente `job.target_number`. README atualizado documentando compatibilidade com qualquer gateway webhook que aceite o payload.
-- **Consequências:** SQLite migra transparentemente no connect. MCP e bot gravam o número normalizado diretamente. Dispatcher permanece desacoplado via Protocol.
-
-### [2026-09-11] Skill `anotar-agenda` para o agente no Cursor
-
-- **Contexto:** `[02.4]` precisava de um playbook de *uso* do MCP, distinto de implementar tools (`mcp-tool`) e do contrato de campos (`agenda-job`).
-- **Decisão:** Skill `anotar-agenda` com gatilhos em português; MCP primeiro; YAML para permanente; confirmação id + BRT/UTC + destino + texto.
-- **Consequências:** Ciclo de produto v1 (00.x–02.x) fecha aqui. `[99.1]` só com permissão.
-
-### [2026-09-11] Compose slim e NDJSON stdlib
-
-- **Contexto:** Homelab precisa de um container e logs que o Vector/VictoriaLogs parseiem.
-- **Decisão:** `python:3.13-slim` + `uv sync --frozen --no-dev`, um worker uvicorn, `--no-access-log`. Compose: `container_name=homelab-schedule`, `LOG_FORMAT=json`, `NO_COLOR=1`, `ENV`/`ENVIRONMENT`, volume `schedule-data` em `/data`. Formatter stdlib: `WARNING`→`warn`; extras não canônicos em `context` (destino/`content` não são stream field). Segredos só no `.env`.
-- **Consequências:** `WHATSAPP_API_URL` tem de resolver o gateway de envio a partir da rede Docker. Skill de anotação MCP é `[02.4]`.
-
-### [2026-09-11] MCP stdio com quatro tools via HTTP
-
-- **Contexto:** Agente precisa de caneta sem OpenAPI inteiro nem SQLite direto.
-- **Decisão:** SDK `mcp` 2.x (`MCPServer` stdio). Tools `schedule` / `list_agenda` / `get_item` / `cancel` chamam `SCHEDULE_API_URL` com `x-api-key`. `when` ISO → `once`; cinco campos → `cron`. Lista sem `content`, teto 50. 409 → `edite routines.yaml`. Erro de rede cita a URL, nunca a chave. Script `homelab-schedule-mcp`.
-- **Consequências:** Cursor `mcp.json` continua local. Skill de anotação `[02.4]`.
-
-### [2026-09-11] Merge `routines.yaml` por `id` estável no boot
-
-- **Contexto:** Rotinas permanentes vivem no git; recados sqlite não podem ser sobrescritos por acidente.
-- **Decisão:** Loader no lifespan (sem watch). `when` = cron de 5 campos. Merge atualiza título/conteúdo/`to`/cron; cron igual preserva `next_run_at`. Id sumiu do arquivo → yaml job `paused`. Id já usado por `source=sqlite` → `YamlIdConflict` (boot falha). PyYAML `safe_load`.
-- **Consequências:** Cancel HTTP de yaml continua 409. MCP `[02.2]` não precisa falar com o arquivo.
-
-### [2026-09-11] Tick `next_run_at` + cliente HTTP `/send`
-
-- **Contexto:** `[01.3]` precisava disparar no tempo sem APScheduler e sem mentir 202.
-- **Decisão:** Loop asyncio no lifespan (cap 5 min, Event nas escritas). Cron de 5 campos no `TZ` com walker stdlib (sem croniter). Alias `WHATSAPP_ALIASES` → destino; POST `/send` com `phone_number`/`content`/`quote_id`/`x-api-key`. 202 → `last_status=queued`; 401/422 → `status=error` sem retry; 5xx → backoff 5s. Run-now não altera `next_run_at`.
-- **Consequências:** YAML merge ainda é `[02.1]`. Logs de falha não incluem destino/`content` como dimensão.
-
-### [2026-09-11] HTTP `/health` e `/jobs`; run-now 501 até o tick
-
-- **Contexto:** `[01.2]` precisava da caneta HTTP sem o cliente do gateway.
-- **Decisão:** FastAPI factory (`create_app`), auth `x-api-key` (`SCHEDULE_API_KEY`) em tudo exceto `/health`. Cancel sqlite `once` → `done` + `next_run_at` nulo; cron → `paused`. YAML → 409. Escritas (create/cancel/run) setam `asyncio.Event`. `POST /jobs/{id}/run` responde 501 e **não** muda o agendamento. Lista omite `content`.
-- **Consequências:** `[01.3]` troca o 501 por POST `/send` e liga o loop no Event. Uvicorn: `--factory homelab_schedule.main:create_app`.
-
-### [2026-09-11] Job store sqlite3 WAL e schemas em `src/schemas/`
-
-- **Contexto:** `[01.1]` precisava do caderno sem HTTP. AGENTS manda contratos globais em `src/schemas/`.
-- **Decisão:** Pacote irmão `schemas` (hatch inclui `src/schemas` + `src/homelab_schedule`). Tabela `jobs` completa (campos do recurso Job), índice `idx_jobs_due`, `PRAGMA user_version=1`. Timestamps no banco em UTC ISO-8601; `run_at` ingênuo assume `America/Sao_Paulo`. `once` sem `next_run_at` copia `run_at`. YAML ainda não faz merge (`[02.1]`).
-- **Consequências:** HTTP `[01.2]` reusa `Job` + `JobRepository`. Pydantic v2 é dependência de runtime.
-
-### [2026-09-11] Pacote `homelab_schedule` sob `src/`
-
-- **Contexto:** Bootstrap `[00.1]` precisava de um import instalável sem FastAPI.
-- **Decisão:** Layout `src/homelab_schedule/` (hífen do repo → underscore). `__init__.py` só marca o pacote; sem reexport barrel. Stub `health.ping()` para o trio pytest/ruff/mypy. Runtime deps (FastAPI, pydantic, httpx) ficam para `[01.x]`.
-- **Consequências:** `uv sync` + `uv run pytest/ruff/mypy` na raiz. Import: `from homelab_schedule.health import ping`.
-
-### [2026-09-11] Constituição greenfield preenchida
-
-- **Contexto:** Starter `template-agent` / greenfield ainda com colchetes. Escopo alinhado em chat: agenda container + MCP + YAML v1 + `POST /send`.
-- **Decisão:** Owner GitHub `yegear1`. Fuso `America/Sao_Paulo`. Porta HTTP originalmente `8002` (depois `8003`). Auth desta API: `x-api-key` (`SCHEDULE_API_KEY`), distinta da chave do gateway de envio.
-- **Alternativas:** Org `ye-sandbox` (rejeitada pelo humano). YAML só depois (rejeitada: YAML entra no v1).
-- **Consequências:** Código ainda não existe; próxima tarefa é bootstrap `uv`/`pyproject`.
-
-### [2026-09-12] Porta HTTP 8003
-
-- **Contexto:** A porta `8002` já estava em uso no host de compose.
-- **Decisão:** Padrão deste serviço passa a `8003` (compose, Dockerfile, `APP_PORT`, MCP `SCHEDULE_API_URL`).
-- **Consequências:** `.env` no host precisa `APP_PORT=8003` e `SCHEDULE_API_URL=http://localhost:8003`. Rebuild da imagem após mudar `EXPOSE`/`CMD`.
-
-### [2026-09-11] Anotação em linguagem natural, store estruturado
-
-- **Contexto:** O que importa para o humano é *como anotar*, não cron cru.
-- **Decisão:** Usuário fala quando / para quem / o quê. Servidor grava `kind` (`once` \| `cron`), `run_at` ou `cron_expr`, `to` (alias), `title`, `content`. Agente confirma `id` + próximo disparo + destino + texto.
-- **Consequências:** MCP não exige que o modelo monte JSON do `POST /send`. Aliases em `WHATSAPP_ALIASES`.
-
-### [2026-09-11] Tick no SQLite, sem Alembic/APScheduler/Loguru
-
-- **Contexto:** Uso simples; RAM/CPU ociosos importam. Alembic e APScheduler são segunda verdade / histórico que a uma tabela não pede.
-- **Decisão:** `CREATE TABLE` no boot; relógio = coluna `next_run_at` UTC + sleep até o mínimo ou Event de escrita (ADR-006). Logs stdlib NDJSON. Imagem slim, um worker.
-- **Consequências:** `[01.1]` é schema sqlite3; `[01.3]` é o tick, não APScheduler. Teste “job +2s dispara sem esperar o cap”.
+- `target_number` no job (migração v1→v2); tick não re-resolve alias.
+- `retry_count` (v2→v3): até 3 retries transitórios; 401/422 falham na hora.
+- Placeholders temporais no disparo (`templates.py`); sem Jinja2.
+- `GET /jobs` e MCP: `status` (inclui `error`) + `limit`. Query `to` = fim de **data**.
+- `JOB_RETENTION_DAYS` (padrão 365; `0` desliga). Purge só `done`/`error` sqlite.
+- YAML: merge por `id` + reload `mtime` / `POST /routines/reload`.
 
 ---
 
 ## Contratos vigentes
 
-Schema canônico no código (`src/schemas/`) quando existir. Mapa:
-
 | Canal | Produtor | Consumidor | Payload |
 |---|---|---|---|
 | HTTP `/jobs` | MCP, curl, callers | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
 | MCP stdio | Agente Cursor | HTTP local | [ADR-005](adr/005-mcp-superficie-fechada.md) |
-| `routines.yaml` | Git / operador | Loader no boot + watch | [CHANNELS.md](CHANNELS.md) |
-| `POST /send` | Dispatcher deste repo | Gateway em `WHATSAPP_API_URL` | `phone_number`, `content`, `quote_id`, header `x-api-key` |
+| `routines.yaml` | Git / operador | Loader + watch | [CHANNELS.md](CHANNELS.md) |
+| `POST /send` | Dispatcher | Gateway `WHATSAPP_API_URL` | `phone_number`, `content`, `quote_id`, `x-api-key` |
 
-Alteração de contrato = atualizar schemas dos lados na mesma tarefa.
+Alteração de contrato = schemas dos lados na mesma tarefa.
 
 ---
 
 ## Armadilhas
 
-- **Gateway `/send`:** agentes alucinam `to`/`body`/`Authorization`. Só `phone_number` + `content` + `x-api-key`.
-- **202:** não é “pendente de confirmação de entrega”. É enfileirado. Retry imediato duplica mensagem.
-- **VictoriaLogs:** destino e `content` são campo de evento, nunca stream field. Health `/health` o Vector pode descartar no HDD.
-- **SQLite:** um writer (este processo). Não expor o arquivo a outro container com write. Esquecer o `Event` após `POST /jobs` atrasa o aviso até o cap de 5 min.
-- **YAML vs SQLite:** rotina YAML não deve ser “copiada e esquecida” no SQLite de forma que um edit no git não atualize o job. Merge por `id` estável da rotina (campo `id` no YAML).
-- **`GET /jobs?to=`:** `to` é fim de intervalo de **data**, não destino.
+- **`/send`:** só `phone_number` + `content` + `x-api-key`. Não `to`/`body`/`Authorization`.
+- **202:** enfileirado. Retry imediato duplica.
+- **Logs:** destino e `content` nunca são stream field.
+- **SQLite:** um writer. Esquecer o `Event` após escrita atrasa até o cap de 5 min.
+- **YAML vs SQLite:** merge por `id` estável; cancel YAML → `409`.
+- **`GET /jobs?to=`:** intervalo de data, não destino. Filtro de telefone ainda não existe (épico 03.x).
 
 ---
 
@@ -206,6 +85,8 @@ Alteração de contrato = atualizar schemas dos lados na mesma tarefa.
 
 | Débito | Motivo | Quando revisitar |
 |---|---|---|
-| Sem UI web / CalDAV / e-mail | Peso; três canetas neste repo bastam | Se o humano pedir |
+| Sem UI web no v0.2.0 | ADR-003 | Épico `03.x` (humano pediu) |
+| Sem `created_by` / filtro por telefone | Job só tem destino | `[03.2]` |
+| Contatos só em `WHATSAPP_ALIASES` | Env, não CRUD | `[03.1]` |
+| Templates só data/hora | Sem catálogo nem `{{name}}` | `[03.3]` |
 | Sem HA / multi-réplica | Um SQLite + um tick | Se houver segundo host |
-| Catálogo de contatos/modelos | Aliases só no env; templates só data/hora | Épico discutido; não iniciado |

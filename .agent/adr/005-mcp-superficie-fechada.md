@@ -1,25 +1,27 @@
-# [ADR-005] MCP com superfície fechada (quatro tools)
+# [ADR-005] MCP com superfície fechada
 
 - **Status:** Aprovado
 - **Data:** 2026-09-11
+- **Atualizado:** 2026-09-12 (`reschedule` saiu do backlog e entrou na superfície)
 - **Autor(es):** yegear / chat de desenho
 
 ---
 
 ## 1. Contexto do Problema
 
-Agentes alucinam crontab e PATCH genérico. O MCP do VictoriaLogs funciona porque tem poucas tools e respostas curtas. A agenda precisa do mesmo: listar o marcado e gravar recado sem CRUD REST no protocolo MCP.
+Agentes alucinam crontab e PATCH genérico. A agenda precisa de poucas tools e respostas curtas: listar o marcado e gravar recado sem CRUD REST no protocolo MCP.
 
 ## 2. Decisão Tomada
 
-Servidor MCP **stdio**, Python, zero UI, chamando a HTTP local (não abre SQLite direto). Tools:
+Servidor MCP **stdio**, Python, chamando a HTTP local (não abre SQLite direto). Tools:
 
 1. `schedule`
 2. `list_agenda`
 3. `get_item`
 4. `cancel`
+5. `reschedule` (sqlite; YAML → erro para editar `routines.yaml`)
 
-Sem `PATCH`, sem `delete` genérico, sem passar `phone_number` cru se houver alias. `list_agenda` não devolve `content` completo. Config Cursor (`.cursor/mcp.json`) **não** versionada. Mutação em produção via MCP exige consentimento humano nas regras do `AGENTS.md`.
+Sem `PATCH`, sem `delete` genérico, sem CRUD de contato/template no MCP. `list_agenda` não devolve `content` completo. Config Cursor (`.cursor/mcp.json`) **não** versionada. Mutação em produção via MCP exige consentimento humano nas regras do `AGENTS.md`.
 
 ## 3. Alternativas Consideradas
 
@@ -35,10 +37,10 @@ Sem `PATCH`, sem `delete` genérico, sem passar `phone_number` cru se houver ali
 
 ### Negativas / Riscos Assumidos
 
-- Reagendar em dois passos (cancel + schedule) pode falhar no meio — `reschedule` no backlog futuro.
-- MCP inútil se a API não estiver no ar; o servidor deve falhar com mensagem clara (URL/chave).
+- Catálogo de contatos/modelos (épico 03.x) **não** vira tool MCP genérica; no máximo parâmetros em `schedule`.
+- MCP inútil se a API não estiver no ar; falha com mensagem clara (URL, nunca a chave).
 
 ## 5. Referências e Links
 
-- `infra-victoria-logs/mcp/server.py` (padrão stdio leve)
 - `.agent/skills/mcp-tool/SKILL.md`
+- `.agent/CHANNELS.md`

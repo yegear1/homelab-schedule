@@ -32,7 +32,7 @@ Há dois tipos de anotação: recado pontual (“amanhã 14h, condomínio”) e 
 ### Negativas / Riscos Assumidos
 
 - Merge YAML precisa de `id` estável; conflito de id sqlite vs yaml deve ser rejeitado.
-- Watch do YAML em runtime ficou como débito (reload no boot no v1).
+- Watch em runtime: `st_mtime` no tick + `POST /routines/reload` (não é mais débito).
 - Cancel HTTP de yaml → `409` (edite o arquivo).
 
 ## 5. Referências e Links

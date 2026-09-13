@@ -71,7 +71,7 @@ Todo serviço de aplicação no compose **deve**: `container_name` estável; `LO
 
 | Servidor | Papel |
 | :--- | :--- |
-| **`homelab-schedule`** (deste repo, stdio) | Caneta do agente: `schedule`, `list_agenda`, `get_item`, `cancel`. Fala com a HTTP local (`uv run homelab-schedule-mcp`). |
+| **`homelab-schedule`** (deste repo, stdio) | Caneta do agente: `schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`. Fala com a HTTP local (`uv run homelab-schedule-mcp`). |
 | **`victorialogs`** (global) | Diagnóstico de runtime. Não substitui `list_agenda`. |
 
 Prefira MCP a curl ad-hoc depois que o servidor existir. Mutação em produção via MCP só com consentimento. Não logue tokens. `mcp.json` do Cursor é local — **não** versione.

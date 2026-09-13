@@ -18,6 +18,8 @@
 | [01.2] | Suporte a `reschedule` / `snooze` de recados pontuais no MCP e HTTP | [`ddb85e1`] | 2026-09-11 |
 | [01.1] | Persistir `target_number` normalizado no job e documentar gateway agnóstico | [`33fe49b`] | 2026-09-11 |
 
+Higiene pós-tag (README, NOTES, ADR-002/005): `git log` depois da tag `v0.2.0`.
+
 ## [v0.1.0] - 2026-09-11
 
 | Tarefa | Título | Commit(s) | Data |
