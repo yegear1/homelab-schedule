@@ -62,7 +62,7 @@ def test_create_get_list_and_notebook_event(client: TestClient, api_key: str) ->
         "content": "Pagar condomínio.",
         "to": "eu",
         "kind": "once",
-        "run_at": "2026-09-12T14:00:00-03:00",
+        "run_at": "2027-09-12T14:00:00-03:00",
     }
     created = client.post("/jobs", headers=_auth(api_key), json=payload)
     assert created.status_code == 201
@@ -145,7 +145,7 @@ def test_create_with_explicit_target_number(client: TestClient, api_key: str) ->
         "to": "joao",
         "target_number": "5521977778888",
         "kind": "once",
-        "run_at": "2026-09-12T14:00:00-03:00",
+        "run_at": "2027-09-12T14:00:00-03:00",
     }
     created = client.post("/jobs", headers=_auth(api_key), json=payload)
     assert created.status_code == 201
@@ -176,7 +176,7 @@ def test_cancel_once_returns_204_and_leaves_upcoming(client: TestClient, api_key
             "title": "x",
             "content": "y",
             "kind": "once",
-            "run_at": "2026-09-12T14:00:00-03:00",
+            "run_at": "2027-09-12T14:00:00-03:00",
         },
     )
     job_id = created.json()["id"]
@@ -216,7 +216,7 @@ def test_run_now_queues_without_replacing_schedule(
             "title": "x",
             "content": "y",
             "kind": "once",
-            "run_at": "2026-09-12T14:00:00-03:00",
+            "run_at": "2027-09-12T14:00:00-03:00",
         },
     )
     job_id = created.json()["id"]
@@ -250,7 +250,7 @@ def test_run_now_gatekeeper_failure_is_502(tmp_path: Path, api_key: str) -> None
                 "title": "x",
                 "content": "y",
                 "kind": "once",
-                "run_at": "2026-09-12T14:00:00-03:00",
+                "run_at": "2027-09-12T14:00:00-03:00",
             },
         )
         job_id = created.json()["id"]
@@ -268,7 +268,7 @@ def test_reschedule_once_job_updates_time_and_reactivates(
             "title": "reunião",
             "content": "Reunião de alinhamento.",
             "kind": "once",
-            "run_at": "2026-09-12T14:00:00-03:00",
+            "run_at": "2027-09-12T14:00:00-03:00",
         },
     )
     job_id = created.json()["id"]

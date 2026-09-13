@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-12
+
+### Added
+- Persist normalized `target_number` on each job so the tick and WhatsApp pen do not re-resolve aliases at fire time; document a gateway-agnostic `Dispatcher`.
+- `reschedule` / snooze for one-off sqlite jobs (`POST /jobs/{id}/reschedule` and MCP `reschedule`), keeping a stable id.
+- Live `routines.yaml` reload via `POST /routines/reload` and tick `mtime` watch.
+- Automatic SQLite housekeeping (`JOB_RETENTION_DAYS`, default 365) plus `POST /housekeeping/purge`.
+- MCP/HTTP list filters: `status=error` and defensive `limit`.
+- Temporal message placeholders at dispatch (`{{date}}`, `{{time}}`, `{{day_name}}`, and related tags).
+- Transient gateway retries with exponential backoff (up to 3 attempts) before marking a job as `error`.
+
+### Changed
+- HTTP default port is `8003` (Compose, Dockerfile, MCP `SCHEDULE_API_URL`) to avoid clashing with other homelab services on `8002`.
+- WhatsApp command contract: personal `!lembra` / `!agenda` / `!cancela` scoped to the sender; `!agenda all` is admin-only.
+
 ## [0.1.0] - 2026-09-11
 
 ### Added

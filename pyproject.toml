@@ -1,6 +1,6 @@
 [project]
 name = "homelab-schedule"
-version = "0.1.0"
+version = "0.2.0"
 description = "Lightweight homelab agenda that dispatches WhatsApp reminders via the gatekeeper."
 readme = "README.md"
 requires-python = ">=3.13"

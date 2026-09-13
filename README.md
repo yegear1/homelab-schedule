@@ -84,5 +84,5 @@ O template permanece intacto na definição do job para que rotinas recorrentes 
 
 ## Repositório
 
-GitHub: `yegear/homelab-schedule`.
+GitHub: [`yegear1/homelab-schedule`](https://github.com/yegear1/homelab-schedule). Versão atual: `0.2.0` (`homelab-schedule-mcp`).
 

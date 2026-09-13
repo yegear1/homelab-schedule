@@ -41,6 +41,12 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ## Decisões rápidas
 
+### [2026-09-12] Release pública `v0.2.0` (não reusar `v0.1.0`)
+
+- **Contexto:** Tag e GitHub Release `v0.1.0` já existiam (2026-09-11). O `main` acumulou features (reschedule, housekeeping, templates temporais, retries, porta 8003). Pedido humano de “versionar 0.1.0” choca com a tag já publicada.
+- **Decisão:** Publicar o HEAD atual como **`v0.2.0`**. Não mover/apagar `v0.1.0`. Asset de release: wheel Python (`uv build`), não binário Go da skill `github-releases` (books-cli). Repositório GitHub continua `yegear1/homelab-schedule` (privado até o humano abrir).
+- **Consequências:** `pyproject.toml` `version = "0.2.0"`. Numeração de tarefas do ciclo pós-`v0.1.0` arquivada; `[99.1]` volta ao Backlog Futuro.
+
 ### [2026-09-12] `AGENTS.md` alinhado ao contrato VictoriaLogs (`[02.4]`)
 
 - **Contexto:** Runtime, Compose e formatter já seguiam a skill global `victorialogs-integration` (Padrão 1 + Opção B stdlib). O `AGENTS.md` omitia `APP`, a regra “uma linha = um evento”, traceback no mesmo evento e `--no-access-log` / descarte de `/health`.
@@ -201,8 +207,7 @@ Alteração de contrato = atualizar schemas dos lados na mesma tarefa.
 
 | Débito | Motivo | Quando revisitar |
 |---|---|---|
-| Comando `!lembra` / `!agenda` só no papel | Código no `whatsapp-api` | Depois do HTTP estável |
+| Comando `!lembra` / `!agenda` só no papel | Código no `whatsapp-api` | Quando o humano pedir no outro repo |
 | Sem UI web / CalDAV / e-mail | Peso; três canetas bastam | Se o humano pedir |
-| MCP ainda não existe | Depende da HTTP | Tarefa `[02.2]` |
 | Sem HA / multi-réplica | Um SQLite + um tick | Se houver segundo host |
-| Watch YAML em runtime | v1 reload no boot + Event | Se rotinas mudarem sem restart |
+| Catálogo de contatos/modelos | Aliases só no env; templates só data/hora | Épico discutido; não iniciado |
