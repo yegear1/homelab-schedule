@@ -2,7 +2,7 @@
   import { api, ApiClientError } from '../lib/api';
   import { router } from '../lib/router.svelte';
   import { toast } from '../lib/toast.svelte';
-  import type { Contact, JobListItem, Job, MessageTemplate, JobKind } from '../lib/types';
+  import type { Contact, JobListItem, Job, MessageTemplate, JobKind, JobListFilter } from '../lib/types';
   import RescheduleModal from '../components/RescheduleModal.svelte';
 
   const contactId = $derived(router.params.contactId || '');
@@ -15,6 +15,9 @@
   let loading = $state(true);
   let jobsLoading = $state(false);
   let errorMsg = $state<string | null>(null);
+
+  // Filter jobs
+  let filterStatus = $state<JobListFilter>('upcoming');
 
   // Edit contact form
   let editName = $state('');
@@ -70,17 +73,27 @@
     }
   }
 
-  async function loadJobsForContact(phone: string) {
+  async function loadJobsForContact(phone: string, statusOverride?: JobListFilter) {
     jobsLoading = true;
+    const status = statusOverride ?? filterStatus;
     try {
-      jobs = await api.getJobs({ status: 'all', phone });
+      jobs = await api.getJobs({ status, phone });
       if (jobs.length > 0 && (!selectedJob || !jobs.find(j => j.id === selectedJob?.id))) {
         await inspectJob(jobs[0].id);
+      } else if (jobs.length === 0) {
+        selectedJob = null;
       }
     } catch (err: unknown) {
       toast.error('Falha ao carregar recados do contato.');
     } finally {
       jobsLoading = false;
+    }
+  }
+
+  function changeFilter(status: JobListFilter) {
+    filterStatus = status;
+    if (contact) {
+      loadJobsForContact(contact.phone, status);
     }
   }
 
@@ -220,6 +233,9 @@
       await api.cancelJob(jobItem.id);
       toast.success(`Recado ${jobItem.id} cancelado com sucesso.`);
       if (contact) await loadJobsForContact(contact.phone);
+      if (selectedJob?.id === jobItem.id) {
+        await inspectJob(jobItem.id);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao cancelar recado';
       toast.error(msg);
@@ -618,7 +634,7 @@
                 </span>
               </div>
               <p class="font-label-code-sm text-label-code-sm text-on-surface-variant font-mono mt-0.5">
-                GET /jobs?status=all&amp;phone={contact.phone}
+                GET /jobs?status={filterStatus}&amp;phone={contact.phone}
               </p>
             </div>
 
@@ -633,13 +649,45 @@
             </div>
           </div>
 
+          <!-- Status Filter Tabs -->
+          <div class="flex items-center gap-1 p-1 bg-surface-container-lowest rounded overflow-x-auto">
+            <button
+              class="px-space-sm py-1 rounded font-label-ui text-label-ui uppercase tracking-wider transition-colors {filterStatus === 'upcoming' ? 'bg-surface-container-high text-primary font-bold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
+              onclick={() => changeFilter('upcoming')}
+              type="button"
+            >
+              Ativos (upcoming)
+            </button>
+            <button
+              class="px-space-sm py-1 rounded font-label-ui text-label-ui uppercase tracking-wider transition-colors {filterStatus === 'all' ? 'bg-surface-container-high text-primary font-bold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
+              onclick={() => changeFilter('all')}
+              type="button"
+            >
+              Todos (all)
+            </button>
+            <button
+              class="px-space-sm py-1 rounded font-label-ui text-label-ui uppercase tracking-wider transition-colors {filterStatus === 'paused' ? 'bg-surface-container-high text-primary font-bold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
+              onclick={() => changeFilter('paused')}
+              type="button"
+            >
+              Cancelados / Pausados
+            </button>
+            <button
+              class="px-space-sm py-1 rounded font-label-ui text-label-ui uppercase tracking-wider transition-colors {filterStatus === 'done' ? 'bg-surface-container-high text-primary font-bold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
+              onclick={() => changeFilter('done')}
+              type="button"
+            >
+              Concluídos
+            </button>
+          </div>
+
           <!-- Lista de Jobs -->
           <div class="flex flex-col gap-space-sm">
             {#if jobsLoading}
               <div class="p-space-lg text-center text-outline font-label-code-sm">Atualizando recados...</div>
             {:else if jobs.length === 0}
               <div class="p-space-lg text-center bg-surface-container rounded text-outline font-body-sm">
-                Nenhum recado vinculado a este número no momento.
+                Nenhum recado vinculado a este número no filtro "{filterStatus}".
               </div>
             {:else}
               {#each jobs as job (job.id)}
@@ -710,22 +758,29 @@
                       </button>
 
                       {#if job.source !== 'yaml'}
-                        <button
-                          class="px-space-sm py-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface font-label-code text-label-code transition-colors flex items-center gap-1"
-                          onclick={() => openReschedule(job.id, job.source)}
-                          type="button"
-                        >
-                          <span class="material-symbols-outlined text-[14px]">edit_calendar</span>
-                          <span>Reagendar</span>
-                        </button>
-                        <button
-                          class="px-space-sm py-1 rounded bg-error-container/30 hover:bg-error-container text-error font-label-code text-label-code transition-colors flex items-center gap-1"
-                          onclick={() => handleCancelJob(job)}
-                          type="button"
-                        >
-                          <span class="material-symbols-outlined text-[14px]">cancel</span>
-                          <span>Cancelar</span>
-                        </button>
+                        {#if job.status === 'scheduled'}
+                          <button
+                            class="px-space-sm py-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface font-label-code text-label-code transition-colors flex items-center gap-1"
+                            onclick={() => openReschedule(job.id, job.source)}
+                            type="button"
+                          >
+                            <span class="material-symbols-outlined text-[14px]">edit_calendar</span>
+                            <span>Reagendar</span>
+                          </button>
+                          <button
+                            class="px-space-sm py-1 rounded bg-error-container/30 hover:bg-error-container text-error font-label-code text-label-code transition-colors flex items-center gap-1"
+                            onclick={() => handleCancelJob(job)}
+                            type="button"
+                          >
+                            <span class="material-symbols-outlined text-[14px]">cancel</span>
+                            <span>Cancelar</span>
+                          </button>
+                        {:else}
+                          <span class="font-label-code-sm text-outline px-space-sm py-1 rounded bg-surface-container-high/60 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">info</span>
+                            <span>{job.status === 'paused' ? 'Pausado / Cancelado' : job.status === 'done' ? 'Concluído' : job.status}</span>
+                          </span>
+                        {/if}
                       {/if}
 
                       <button
@@ -814,24 +869,31 @@
             <div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs border-t border-outline-variant/10">
               <div class="flex items-center gap-space-xs">
                 {#if selectedJob.source !== 'yaml'}
-                  <button
-                    class="px-space-md py-space-sm rounded bg-surface-container hover:bg-error-container/40 text-on-surface-variant hover:text-error font-label-ui text-label-ui uppercase tracking-wider transition-colors flex items-center gap-1"
-                    id="detail-btn-cancel"
-                    onclick={() => handleCancelJob(selectedJob!)}
-                    type="button"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">cancel</span>
-                    <span>Cancelar Recado</span>
-                  </button>
-                  <button
-                    class="px-space-md py-space-sm rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-colors flex items-center gap-1"
-                    id="detail-btn-reschedule"
-                    onclick={() => openReschedule(selectedJob!.id, selectedJob!.source)}
-                    type="button"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">schedule</span>
-                    <span>Reagendar</span>
-                  </button>
+                  {#if selectedJob.status === 'scheduled'}
+                    <button
+                      class="px-space-md py-space-sm rounded bg-surface-container hover:bg-error-container/40 text-on-surface-variant hover:text-error font-label-ui text-label-ui uppercase tracking-wider transition-colors flex items-center gap-1"
+                      id="detail-btn-cancel"
+                      onclick={() => handleCancelJob(selectedJob!)}
+                      type="button"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">cancel</span>
+                      <span>Cancelar Recado</span>
+                    </button>
+                    <button
+                      class="px-space-md py-space-sm rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-colors flex items-center gap-1"
+                      id="detail-btn-reschedule"
+                      onclick={() => openReschedule(selectedJob!.id, selectedJob!.source)}
+                      type="button"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">schedule</span>
+                      <span>Reagendar</span>
+                    </button>
+                  {:else}
+                    <span class="font-label-code-sm text-outline px-space-md py-space-sm rounded bg-surface-container flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[14px]">info</span>
+                      Status: {selectedJob.status === 'paused' ? 'Pausado / Cancelado' : selectedJob.status === 'done' ? 'Concluído' : selectedJob.status}
+                    </span>
+                  {/if}
                 {:else}
                   <span class="font-label-code-sm text-outline flex items-center gap-1">
                     <span class="material-symbols-outlined text-[14px]">lock</span>
