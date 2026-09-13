@@ -34,6 +34,14 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-13] Remediações do QA Audit da UI (NF-01 a NF-15)
+
+- **Cura Definitiva de Cache Heurístico SPA (NF-01/09):** Respostas de fallback HTML do SPA (`index.html`) no backend (`main.py`) agora incluem cabeçalhos estritos `Cache-Control: no-cache, no-store, must-revalidate`, `Pragma: no-cache` e `Expires: 0`. No frontend (`api.ts`), todas as chamadas `fetch` utilizam `cache: 'no-store'`. Isso previne que navegadores ou proxies intermediários (Cloudflare) apliquem cache heurístico RFC 7234 e retornem HTML em chamadas subsequentes de API para rotas com o mesmo path (`/templates`, `/contacts`).
+- **Acessibilidade e Focus Trapping (NF-06):** Criação da Svelte action reutilizável `focusTrap` (`web/src/lib/focusTrap.ts`) mantendo o ciclo de foco (`Tab`/`Shift+Tab`) estritamente dentro dos diálogos (`ApiKeyModal`, `RescheduleModal`, `ContactPickerModal`, drawer e modal de criação de jobs), com restauração de foco ao elemento disparador no fechamento. Adição de `aria-current="page"` na navegação ativa do `AppShell` (NF-10).
+- **Largura de Ações e Layout Desktop (NF-04):** Expansão da largura mínima da coluna de Ações na tabela de agendamentos para `min-w-[195px]` com `flex-nowrap`, eliminando clipping dos botões "EDITAR", "DISPARAR" e Cancelar em telas desktop (>1024px).
+- **Robustez do Tema Escuro (NF-05):** Reforço dos seletores CSS em `app.css` (`:root.dark, html.dark, [data-theme="dark"], html[data-theme="dark"], body.dark`), adição de `id` explícitos (`theme-btn-light`, `theme-btn-dark`, `theme-btn-system`) e atributo de acessibilidade `aria-pressed` nos botões de alternância do `AppShell`.
+- **Validação de Formulários e Localização (NF-02, NF-03, NF-07, NF-08, NF-12):** Remoção de `novalidate` dos três formulários principais; validação HTML5 nativa com mensagens em português (`setCustomValidity`); aviso reativo para tags desconhecidas em templates com distinção clara entre `{{weekday}}` (dia da semana) e `{{day_name}}` (dia do mês); remoção da exigência arbitrária de prefixo `+` em números de telefone; tradução localizada para erros Pydantic 422 (`localizeDetail`).
+
 ### [2026-09-13] Remediações do QA Audit da UI (BUG-001 a BUG-013)
 
 - **Tema Claro / Dark Mode:** Implementação de variáveis CSS para paleta completa em `web/src/app.css` (`:root` e `:root.dark, [data-theme="dark"]`) com helper `withOpacity()` no `web/tailwind.config.js` para suportar modificadores alpha (`bg-tertiary/10`, etc.).
