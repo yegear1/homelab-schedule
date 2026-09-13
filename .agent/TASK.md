@@ -20,6 +20,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [00.13] | Corrigir seletor de tema (light / system / dark) | [`0900796`] | 2026-09-13 |
 | [00.11] | Remediação de apontamentos do QA Audit da UI (NF-01 a NF-15) | [`44de4bb`] | 2026-09-13 |
 | [00.10] | Remediação de apontamentos do QA Audit da UI (BUG-001 a BUG-013) | [`7be12ba`] | 2026-09-13 |
 | [00.9] | Grupos de Envio (Múltiplos Destinatários, SQLite v7, Batch API & UI) | [`221997e`] | 2026-09-13 |
