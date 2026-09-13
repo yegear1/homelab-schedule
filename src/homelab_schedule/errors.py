@@ -12,13 +12,17 @@ class Unauthorized(AppError):
     pass
 
 
-class YamlJobImmutable(AppError):
+class YamlIdConflict(AppError):
+    pass
+
+
+class Conflict(AppError):
+    pass
+
+
+class YamlJobImmutable(Conflict):
     pass
 
 
 class GatekeeperError(AppError):
-    pass
-
-
-class YamlIdConflict(AppError):
     pass

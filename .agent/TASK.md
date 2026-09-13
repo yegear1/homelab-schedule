@@ -7,32 +7,25 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[00.1]`
-- **Título:** Contatos no SQLite + HTTP (nome, telefone, resolução de `to`)
-- **Status:** `EM PLANEJAMENTO`
-- **Contexto:** Novo ciclo após `v0.2.0` (numeração zerada). Backend para UI simples. Sem HTML. ADR-003 “sem UI” vale até `[00.4]`.
-
-### Plano (aguardando aprovação para `EM EXECUÇÃO`)
-
-1. Tabela `contacts` (`id`, `name`, `phone` único normalizado) no connect; `PRAGMA user_version` +1; skill `database-migration`.
-2. Schemas em `src/schemas/` + rotas finas `GET/POST /contacts`, `GET/PATCH /contacts/{id}` (sem DELETE solto se ainda não houver regra; ou DELETE com 409 se o número for destino de job `scheduled` — decidir na execução: v1 permite DELETE).
-3. Resolver `to` no create de job: contato por `id` ou `name` **depois** `WHATSAPP_ALIASES` **depois** dígitos crus. Sem quebrar aliases atuais.
-4. Testes (create/list/unique phone/normalize) + `ENDPOINTS.md`. MCP **não** ganha CRUD de contato (ADR-005).
-5. Fora: `created_by`, templates, UI, INTERFACE.md.
+- **ID:** `[00.2]`
+- **Título:** `created_by` no job + `GET /jobs?phone=` (união destino ou criador)
+- **Status:** `PRONTO PARA PLANEJAMENTO`
+- **Contexto:** `[00.1]` entregou contatos HTTP. A ficha da pessoa precisa listar recados **para** o número e recados **criados** por ele.
 
 ---
 
 ## Log de Tarefas Concluídas
 
-Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`. Higiene pós-`v0.2.0` (NOTES/ADRs/backlog) em 2026-09-12.
+Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
-(Vazio — ciclo após `v0.2.0`, numeração em `[00.x]`.)
+| Tarefa | Título | Commit(s) | Data |
+|---|---|---|---|
+| [00.1] | Contatos no SQLite + HTTP (nome, telefone, resolução de `to`) | (este commit) | 2026-09-12 |
 
 ---
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[00.2]** `created_by` no job + `GET /jobs?phone=` (união destino **ou** criador)
 - [ ] **[00.3]** Catálogo de templates SQLite + `{{name}}` e relógio no disparo
 - [ ] **[00.4]** Contrato de UI (`.agent/INTERFACE.md`, locale `pt-BR`) — só depois da API existir
 - [ ] Expressões de intervalo amigáveis no MCP (`when`)

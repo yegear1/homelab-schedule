@@ -7,7 +7,7 @@ description: Alterar o schema sqlite3 do homelab-schedule no connect (CREATE/ALT
 
 ## 1. Contexto e Objetivo
 
-Uma tabela (jobs). DDL vive no código de connect: `CREATE TABLE IF NOT EXISTS`, índices, `PRAGMA journal_mode=WAL`. Sem Alembic.
+Uma tabela `jobs` e uma `contacts`. DDL vive no código de connect: `CREATE TABLE IF NOT EXISTS`, índices, `PRAGMA journal_mode=WAL`. Sem Alembic.
 
 ---
 

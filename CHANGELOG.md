@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Contacts notebook (`GET/POST /contacts`, `GET/PATCH/DELETE /contacts/{id}`). Job `to` resolves contact id/name before env aliases.
 ## [0.2.0] - 2026-09-12
 
 ### Added

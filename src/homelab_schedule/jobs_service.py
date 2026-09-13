@@ -6,6 +6,7 @@ from collections.abc import Callable
 from datetime import datetime
 
 from homelab_schedule.aliases import normalize_whatsapp_phone, resolve_destination
+from homelab_schedule.contacts_service import ContactService
 from homelab_schedule.cron import next_cron_utc
 from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.errors import EntityNotFound, GatekeeperError, YamlJobImmutable
@@ -29,18 +30,20 @@ class JobService:
         dispatcher: Dispatcher,
         aliases: dict[str, str],
         now: Callable[[], datetime],
+        contacts: ContactService | None = None,
     ) -> None:
         self._repo = repo
         self._notebook_changed = notebook_changed
         self._dispatcher = dispatcher
         self._aliases = aliases
         self._now = now
+        self._contacts = contacts
 
     def create(self, payload: CreateJobRequest) -> Job:
         target = (
             normalize_whatsapp_phone(payload.target_number)
             if payload.target_number
-            else resolve_destination(payload.to, self._aliases)
+            else self._resolve_to(payload.to)
         )
         job = Job(
             id=str(uuid.uuid4()),
@@ -127,6 +130,13 @@ class JobService:
             )
         )
         return RunNowResponse(status="queued", job_id=job.id)
+
+    def _resolve_to(self, to: str) -> str:
+        if self._contacts is not None:
+            from_contact = self._contacts.resolve_to(to)
+            if from_contact is not None:
+                return from_contact
+        return resolve_destination(to, self._aliases)
 
 
 def _cancelled(job: Job) -> Job:

@@ -146,6 +146,19 @@ class JobRepository:
         return cursor.rowcount
 
 
+    def count_scheduled_for_phone(self, phone: str) -> int:
+        row = self._conn.execute(
+            """
+            SELECT COUNT(*) AS n FROM jobs
+            WHERE target_number = ? AND status = ?
+            """,
+            (phone, JobStatus.SCHEDULED.value),
+        ).fetchone()
+        if row is None:
+            return 0
+        return int(row["n"])
+
+
 def _apply_status_filter(
     clauses: list[str],
     params: list[str | int],

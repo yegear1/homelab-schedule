@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from schemas.job import Job, JobKind, JobSource, JobStatus
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 APP_TZ = ZoneInfo("America/Sao_Paulo")
 
 _CREATE_JOBS = """
@@ -31,6 +31,14 @@ CREATE TABLE IF NOT EXISTS jobs (
 )
 """
 
+_CREATE_CONTACTS = """
+CREATE TABLE IF NOT EXISTS contacts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL
+)
+"""
+
 
 def connect(database_path: str) -> sqlite3.Connection:
     path = Path(database_path)
@@ -45,8 +53,13 @@ def init_schema(conn: sqlite3.Connection) -> None:
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     conn.execute(_CREATE_JOBS)
+    conn.execute(_CREATE_CONTACTS)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_jobs_due ON jobs (status, enabled, next_run_at)"
+    )
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_contacts_phone ON contacts (phone)")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_contacts_name ON contacts (name COLLATE NOCASE)"
     )
     row = conn.execute("PRAGMA user_version").fetchone()
     version = int(row[0]) if row is not None else 0
@@ -61,6 +74,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
         if "retry_count" not in cols:
             conn.execute("ALTER TABLE jobs ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0")
         conn.execute("PRAGMA user_version=3")
+    if version < 4:
+        conn.execute("PRAGMA user_version=4")
     conn.commit()
 
 

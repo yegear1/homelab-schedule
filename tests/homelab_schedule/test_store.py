@@ -40,6 +40,8 @@ def test_connect_creates_wal_schema_and_due_index(tmp_path: Path) -> None:
     indexes = conn.execute("PRAGMA index_list(jobs)").fetchall()
     names = {str(row[1]) for row in indexes}
     assert "idx_jobs_due" in names
+    contact_cols = {str(row[1]) for row in conn.execute("PRAGMA table_info(contacts)")}
+    assert contact_cols >= {"id", "name", "phone"}
     conn.close()
 
 
@@ -84,7 +86,7 @@ def test_migration_v1_to_v2(tmp_path: Path) -> None:
 
     migrated = connect(str(db))
     version = migrated.execute("PRAGMA user_version").fetchone()
-    assert version is not None and int(version[0]) == 3
+    assert version is not None and int(version[0]) == SCHEMA_VERSION
     repo = JobRepository(migrated)
     job = repo.get("j1")
     assert job is not None
@@ -135,11 +137,53 @@ def test_migration_v2_to_v3(tmp_path: Path) -> None:
 
     migrated = connect(str(db))
     version = migrated.execute("PRAGMA user_version").fetchone()
-    assert version is not None and int(version[0]) == 3
+    assert version is not None and int(version[0]) == SCHEMA_VERSION
     repo = JobRepository(migrated)
     job = repo.get("j2")
     assert job is not None
     assert job.retry_count == 0
+    migrated.close()
+
+
+def test_migration_v3_to_v4_creates_contacts(tmp_path: Path) -> None:
+    import sqlite3
+
+    db = tmp_path / "v3.sqlite"
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute(
+        """
+        CREATE TABLE jobs (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            "to" TEXT NOT NULL,
+            target_number TEXT NOT NULL DEFAULT '',
+            kind TEXT NOT NULL,
+            run_at TEXT,
+            cron_expr TEXT,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL,
+            next_run_at TEXT,
+            last_run_at TEXT,
+            last_status TEXT,
+            last_error TEXT,
+            retry_count INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+    conn.execute("PRAGMA user_version=3")
+    conn.commit()
+    conn.close()
+
+    migrated = connect(str(db))
+    version = migrated.execute("PRAGMA user_version").fetchone()
+    assert version is not None and int(version[0]) == SCHEMA_VERSION
+    row = migrated.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='contacts'"
+    ).fetchone()
+    assert row is not None
     migrated.close()
 
 

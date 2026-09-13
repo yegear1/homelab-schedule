@@ -62,6 +62,7 @@ Canetas versionadas = MCP, HTTP, YAML. Dispatch = `POST /send` genérico. Caller
 | Canal | Produtor | Consumidor | Payload |
 |---|---|---|---|
 | HTTP `/jobs` | MCP, curl, callers | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
+| HTTP `/contacts` | UI / curl | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
 | MCP stdio | Agente Cursor | HTTP local | [ADR-005](adr/005-mcp-superficie-fechada.md) |
 | `routines.yaml` | Git / operador | Loader + watch | [CHANNELS.md](CHANNELS.md) |
 | `POST /send` | Dispatcher | Gateway `WHATSAPP_API_URL` | `phone_number`, `content`, `quote_id`, `x-api-key` |
@@ -77,7 +78,7 @@ Alteração de contrato = schemas dos lados na mesma tarefa.
 - **Logs:** destino e `content` nunca são stream field.
 - **SQLite:** um writer. Esquecer o `Event` após escrita atrasa até o cap de 5 min.
 - **YAML vs SQLite:** merge por `id` estável; cancel YAML → `409`.
-- **`GET /jobs?to=`:** intervalo de data, não destino. Filtro de telefone ainda não existe (`[00.2]`).
+- **`GET /jobs?to=`:** intervalo de data, não destino. Filtro por telefone: `[00.2]`.
 
 ---
 
@@ -87,6 +88,6 @@ Alteração de contrato = schemas dos lados na mesma tarefa.
 |---|---|---|
 | Sem UI web no v0.2.0 | ADR-003 | Ciclo `[00.x]` (humano pediu) |
 | Sem `created_by` / filtro por telefone | Job só tem destino | `[00.2]` |
-| Contatos só em `WHATSAPP_ALIASES` | Env, não CRUD | `[00.1]` |
+| Contatos só em `WHATSAPP_ALIASES` | Env, não CRUD | Fechado em `[00.1]` (`/contacts`) |
 | Templates só data/hora | Sem catálogo nem `{{name}}` | `[00.3]` |
 | Sem HA / multi-réplica | Um SQLite + um tick | Se houver segundo host |

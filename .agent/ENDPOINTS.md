@@ -72,6 +72,38 @@ Sqlite: pontual → remove ou `status=done` cancelado; cron → `enabled=false` 
 
 Não há `PATCH` genérico. Recado sqlite: `POST /jobs/{id}/reschedule`. YAML: edite o arquivo.
 
+## Contacts
+
+Caderno de pessoas (SQLite). Telefone único, normalizado como `target_number`. Nome único (`NOCASE`). `to` no create de job resolve: **contato** (id ou nome) → `WHATSAPP_ALIASES` → dígitos.
+
+### Recurso `Contact`
+
+| Campo | Tipo | Notas |
+| :--- | :--- | :--- |
+| `id` | string | UUID |
+| `name` | string | 1–80 |
+| `phone` | string | Destino normalizado |
+
+### `GET /contacts`
+
+`200` → `{ "contacts": [ Contact ] }` ordenado por nome.
+
+### `POST /contacts`
+
+`{ "name": "Mae", "phone": "5521999887766" }` → `201` Contact. `409` nome ou telefone repetido. `422` schema. `401`.
+
+### `GET /contacts/{id}`
+
+`200` Contact. `404`.
+
+### `PATCH /contacts/{id}`
+
+Campos opcionais `name` e/ou `phone`. `200`. `409` unicidade. `404`.
+
+### `DELETE /contacts/{id}`
+
+`204`. `409` se existir job `status=scheduled` com aquele `target_number`. `404`.
+
 ## Erros
 
 JSON `{ "detail": ... }` no estilo FastAPI. Não vazar path de SQLite nem API keys.

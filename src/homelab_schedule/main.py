@@ -14,12 +14,15 @@ from fastapi.responses import JSONResponse
 from homelab_schedule.aliases import parse_aliases
 from homelab_schedule.clock import SystemClock
 from homelab_schedule.config import Settings
+from homelab_schedule.contacts_repository import ContactRepository
+from homelab_schedule.contacts_router import router as contacts_router
+from homelab_schedule.contacts_service import ContactService
 from homelab_schedule.dispatch import Dispatcher, GatekeeperDispatcher
 from homelab_schedule.errors import (
+    Conflict,
     EntityNotFound,
     GatekeeperError,
     Unauthorized,
-    YamlJobImmutable,
 )
 from homelab_schedule.health import ping
 from homelab_schedule.housekeeping_router import router as housekeeping_router
@@ -63,10 +66,15 @@ def create_app(
                 timeout=10.0,
             )
             active = GatekeeperDispatcher(http_client, resolved.whatsapp_api_key)
-        service = JobService(repo, notebook_changed, active, aliases, clock_now)
+        contacts_repo = ContactRepository(conn)
+        contact_service = ContactService(contacts_repo, repo)
+        service = JobService(
+            repo, notebook_changed, active, aliases, clock_now, contact_service
+        )
         stop = asyncio.Event()
         app.state.api_key = resolved.schedule_api_key
         app.state.job_service = service
+        app.state.contact_service = contact_service
         app.state.notebook_changed = notebook_changed
         app.state.conn = conn
         app.state.dispatcher = active
@@ -99,6 +107,7 @@ def create_app(
     _register_error_handlers(app)
     app.include_router(routines_router)
     app.include_router(jobs_router)
+    app.include_router(contacts_router)
     app.include_router(housekeeping_router)
 
     @app.get("/health", response_model=HealthResponse)
@@ -117,8 +126,8 @@ def _register_error_handlers(app: FastAPI) -> None:
     async def not_found(_: Request, exc: EntityNotFound) -> JSONResponse:
         return JSONResponse({"detail": exc.message}, status_code=404)
 
-    @app.exception_handler(YamlJobImmutable)
-    async def conflict(_: Request, exc: YamlJobImmutable) -> JSONResponse:
+    @app.exception_handler(Conflict)
+    async def conflict(_: Request, exc: Conflict) -> JSONResponse:
         return JSONResponse({"detail": exc.message}, status_code=409)
 
     @app.exception_handler(GatekeeperError)
