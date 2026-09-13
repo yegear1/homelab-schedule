@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+
+<html class="dark" data-theme="system" lang="pt-BR"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>Homelab Scheduler - Despachante de Mensagens</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-low":"#131b2e","on-secondary-container":"#b0b2ff","on-background":"#dae2fd","background":"#0b1326","tertiary":"#4edea3","primary-fixed-dim":"#4cd7f6","surface-container-highest":"#2d3449","on-secondary":"#1000a9","on-tertiary-fixed-variant":"#005236","outline-variant":"#3d494c","on-primary":"#003640","inverse-primary":"#00687a","secondary":"#c0c1ff","surface-bright":"#31394d","tertiary-fixed-dim":"#4edea3","on-tertiary":"#003824","inverse-surface":"#dae2fd","surface-container":"#171f33","secondary-fixed":"#e1e0ff","secondary-container":"#3131c0","outline":"#869397","error":"#ffb4ab","on-primary-fixed-variant":"#004e5c","on-error":"#690005","error-container":"#93000a","surface-variant":"#2d3449","tertiary-container":"#1bbd85","on-secondary-fixed-variant":"#2f2ebe","secondary-fixed-dim":"#c0c1ff","inverse-on-surface":"#283044","on-error-container":"#ffdad6","on-tertiary-container":"#00452e","surface":"#0b1326","surface-dim":"#0b1326","on-primary-fixed":"#001f26","surface-container-lowest":"#060e20","primary-fixed":"#acedff","on-secondary-fixed":"#07006c","on-surface":"#dae2fd","tertiary-fixed":"#6ffbbe","surface-container-high":"#222a3d","on-primary-container":"#00424f","primary-container":"#06b6d4","on-tertiary-fixed":"#002113","on-surface-variant":"#bcc9cd","primary":"#4cd7f6","surface-tint":"#4cd7f6"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"margin-tablet":"1.5rem","space-sm":"0.5rem","gutter-desktop":"1.5rem","margin":"1rem","space-xs":"0.25rem","margin-desktop":"2rem","space-lg":"1.25rem","space-xl":"2rem","gutter":"1rem","space-md":"0.75rem"},"fontFamily":{"label-code-sm":["JetBrains Mono"],"headline-lg":["Inter"],"label-code":["JetBrains Mono"],"headline-lg-mobile":["Inter"],"label-ui":["Inter"],"headline-md":["Inter"],"body-sm":["Inter"],"body-md":["Inter"],"headline-sm":["Inter"],"body-lg":["Inter"]},"fontSize":{"label-code-sm":["11px",{"lineHeight":"14px","letterSpacing":"0em","fontWeight":"400"}],"headline-lg":["30px",{"lineHeight":"38px","letterSpacing":"-0.02em","fontWeight":"600"}],"label-code":["12px",{"lineHeight":"16px","letterSpacing":"-0.02em","fontWeight":"500"}],"headline-lg-mobile":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"label-ui":["11px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","letterSpacing":"0.01em","fontWeight":"400"}],"body-md":["13px",{"lineHeight":"18px","letterSpacing":"0em","fontWeight":"400"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"-0.005em","fontWeight":"600"}],"body-lg":["15px",{"lineHeight":"22px","letterSpacing":"0em","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest flex flex-col z-50 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-space-md flex items-center gap-space-sm bg-surface-container-low/40"><img alt="Homelab Message Scheduler Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XK2pTRczi-8Rfi_WW3TnseGqIVMQQPrF1ILr-soB2Y-84mapUKcf5h7QqrhuwK3KTQMCwSt2gC9pQK0DhN0hI1DKMSBBZT_aktwcNK3oBhNztqYTrmjVy9kyz62VTM2ZkZdZmUpebn8f14V03NUR7339iQFFvcdbUrvLDcGGshURjHOO5ERLa6IzW-YRyrV5phzaslCJ2BxFRvYqnygvTx_dXf7b6Qz34EnX6zwU5cSU5OwABOwiP-_g"/><div class="flex flex-col min-w-0"><span class="font-headline-sm text-headline-sm text-on-surface truncate tracking-tight">Homelab Scheduler</span><span class="font-label-ui text-label-ui text-primary uppercase tracking-wider truncate">Despachante</span></div></div><div class="px-space-md py-space-sm"><div class="bg-surface-container-low px-space-sm py-space-xs rounded flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span></span><span class="font-label-code-sm text-label-code-sm text-on-surface-variant">Tick local (SQLite)</span></div><span class="font-label-code-sm text-label-code-sm text-tertiary">SYNC</span></div></div><nav class="flex-1 px-space-sm py-space-xs flex flex-col gap-space-xs" data-active-classes="bg-surface-container-high text-primary font-headline-sm rounded"><a class="flex items-center justify-between px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="contatos" href="#" id="scr-contacts"><span class="font-body-md text-body-md">Contatos</span><span class="font-label-code-sm text-label-code-sm text-outline">/contacts</span></a><a class="flex items-center justify-between px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="modelos" href="#" id="scr-templates"><span class="font-body-md text-body-md">Modelos</span><span class="font-label-code-sm text-label-code-sm text-outline">/templates</span></a><a aria-current="page" class="flex items-center justify-between px-space-md py-space-sm transition-colors bg-surface-container-high text-primary font-headline-sm rounded" data-path="agendas" href="#" id="scr-jobs"><span class="font-body-md text-body-md">Agendas</span><span class="font-label-code-sm text-label-code-sm text-outline">/jobs</span></a></nav><div class="p-space-md bg-surface-container-lowest flex flex-col gap-space-sm"><div class="bg-surface-container-low p-space-sm rounded flex flex-col gap-space-xs"><div class="flex items-center justify-between"><span class="font-label-ui text-label-ui uppercase text-on-surface-variant">Credencial API</span><span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span></div><span class="font-label-code-sm text-label-code-sm text-tertiary truncate">x-api-key: configurada</span><span class="font-label-code-sm text-label-code-sm text-outline">Armazenada no cliente</span></div><div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm pt-space-xs"><span>Node: hl-node-01</span><span>v2.4.1</span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-gutter-desktop"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded bg-surface-container-low text-tertiary"><span class="material-symbols-outlined text-[16px]">bolt</span><span class="font-label-code text-label-code font-semibold">DISPATCHER PRONTO</span></div><div class="hidden lg:flex items-center gap-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm"><span class="text-outline">DRIVER:</span><span class="text-on-surface">SQLite WAL-mode</span></div></div><div class="flex items-center gap-space-md"><div aria-label="Controle de tema" class="flex items-center p-0.5 rounded bg-surface-container-low" role="group"><button class="px-space-sm py-0.5 rounded font-label-ui text-label-ui text-on-surface-variant hover:text-on-surface" type="button">light</button><button class="px-space-sm py-0.5 rounded font-label-ui text-label-ui bg-surface-container text-primary shadow-[0_1px_8px_rgba(0,0,0,0.04)] font-bold" type="button">system</button><button class="px-space-sm py-0.5 rounded font-label-ui text-label-ui text-on-surface-variant hover:text-on-surface" type="button">dark</button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-16 bg-surface min-h-screen px-gutter-desktop py-margin-desktop"><div class="flex flex-col w-full" data-state="ready" id="scr-jobs">
+<!-- TOAST FEEDBACK CONTAINER -->
+<div class="fixed bottom-6 right-6 z-50 transform translate-y-32 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-space-sm px-space-md py-space-sm rounded bg-surface-container-highest shadow-xl text-on-surface text-body-md" id="job-toast">
+<span class="material-symbols-outlined text-primary text-[20px]" id="toast-icon">info</span>
+<span class="font-body-md" id="toast-message">Aviso operacional</span>
+</div>
+<!-- HEADER METRICS & STATUS RAIL -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-space-lg">
+<!-- METRIC 1 -->
+<div class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface-variant uppercase tracking-wider">Fila em Memória</span>
+<span class="material-symbols-outlined text-primary text-[18px]">schedule</span>
+</div>
+<div class="my-space-xs flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-on-surface font-semibold">14</span>
+<span class="font-label-code-sm text-label-code-sm text-tertiary">recados ativos</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm pt-space-xs">
+<span>Próximo tick:</span>
+<span class="text-primary">00:01:14</span>
+</div>
+</div>
+<!-- METRIC 2 -->
+<div class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface-variant uppercase tracking-wider">Despachos Hoje</span>
+<span class="material-symbols-outlined text-tertiary text-[18px]">done_all</span>
+</div>
+<div class="my-space-xs flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-on-surface font-semibold">128</span>
+<span class="font-label-code-sm text-label-code-sm text-tertiary">+12.4%</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm pt-space-xs">
+<span>Taxa de entrega:</span>
+<span class="text-tertiary">99.2%</span>
+</div>
+</div>
+<!-- METRIC 3 -->
+<div class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface-variant uppercase tracking-wider">Erros Registrados</span>
+<span class="material-symbols-outlined text-error text-[18px]">error</span>
+</div>
+<div class="my-space-xs flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-error font-semibold">1</span>
+<span class="font-label-code-sm text-label-code-sm text-error">Requer atenção</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm pt-space-xs">
+<span>Último:</span>
+<span class="text-outline">400 Bad Payload</span>
+</div>
+</div>
+<!-- METRIC 4: LATENCY & BACKEND -->
+<div class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui text-on-surface-variant uppercase tracking-wider">Modo Storage</span>
+<span class="font-label-code-sm text-label-code-sm text-primary px-1.5 py-0.5 rounded bg-surface-container">WAL</span>
+</div>
+<div class="my-space-xs flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-on-surface font-semibold">0.8<span class="font-body-md text-body-md text-outline">ms</span></span>
+<span class="font-label-code-sm text-label-code-sm text-tertiary">p99 tx</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm pt-space-xs">
+<span>Locks SQLite:</span>
+<span class="text-tertiary">0 pendentes</span>
+</div>
+</div>
+</section>
+<!-- WIDGET 1: JOB FILTERS (wdg-job-filters) -->
+<section class="bg-surface-container-low p-space-md rounded shadow-sm mb-space-lg" id="wdg-job-filters">
+<div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">tune</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Filtros de Execução</span>
+<span class="font-label-code-sm text-label-code-sm text-outline ml-space-xs">/jobs.filter()</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="px-space-md py-1.5 rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-space-xs shadow-sm hover:brightness-110 active:brightness-95 transition-all" id="btn-open-create-modal" type="button">
+<span class="material-symbols-outlined text-[16px]">add_task</span>
+<span>Novo Agendamento</span>
+</button>
+</div>
+</div>
+<form class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-space-sm items-end" id="form-job-filters">
+<!-- Campo 1: status -->
+<div class="flex flex-col gap-1 min-w-0">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="filter-status">Status</label>
+<select class="w-full bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-1.5 focus:outline-none focus:ring-1 focus:ring-primary" id="filter-status" name="status">
+<option selected="" value="upcoming">upcoming (Agendados)</option>
+<option value="all">all (Todos)</option>
+<option value="done">done (Concluídos)</option>
+<option value="paused">paused (Pausados)</option>
+<option value="error">error (Falhas)</option>
+</select>
+</div>
+<!-- Campo 2: from -->
+<div class="flex flex-col gap-1 min-w-0">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="filter-from">Início Janela (from)</label>
+<input class="w-full bg-surface-container-lowest text-on-surface font-label-code-sm text-label-code-sm rounded px-space-sm py-1.5 focus:outline-none focus:ring-1 focus:ring-primary" id="filter-from" name="from" type="datetime-local"/>
+</div>
+<!-- Campo 3: to com Tooltip Explícito -->
+<div class="flex flex-col gap-1 min-w-0 relative group">
+<div class="flex items-center justify-between">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant flex items-center gap-1 cursor-help" for="filter-to">
+<span>Fim Janela (to)</span>
+<span class="material-symbols-outlined text-primary text-[14px]">info</span>
+</label>
+<!-- Tooltip Obrigatório Conforme Spec -->
+<div class="absolute bottom-full left-0 mb-1 hidden group-hover:block w-64 p-space-sm bg-surface-container-highest text-on-surface rounded shadow-xl font-label-code-sm text-label-code-sm z-30 pointer-events-none leading-normal">
+<span class="text-primary font-semibold">ATENÇÃO:</span> 'to' define o FIM DO INTERVALO DE DATA/TEMPO de execução, não o destinatário do recado!
+          </div>
+</div>
+<input class="w-full bg-surface-container-lowest text-on-surface font-label-code-sm text-label-code-sm rounded px-space-sm py-1.5 focus:outline-none focus:ring-1 focus:ring-primary" id="filter-to" name="to" type="datetime-local"/>
+</div>
+<!-- Campo 4: phone -->
+<div class="flex flex-col gap-1 min-w-0">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="filter-phone">Tel. Destinatário</label>
+<input class="w-full bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-1.5 placeholder:text-outline-variant focus:outline-none focus:ring-1 focus:ring-primary" id="filter-phone" name="phone" placeholder="+5511999990000" type="text"/>
+</div>
+<!-- Campo 5: limit -->
+<div class="flex flex-col gap-1 min-w-0">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="filter-limit">Limite (1-100)</label>
+<input class="w-full bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-1.5 focus:outline-none focus:ring-1 focus:ring-primary" id="filter-limit" max="100" min="1" name="limit" type="number" value="50"/>
+</div>
+<!-- Ações Filtro -->
+<div class="flex items-center gap-space-xs pt-1">
+<button class="flex-1 px-space-sm py-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all" type="submit">
+<span class="material-symbols-outlined text-[16px]">filter_alt</span>
+<span>Filtrar</span>
+</button>
+<button class="px-space-sm py-1.5 rounded bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all" id="btn-reset-filters" title="Limpar Filtros" type="reset">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+</button>
+</div>
+</form>
+</section>
+<!-- MAIN DUAL-PANE VIEW: LIST & DETAIL -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+<!-- WIDGET 2: JOB LIST (wdg-job-list) - 7 cols on Desktop -->
+<section class="lg:col-span-7 bg-surface-container-low p-space-md rounded shadow-sm flex flex-col" id="wdg-job-list">
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">dataset</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Agendas Registradas</h2>
+<span class="font-label-code-sm text-label-code-sm text-outline px-space-xs py-0.5 rounded bg-surface-container-lowest">JobListItem[]</span>
+</div>
+<div class="flex items-center gap-space-xs font-label-code-sm text-label-code-sm text-on-surface-variant">
+<span>Total:</span>
+<span class="font-semibold text-primary" id="list-count-badge">4 itens</span>
+</div>
+</div>
+<!-- Tabela Estruturada de Recados -->
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left font-body-sm text-body-sm text-on-surface">
+<thead>
+<tr class="bg-surface-container-lowest text-on-surface-variant font-label-ui text-label-ui uppercase tracking-wider border-b-0">
+<th class="py-2.5 px-space-sm">Status</th>
+<th class="py-2.5 px-space-sm">Título &amp; Destino</th>
+<th class="py-2.5 px-space-sm">Tipo / Próx. Execução</th>
+<th class="py-2.5 px-space-sm">Origem</th>
+<th class="py-2.5 px-space-sm text-right">Ações</th>
+</tr>
+</thead>
+<tbody class="font-label-code-sm text-label-code-sm divide-y-0" id="job-table-body">
+<!-- ROW 1: YAML (Imutável) -->
+<tr class="bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer group" data-job-id="job-yaml-heartbeat" onclick="inspectJob('job-yaml-heartbeat')">
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-code-sm text-label-code-sm uppercase">
+<span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span>
+                  scheduled
+                </span>
+</td>
+<td class="py-2.5 px-space-sm">
+<div class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors">Heartbeat Diário de Backup</div>
+<div class="text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">call_made</span>
+<span>eu (Admin Primary)</span>
+<span class="text-outline-variant font-label-code-sm text-label-code-sm">• tpl: tpl-ops-01</span>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<div class="inline-block px-1.5 py-0.5 rounded bg-surface-container-lowest text-secondary font-label-code-sm text-label-code-sm">cron: 0 4 * * *</div>
+<div class="text-tertiary font-label-code-sm text-label-code-sm mt-0.5">Amanhã às 04:00:00</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<div class="flex flex-col items-start gap-1">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-highest text-primary-fixed font-label-ui text-label-ui uppercase tracking-wider" title="Configuração estática declarativa via arquivo YAML">
+<span class="material-symbols-outlined text-[12px]">code_blocks</span>
+                    yaml
+                  </span>
+<span class="font-label-code-sm text-[10px] text-outline">HTTP 409 locked</span>
+</div>
+</td>
+<td class="py-2.5 px-space-sm text-right" onclick="event.stopPropagation()">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all" onclick="runJobNow('job-yaml-heartbeat', 'Heartbeat Diário de Backup')" title="POST /jobs/job-yaml-heartbeat/run" type="button">
+                    Disparar
+                  </button>
+<button class="px-2 py-1 rounded bg-surface-container-lowest text-outline-variant opacity-40 font-label-ui text-label-ui uppercase tracking-wider cursor-not-allowed" disabled="" title="Recados YAML são imutáveis via API (409)" type="button">
+                    Imutável
+                  </button>
+</div>
+</td>
+</tr>
+<!-- ROW 2: SQLite Recorrente Custom -->
+<tr class="bg-surface-container-low hover:bg-surface-container-high transition-colors cursor-pointer group" data-job-id="job-sql-0981" onclick="inspectJob('job-sql-0981')">
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-code-sm text-label-code-sm uppercase">
+<span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span>
+                  scheduled
+                </span>
+</td>
+<td class="py-2.5 px-space-sm">
+<div class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors">Relatório Manutenção Proxmox</div>
+<div class="text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">call_made</span>
+<span>+55 11 98822-1100</span>
+<span class="text-outline-variant font-label-code-sm text-label-code-sm">• by: monitor-daemon</span>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<div class="inline-block px-1.5 py-0.5 rounded bg-surface-container-lowest text-secondary font-label-code-sm text-label-code-sm">cron: 30 22 * * 5</div>
+<div class="text-on-surface-variant font-label-code-sm text-label-code-sm mt-0.5">Sexta às 22:30:00</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-high text-tertiary font-label-ui text-label-ui uppercase tracking-wider">
+<span class="material-symbols-outlined text-[12px]">database</span>
+                  sqlite
+                </span>
+</td>
+<td class="py-2.5 px-space-sm text-right" onclick="event.stopPropagation()">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all" onclick="runJobNow('job-sql-0981', 'Relatório Manutenção Proxmox')" title="POST /jobs/job-sql-0981/run" type="button">
+                    Disparar
+                  </button>
+<button class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all" onclick="openRescheduleModal('job-sql-0981')" title="Reagendar" type="button">
+                    Editar
+                  </button>
+<button class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all" onclick="cancelJob('job-sql-0981')" title="Cancelar Recado" type="button">
+<span class="material-symbols-outlined text-[16px]">cancel</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- ROW 3: SQLite Once - Agendado Próximo -->
+<tr class="bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer group" data-job-id="job-sql-1042" onclick="inspectJob('job-sql-1042')">
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary-container/30 text-secondary font-label-code-sm text-label-code-sm uppercase">
+<span class="h-1.5 w-1.5 rounded-full bg-secondary"></span>
+                  scheduled
+                </span>
+</td>
+<td class="py-2.5 px-space-sm">
+<div class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors">Aviso de Reinicialização de Switch Core</div>
+<div class="text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">call_made</span>
+<span>+55 11 97711-4433</span>
+<span class="text-outline-variant font-label-code-sm text-label-code-sm">• by: operator-lucas</span>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<div class="inline-block px-1.5 py-0.5 rounded bg-surface-container-lowest text-primary font-label-code-sm text-label-code-sm">once</div>
+<div class="text-on-surface-variant font-label-code-sm text-label-code-sm mt-0.5">Hoje, 23:45:00</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-high text-tertiary font-label-ui text-label-ui uppercase tracking-wider">
+<span class="material-symbols-outlined text-[12px]">database</span>
+                  sqlite
+                </span>
+</td>
+<td class="py-2.5 px-space-sm text-right" onclick="event.stopPropagation()">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all" onclick="runJobNow('job-sql-1042', 'Aviso de Reinicialização de Switch Core')" type="button">
+                    Disparar
+                  </button>
+<button class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all" onclick="openRescheduleModal('job-sql-1042')" type="button">
+                    Editar
+                  </button>
+<button class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all" onclick="cancelJob('job-sql-1042')" title="Cancelar Recado" type="button">
+<span class="material-symbols-outlined text-[16px]">cancel</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- ROW 4: Error Job (Falha Sanitizada) -->
+<tr class="bg-surface-container-low hover:bg-surface-container-high transition-colors cursor-pointer group" data-job-id="job-sql-0919" onclick="inspectJob('job-sql-0919')">
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-error/10 text-error font-label-code-sm text-label-code-sm uppercase">
+<span class="h-1.5 w-1.5 rounded-full bg-error"></span>
+                  error
+                </span>
+</td>
+<td class="py-2.5 px-space-sm">
+<div class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors">Alerta de Temperatura Pi Cluster</div>
+<div class="text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">call_made</span>
+<span>+55 19 99100-2200</span>
+<span class="text-outline-variant font-label-code-sm text-label-code-sm">• by: netdata-webhook</span>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<div class="inline-block px-1.5 py-0.5 rounded bg-surface-container-lowest text-error font-label-code-sm text-label-code-sm">once (falhou)</div>
+<div class="text-outline font-label-code-sm text-label-code-sm mt-0.5">Retentativas: 3/3</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-high text-tertiary font-label-ui text-label-ui uppercase tracking-wider">
+<span class="material-symbols-outlined text-[12px]">database</span>
+                  sqlite
+                </span>
+</td>
+<td class="py-2.5 px-space-sm text-right" onclick="event.stopPropagation()">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all" onclick="runJobNow('job-sql-0919', 'Alerta Temperatura Pi Cluster')" type="button">
+                    Retry
+                  </button>
+<button class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all" onclick="openRescheduleModal('job-sql-0919')" type="button">
+                    Reagendar
+                  </button>
+<button class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all" onclick="cancelJob('job-sql-0919')" type="button">
+<span class="material-symbols-outlined text-[16px]">cancel</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- FOOTER DA TABELA -->
+<div class="flex items-center justify-between pt-space-md text-on-surface-variant font-label-code-sm text-label-code-sm">
+<span class="text-outline">Exibindo 4 de 4 jobs carregados</span>
+<div class="flex items-center gap-space-xs">
+<button class="px-2 py-1 rounded bg-surface-container opacity-40 cursor-not-allowed" disabled="" type="button">Anterior</button>
+<span class="px-2 py-1 bg-surface-container-highest text-primary rounded">Pág. 1</span>
+<button class="px-2 py-1 rounded bg-surface-container opacity-40 cursor-not-allowed" disabled="" type="button">Próximo</button>
+</div>
+</div>
+</section>
+<!-- WIDGET 3: JOB DETAIL (wdg-job-detail) - 5 cols on Desktop -->
+<section class="lg:col-span-5 bg-surface-container-low p-space-md rounded shadow-sm flex flex-col gap-space-md sticky top-20" id="wdg-job-detail">
+<!-- Cabeçalho do Detalhe -->
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">policy</span>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Inspeção do Job</h3>
+<span class="font-label-code-sm text-label-code-sm text-outline" id="detail-job-id">ID: job-yaml-heartbeat</span>
+</div>
+</div>
+<div id="detail-source-badge">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-highest text-primary-fixed font-label-ui text-label-ui uppercase tracking-wider">
+<span class="material-symbols-outlined text-[13px]">code_blocks</span>
+            YAML (Imutável)
+          </span>
+</div>
+</div>
+<!-- Aviso Imutabilidade para Jobs YAML -->
+<div class="p-space-sm rounded bg-surface-container-lowest text-on-surface-variant font-body-sm text-body-sm flex items-start gap-space-xs" id="detail-yaml-warning">
+<span class="material-symbols-outlined text-primary text-[16px] mt-0.5">lock</span>
+<div>
+<span class="font-semibold text-on-surface">Recado Declarativo:</span> Definido em <code class="text-primary font-label-code-sm">scheduler.yaml</code>. Alterações devem ser commitadas no repositório de infraestrutura homelab. Tentativas de mutação direta retornam erro <strong>HTTP 409 Conflict</strong>.
+        </div>
+</div>
+<!-- Grid de Metadados Principais -->
+<div class="grid grid-cols-2 gap-space-sm bg-surface-container-lowest p-space-sm rounded">
+<div>
+<span class="font-label-ui text-label-ui uppercase text-outline block">Título</span>
+<span class="font-body-md text-body-md font-semibold text-on-surface" id="detail-title">Heartbeat Diário de Backup</span>
+</div>
+<div>
+<span class="font-label-ui text-label-ui uppercase text-outline block">Status de Fila</span>
+<span class="inline-flex items-center gap-1 font-label-code-sm text-label-code-sm text-tertiary" id="detail-status">
+<span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span>
+            scheduled (ativo)
+          </span>
+</div>
+<div>
+<span class="font-label-ui text-label-ui uppercase text-outline block">Destino (Target)</span>
+<span class="font-label-code text-label-code text-on-surface" id="detail-target">eu (Admin Primary)</span>
+</div>
+<div>
+<span class="font-label-ui text-label-ui uppercase text-outline block">Criado Por</span>
+<span class="font-label-code text-label-code text-on-surface" id="detail-created-by">system:core-daemon</span>
+</div>
+<div>
+<span class="font-label-ui text-label-ui uppercase text-outline block">Tipo (Kind)</span>
+<span class="font-label-code text-label-code text-secondary" id="detail-kind">cron</span>
+</div>
+<div>
+<span class="font-label-ui text-label-ui uppercase text-outline block">Expressão / Run At</span>
+<span class="font-label-code text-label-code text-on-surface" id="detail-schedule">0 4 * * *</span>
+</div>
+</div>
+<!-- Histórico de Execução & Telemetria -->
+<div class="bg-surface-container p-space-sm rounded flex flex-col gap-space-xs font-label-code-sm text-label-code-sm">
+<div class="flex items-center justify-between text-outline">
+<span>Última Execução (last_run_at):</span>
+<span class="text-on-surface" id="detail-last-run">2025-05-18 04:00:02 BRT</span>
+</div>
+<div class="flex items-center justify-between text-outline">
+<span>Último Status (last_status):</span>
+<span class="text-tertiary font-semibold" id="detail-last-status">200 OK (Delivered)</span>
+</div>
+<div class="flex items-center justify-between text-outline">
+<span>Tentativas (retry_count):</span>
+<span class="text-on-surface" id="detail-retries">0</span>
+</div>
+<div class="flex items-start justify-between text-outline pt-1">
+<span>Último Erro (last_error):</span>
+<span class="text-tertiary font-label-code-sm text-label-code-sm max-w-[200px] text-right truncate" id="detail-last-error">null (Nenhuma falha)</span>
+</div>
+</div>
+<!-- Payload Completo da Mensagem (content integral) -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui uppercase text-on-surface-variant">Conteúdo Integral (content)</span>
+<span class="font-label-code-sm text-label-code-sm text-outline">plaintext</span>
+</div>
+<div class="p-space-sm rounded bg-surface-container-lowest text-on-surface font-label-code-sm text-label-code-sm whitespace-pre-wrap leading-relaxed max-h-36 overflow-y-auto" id="detail-content">[SISTEMA] Rotina de backup local SQLite finalizada com sucesso no nó hl-node-01. Snapshots WAL sincronizados para /mnt/storage/backups. Volume livre: 84%.</div>
+</div>
+<!-- Ações Operacionais Dedicadas -->
+<div class="pt-space-xs flex flex-col gap-space-xs">
+<span class="font-label-ui text-label-ui uppercase text-outline">Comandos do Operador</span>
+<div class="grid grid-cols-3 gap-space-xs">
+<!-- Disparar Agora: POST /jobs/{id}/run -> 202 Queued -->
+<button class="px-space-sm py-2 rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm hover:brightness-110 active:brightness-95 transition-all" id="btn-detail-run" onclick="triggerSelectedRun()" type="button">
+<span class="material-symbols-outlined text-[16px]">send</span>
+<span>Disparar</span>
+</button>
+<!-- Reagendar -->
+<button class="px-space-sm py-2 rounded bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all" id="btn-detail-reschedule" onclick="triggerSelectedReschedule()" type="button">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span>Reagendar</span>
+</button>
+<!-- Cancelar Recado -->
+<button class="px-space-sm py-2 rounded bg-error-container/20 hover:bg-error-container text-error hover:text-on-error font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all" id="btn-detail-cancel" onclick="triggerSelectedCancel()" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+<span>Cancelar</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+<!-- WIDGET 4: FORMULÁRIO DE AGENDAMENTO AVULSO (wdg-job-create) [MODAL OVERLAY] -->
+<div class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-space-md hidden" id="modal-job-create">
+<section class="bg-surface-container-low max-w-2xl w-full rounded shadow-xl p-space-lg flex flex-col max-h-[90vh] overflow-y-auto" id="wdg-job-create">
+<!-- Modal Header -->
+<div class="flex items-center justify-between pb-space-sm mb-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[22px]">add_circle</span>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Agendamento de Novo Recado</h2>
+<span class="font-label-code-sm text-label-code-sm text-outline">POST /jobs (SQLite storage)</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container transition-colors" id="btn-close-create-modal" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<form class="flex flex-col gap-space-md" id="form-job-create" onsubmit="handleCreateJob(event)">
+<!-- Campo: title -->
+<div class="flex flex-col gap-1">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="create-title">
+            Título do Recado <span class="text-primary">*</span>
+</label>
+<input class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded px-space-sm py-2 placeholder:text-outline-variant focus:outline-none focus:ring-1 focus:ring-primary" id="create-title" name="title" placeholder="Ex: Alerta de Reinicialização de Container" required="" type="text"/>
+</div>
+<!-- Tipo (kind) & Execução (run_at XOR cron_expr) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md p-space-sm bg-surface-container rounded">
+<div class="flex flex-col gap-1">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="create-kind">Tipo de Frequência (kind)</label>
+<select class="w-full bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-2 focus:outline-none focus:ring-1 focus:ring-primary" id="create-kind" name="kind" onchange="toggleKindFields(this.value)">
+<option selected="" value="once">once (Data/Hora fixa única)</option>
+<option value="cron">cron (Recorrência programada)</option>
+</select>
+</div>
+<!-- Campo run_at (para kind=once) -->
+<div class="flex flex-col gap-1" id="field-run-at-container">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="create-run-at">
+              Data e Hora (run_at) <span class="text-primary">*</span>
+</label>
+<input class="w-full bg-surface-container-lowest text-on-surface font-label-code-sm text-label-code-sm rounded px-space-sm py-2 focus:outline-none focus:ring-1 focus:ring-primary" id="create-run-at" name="run_at" type="datetime-local"/>
+</div>
+<!-- Campo cron_expr (para kind=cron) -->
+<div class="flex flex-col gap-1 hidden" id="field-cron-container">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="create-cron-expr">
+              Expressão Cron de 5 Campos <span class="text-primary">*</span>
+</label>
+<input class="w-full bg-surface-container-lowest text-primary font-label-code text-label-code rounded px-space-sm py-2 placeholder:text-outline-variant focus:outline-none focus:ring-1 focus:ring-primary" id="create-cron-expr" name="cron_expr" placeholder="0 8 * * 1-5" type="text"/>
+<span class="font-label-code-sm text-label-code-sm text-outline">Formato: minuto hora dia_mês mês dia_semana</span>
+</div>
+</div>
+<!-- Destinatário (to) e Criador (created_by) com Integração ao Picker -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<!-- Campo: to -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="create-to">
+                Destinatário (to) <span class="text-primary">*</span>
+</label>
+<button class="font-label-code-sm text-label-code-sm text-primary hover:underline flex items-center gap-0.5" onclick="openContactPicker('create-to')" type="button">
+<span class="material-symbols-outlined text-[14px]">contacts</span>
+<span>Selecionar Contato</span>
+</button>
+</div>
+<input class="w-full bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-2 focus:outline-none focus:ring-1 focus:ring-primary" id="create-to" name="to" required="" type="text" value="eu"/>
+<span class="font-body-sm text-body-sm text-outline">Padrão da API: "eu" ou número E.164 (+55119...)</span>
+</div>
+<!-- Campo: created_by -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="create-created-by">
+                Criado Por (created_by)
+              </label>
+<button class="font-label-code-sm text-label-code-sm text-primary hover:underline flex items-center gap-0.5" onclick="openContactPicker('create-created-by')" type="button">
+<span class="material-symbols-outlined text-[14px]">contacts</span>
+<span>Preencher</span>
+</button>
+</div>
+<input class="w-full bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-2 placeholder:text-outline-variant focus:outline-none focus:ring-1 focus:ring-primary" id="create-created-by" name="created_by" placeholder="ex: sysadmin-rota" type="text"/>
+</div>
+</div>
+<!-- XOR PAYLOAD: content XOR template_id -->
+<div class="flex flex-col gap-space-xs p-space-sm bg-surface-container-lowest rounded">
+<div class="flex items-center justify-between">
+<span class="font-label-ui text-label-ui uppercase text-on-surface-variant">Payload: Mensagem Direta OU Modelo</span>
+<div class="flex items-center gap-space-xs font-label-code-sm text-label-code-sm">
+<label class="flex items-center gap-1 cursor-pointer">
+<input checked="" class="text-primary" name="payload_mode" onchange="togglePayloadMode('direct')" type="radio" value="direct"/>
+<span>Texto Direto</span>
+</label>
+<label class="flex items-center gap-1 cursor-pointer">
+<input class="text-primary" name="payload_mode" onchange="togglePayloadMode('template')" type="radio" value="template"/>
+<span>Template ID</span>
+</label>
+</div>
+</div>
+<!-- Direto: textarea name="content" -->
+<div class="flex flex-col gap-1" id="field-direct-content">
+<textarea class="w-full bg-surface-container text-on-surface font-body-md text-body-md rounded p-space-sm placeholder:text-outline-variant focus:outline-none focus:ring-1 focus:ring-primary" id="create-content" name="content" placeholder="Digite o recado completo a ser transmitido pelo despachante..." rows="3"></textarea>
+</div>
+<!-- Template: select/input name="template_id" -->
+<div class="flex flex-col gap-1 hidden" id="field-template-id">
+<select class="w-full bg-surface-container text-on-surface font-label-code text-label-code rounded px-space-sm py-2 focus:outline-none focus:ring-1 focus:ring-primary" id="create-template-id" name="template_id">
+<option value="">-- Escolha um modelo registrado --</option>
+<option value="tpl-ops-01">tpl-ops-01: Backup Status Report (YAML)</option>
+<option value="tpl-alert-failover">tpl-alert-failover: Gateway Fallback Notifier</option>
+<option value="tpl-reboot-warning">tpl-reboot-warning: Manutenção Programada Host</option>
+</select>
+</div>
+</div>
+<!-- Ações do Modal -->
+<div class="flex items-center justify-end gap-space-sm pt-space-xs">
+<button class="px-space-md py-2 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all" id="btn-cancel-modal" type="button">
+            Cancelar
+          </button>
+<button class="px-space-md py-2 rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase tracking-wider shadow-sm hover:brightness-110 active:brightness-95 transition-all flex items-center gap-1" type="submit">
+<span class="material-symbols-outlined text-[16px]">save</span>
+<span>Registrar na Agenda</span>
+</button>
+</div>
+</form>
+</section>
+</div>
+<!-- WIDGET 5: CONTATOS PICKER (wdg-contact-pick) [MODAL POPUP AUXILIAR] -->
+<div class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-space-md hidden" id="wdg-contact-pick">
+<div class="bg-surface-container-low max-w-md w-full rounded shadow-xl p-space-md flex flex-col gap-space-sm">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">contacts</span>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Selecionar Contato</h3>
+<span class="font-label-code-sm text-label-code-sm text-outline">GET /contacts</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container" onclick="closeContactPicker()" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Filtro Rápido no Picker -->
+<div class="relative">
+<input class="w-full bg-surface-container-lowest text-on-surface font-body-sm text-body-sm rounded pl-8 pr-space-sm py-1.5 focus:outline-none focus:ring-1 focus:ring-primary" id="picker-search-input" oninput="filterPickerContacts(this.value)" placeholder="Buscar por nome ou número..." type="text"/>
+<span class="material-symbols-outlined absolute left-2 top-2 text-[16px] text-outline">search</span>
+</div>
+<!-- Lista de Contatos -->
+<div class="flex flex-col gap-1 max-h-60 overflow-y-auto" id="picker-contacts-list">
+<!-- Contato 1 -->
+<div class="p-space-sm rounded bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer flex items-center justify-between" onclick="selectContact('+55 11 98822-1100', 'Rodrigo Sysadmin')">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Rodrigo Sysadmin</span>
+<span class="font-label-code-sm text-label-code-sm text-primary">+55 11 98822-1100</span>
+</div>
+<span class="font-label-code-sm text-label-code-sm text-outline px-1.5 py-0.5 rounded bg-surface-container-lowest">NOC Lead</span>
+</div>
+<!-- Contato 2 -->
+<div class="p-space-sm rounded bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer flex items-center justify-between" onclick="selectContact('+55 11 97711-4433', 'Lucas Operador')">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Lucas Operador</span>
+<span class="font-label-code-sm text-label-code-sm text-primary">+55 11 97711-4433</span>
+</div>
+<span class="font-label-code-sm text-label-code-sm text-outline px-1.5 py-0.5 rounded bg-surface-container-lowest">Infra</span>
+</div>
+<!-- Contato 3 -->
+<div class="p-space-sm rounded bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer flex items-center justify-between" onclick="selectContact('eu', 'Eu Mesmo (Admin)')">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Eu Mesmo (Default Gateway)</span>
+<span class="font-label-code-sm text-label-code-sm text-tertiary">alias: "eu"</span>
+</div>
+<span class="font-label-code-sm text-label-code-sm text-outline px-1.5 py-0.5 rounded bg-surface-container-lowest">Self</span>
+</div>
+<!-- Contato 4 -->
+<div class="p-space-sm rounded bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer flex items-center justify-between" onclick="selectContact('+55 19 99100-2200', 'Plantão Homelab')">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Plantão Homelab</span>
+<span class="font-label-code-sm text-label-code-sm text-primary">+55 19 99100-2200</span>
+</div>
+<span class="font-label-code-sm text-label-code-sm text-outline px-1.5 py-0.5 rounded bg-surface-container-lowest">Rota 24/7</span>
+</div>
+</div>
+</div>
+</div>
+<!-- MODAL DE REAGENDAMENTO OPERACIONAL -->
+<div class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-space-md hidden" id="modal-reschedule">
+<div class="bg-surface-container-low max-w-md w-full rounded shadow-xl p-space-md flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">edit_calendar</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Reagendar Recado</h3>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container" onclick="closeRescheduleModal()" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+        Atualize os parâmetros de disparo para <span class="font-label-code text-primary font-semibold" id="reschedule-job-id"></span>.
+      </p>
+<div class="flex flex-col gap-space-sm">
+<div class="flex flex-col gap-1">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant">Nova Data/Hora Fixa (run_at)</label>
+<input class="w-full bg-surface-container-lowest text-on-surface font-label-code-sm text-label-code-sm rounded px-space-sm py-2 focus:outline-none focus:ring-1 focus:ring-primary" id="reschedule-input-run-at" type="datetime-local"/>
+</div>
+<div class="flex items-center justify-center text-outline font-label-code-sm text-label-code-sm">OU</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant">Expressão Cron (5 campos)</label>
+<input class="w-full bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-2 focus:outline-none focus:ring-1 focus:ring-primary" id="reschedule-input-cron" placeholder="*/15 * * * *" type="text"/>
+</div>
+</div>
+<div class="flex items-center justify-end gap-space-sm pt-space-xs">
+<button class="px-space-md py-1.5 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider" onclick="closeRescheduleModal()" type="button">
+          Fechar
+        </button>
+<button class="px-space-md py-1.5 rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase tracking-wider" onclick="confirmReschedule()" type="button">
+          Salvar Agendamento
+        </button>
+</div>
+</div>
+</div>
+</div>
+<!-- LOGIC & CLIENT INTERACTIONS -->
+<script>
+  // Estado em Memória da Tela
+  let currentActiveJobId = 'job-yaml-heartbeat';
+  let targetPickerField = null;
+  let activeRescheduleId = null;
+
+  const mockJobsData = {
+    'job-yaml-heartbeat': {
+      id: 'job-yaml-heartbeat',
+      title: 'Heartbeat Diário de Backup',
+      target_number: 'eu (Admin Primary)',
+      created_by: 'system:core-daemon',
+      kind: 'cron',
+      schedule: '0 4 * * *',
+      status: 'scheduled',
+      source: 'yaml',
+      last_run_at: '2025-05-18 04:00:02 BRT',
+      last_status: '200 OK (Delivered)',
+      retry_count: 0,
+      last_error: null,
+      content: '[SISTEMA] Rotina de backup local SQLite finalizada com sucesso no nó hl-node-01. Snapshots WAL sincronizados para /mnt/storage/backups. Volume livre: 84%.'
+    },
+    'job-sql-0981': {
+      id: 'job-sql-0981',
+      title: 'Relatório Manutenção Proxmox',
+      target_number: '+55 11 98822-1100',
+      created_by: 'monitor-daemon',
+      kind: 'cron',
+      schedule: '30 22 * * 5',
+      status: 'scheduled',
+      source: 'sqlite',
+      last_run_at: '2025-05-16 22:30:00 BRT',
+      last_status: '200 OK (Dispatched)',
+      retry_count: 0,
+      last_error: null,
+      content: 'Aviso Semanal: Varredura de integridade SMART nos discos ZFS completada sem setores realocados.'
+    },
+    'job-sql-1042': {
+      id: 'job-sql-1042',
+      title: 'Aviso de Reinicialização de Switch Core',
+      target_number: '+55 11 97711-4433',
+      created_by: 'operator-lucas',
+      kind: 'once',
+      schedule: '2025-05-19 23:45:00',
+      status: 'scheduled',
+      source: 'sqlite',
+      last_run_at: 'Nunca executado',
+      last_status: 'Pendente',
+      retry_count: 0,
+      last_error: null,
+      content: 'Atenção equipe: Switch Core L3 passará por reinicialização de firmware às 23:45. Queda de gateway prevista em 90s.'
+    },
+    'job-sql-0919': {
+      id: 'job-sql-0919',
+      title: 'Alerta de Temperatura Pi Cluster',
+      target_number: '+55 19 99100-2200',
+      created_by: 'netdata-webhook',
+      kind: 'once',
+      schedule: '2025-05-19 14:02:11',
+      status: 'error',
+      source: 'sqlite',
+      last_run_at: '2025-05-19 14:05:00 BRT',
+      last_status: '504 Gateway Timeout',
+      retry_count: 3,
+      last_error: 'HTTP Error 504: Endpoint WhatsApp Bridge indisponível após 3 tentativas de conexão',
+      content: 'ALERTA TÉRMICO: O nó rpi-worker-03 atingiu 78°C! Risco de throttling ativado.'
+    }
+  };
+
+  function showToast(msg, icon = 'info', isError = false) {
+    const toast = document.getElementById('job-toast');
+    const toastMsg = document.getElementById('toast-message');
+    const toastIcon = document.getElementById('toast-icon');
+    
+    toastMsg.textContent = msg;
+    toastIcon.textContent = icon;
+    toastIcon.className = isError ? 'material-symbols-outlined text-error text-[20px]' : 'material-symbols-outlined text-primary text-[20px]';
+
+    toast.classList.remove('translate-y-32', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    setTimeout(() => {
+      toast.classList.add('translate-y-32', 'opacity-0');
+      toast.classList.remove('translate-y-0', 'opacity-100');
+    }, 4200);
+  }
+
+  function inspectJob(jobId) {
+    const job = mockJobsData[jobId];
+    if (!job) return;
+    currentActiveJobId = jobId;
+
+    document.getElementById('detail-job-id').textContent = 'ID: ' + job.id;
+    document.getElementById('detail-title').textContent = job.title;
+    document.getElementById('detail-target').textContent = job.target_number;
+    document.getElementById('detail-created-by').textContent = job.created_by;
+    document.getElementById('detail-kind').textContent = job.kind;
+    document.getElementById('detail-schedule').textContent = job.schedule;
+    
+    // Status visual
+    const statusEl = document.getElementById('detail-status');
+    if (job.status === 'error') {
+      statusEl.className = 'inline-flex items-center gap-1 font-label-code-sm text-label-code-sm text-error';
+      statusEl.innerHTML = '<span class="h-1.5 w-1.5 rounded-full bg-error"></span> error (falhou)';
+    } else {
+      statusEl.className = 'inline-flex items-center gap-1 font-label-code-sm text-label-code-sm text-tertiary';
+      statusEl.innerHTML = '<span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span> ' + job.status;
+    }
+
+    document.getElementById('detail-last-run').textContent = job.last_run_at;
+    document.getElementById('detail-last-status').textContent = job.last_status;
+    document.getElementById('detail-retries').textContent = job.retry_count;
+    document.getElementById('detail-last-error').textContent = job.last_error ? job.last_error : 'null (Sem erros)';
+    document.getElementById('detail-content').textContent = job.content;
+
+    // Badges e avisos YAML
+    const yamlWarning = document.getElementById('detail-yaml-warning');
+    const sourceBadge = document.getElementById('detail-source-badge');
+    const btnReschedule = document.getElementById('btn-detail-reschedule');
+    const btnCancel = document.getElementById('btn-detail-cancel');
+
+    if (job.source === 'yaml') {
+      yamlWarning.classList.remove('hidden');
+      sourceBadge.innerHTML = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-highest text-primary-fixed font-label-ui text-label-ui uppercase tracking-wider"><span class="material-symbols-outlined text-[13px]">code_blocks</span>YAML (Imutável)</span>';
+      btnReschedule.disabled = true;
+      btnReschedule.className = 'px-space-sm py-2 rounded bg-surface-container opacity-40 text-outline cursor-not-allowed font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1';
+      btnCancel.disabled = true;
+      btnCancel.className = 'px-space-sm py-2 rounded bg-surface-container opacity-40 text-outline cursor-not-allowed font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1';
+    } else {
+      yamlWarning.classList.add('hidden');
+      sourceBadge.innerHTML = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-high text-tertiary font-label-ui text-label-ui uppercase tracking-wider"><span class="material-symbols-outlined text-[13px]">database</span>SQLite</span>';
+      btnReschedule.disabled = false;
+      btnReschedule.className = 'px-space-sm py-2 rounded bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all';
+      btnCancel.disabled = false;
+      btnCancel.className = 'px-space-sm py-2 rounded bg-error-container/20 hover:bg-error-container text-error hover:text-on-error font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all';
+    }
+  }
+
+  function runJobNow(jobId, jobTitle) {
+    showToast(`POST /jobs/${jobId}/run -> 202 Accepted. Recado "${jobTitle}" enfileirado no despachante local.`, 'bolt');
+  }
+
+  function triggerSelectedRun() {
+    const job = mockJobsData[currentActiveJobId];
+    if (job) runJobNow(job.id, job.title);
+  }
+
+  function cancelJob(jobId) {
+    const job = mockJobsData[jobId];
+    if (job && job.source === 'yaml') {
+      showToast('HTTP 409 Conflict: Recados originados de YAML não podem ser cancelados via API.', 'lock', true);
+      return;
+    }
+    if (confirm(`Confirma cancelamento do recado [${jobId}]?`)) {
+      showToast(`POST /jobs/${jobId}/cancel executado com sucesso. Status alterado para canceled.`, 'check');
+    }
+  }
+
+  function triggerSelectedCancel() {
+    cancelJob(currentActiveJobId);
+  }
+
+  function openRescheduleModal(jobId) {
+    const job = mockJobsData[jobId];
+    if (job && job.source === 'yaml') {
+      showToast('HTTP 409 Conflict: Recados YAML são declarativos e imutáveis.', 'lock', true);
+      return;
+    }
+    activeRescheduleId = jobId;
+    document.getElementById('reschedule-job-id').textContent = jobId;
+    document.getElementById('modal-reschedule').classList.remove('hidden');
+  }
+
+  function triggerSelectedReschedule() {
+    openRescheduleModal(currentActiveJobId);
+  }
+
+  function closeRescheduleModal() {
+    document.getElementById('modal-reschedule').classList.add('hidden');
+  }
+
+  function confirmReschedule() {
+    const newRunAt = document.getElementById('reschedule-input-run-at').value;
+    const newCron = document.getElementById('reschedule-input-cron').value;
+    if (!newRunAt && !newCron) {
+      showToast('Especifique um novo run_at ou cron de 5 campos.', 'warning', true);
+      return;
+    }
+    closeRescheduleModal();
+    showToast(`Recado ${activeRescheduleId} reagendado com sucesso (SQLite WAL commit).`, 'schedule');
+  }
+
+  // Controle de Abas / Modal Novo Agendamento
+  document.getElementById('btn-open-create-modal').addEventListener('click', () => {
+    document.getElementById('modal-job-create').classList.remove('hidden');
+  });
+
+  document.getElementById('btn-close-create-modal').addEventListener('click', () => {
+    document.getElementById('modal-job-create').classList.add('hidden');
+  });
+
+  document.getElementById('btn-cancel-modal').addEventListener('click', () => {
+    document.getElementById('modal-job-create').classList.add('hidden');
+  });
+
+  function toggleKindFields(kind) {
+    const runAtContainer = document.getElementById('field-run-at-container');
+    const cronContainer = document.getElementById('field-cron-container');
+    const inputRunAt = document.getElementById('create-run-at');
+    const inputCron = document.getElementById('create-cron-expr');
+
+    if (kind === 'once') {
+      runAtContainer.classList.remove('hidden');
+      cronContainer.classList.add('hidden');
+      inputRunAt.required = true;
+      inputCron.required = false;
+    } else {
+      runAtContainer.classList.add('hidden');
+      cronContainer.classList.remove('hidden');
+      inputRunAt.required = false;
+      inputCron.required = true;
+    }
+  }
+
+  function togglePayloadMode(mode) {
+    const directField = document.getElementById('field-direct-content');
+    const templateField = document.getElementById('field-template-id');
+    const contentText = document.getElementById('create-content');
+    const templateSelect = document.getElementById('create-template-id');
+
+    if (mode === 'direct') {
+      directField.classList.remove('hidden');
+      templateField.classList.add('hidden');
+      templateSelect.value = '';
+    } else {
+      directField.classList.add('hidden');
+      templateField.classList.remove('hidden');
+      contentText.value = '';
+    }
+  }
+
+  function handleCreateJob(event) {
+    event.preventDefault();
+    const form = event.target;
+    const title = form.title.value;
+    const kind = form.kind.value;
+    const to = form.to.value;
+
+    document.getElementById('modal-job-create').classList.add('hidden');
+    form.reset();
+    showToast(`Job "${title}" registrado com sucesso via POST /jobs para "${to}".`, 'done_all');
+  }
+
+  // WDG Contact Picker Logic
+  function openContactPicker(targetFieldName) {
+    targetPickerField = targetFieldName;
+    document.getElementById('wdg-contact-pick').classList.remove('hidden');
+  }
+
+  function closeContactPicker() {
+    document.getElementById('wdg-contact-pick').classList.add('hidden');
+  }
+
+  function selectContact(numberVal, contactName) {
+    if (targetPickerField) {
+      const inputEl = document.getElementById(targetPickerField);
+      if (inputEl) {
+        inputEl.value = numberVal;
+      }
+    }
+    closeContactPicker();
+    showToast(`Destino preenchido com ${contactName} (${numberVal})`, 'person');
+  }
+
+  function filterPickerContacts(query) {
+    const q = query.toLowerCase();
+    const list = document.getElementById('picker-contacts-list');
+    const items = list.querySelectorAll('div.p-space-sm');
+    items.forEach(item => {
+      const text = item.textContent.toLowerCase();
+      item.style.display = text.includes(q) ? 'flex' : 'none';
+    });
+  }
+
+  // Inicialização default
+  inspectJob('job-yaml-heartbeat');
+</script></main></div></body></html>

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+
+<html class="dark" data-theme="system" lang="pt-BR"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>Homelab Scheduler - Despachante de Mensagens</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-low":"#131b2e","on-secondary-container":"#b0b2ff","on-background":"#dae2fd","background":"#0b1326","tertiary":"#4edea3","primary-fixed-dim":"#4cd7f6","surface-container-highest":"#2d3449","on-secondary":"#1000a9","on-tertiary-fixed-variant":"#005236","outline-variant":"#3d494c","on-primary":"#003640","inverse-primary":"#00687a","secondary":"#c0c1ff","surface-bright":"#31394d","tertiary-fixed-dim":"#4edea3","on-tertiary":"#003824","inverse-surface":"#dae2fd","surface-container":"#171f33","secondary-fixed":"#e1e0ff","secondary-container":"#3131c0","outline":"#869397","error":"#ffb4ab","on-primary-fixed-variant":"#004e5c","on-error":"#690005","error-container":"#93000a","surface-variant":"#2d3449","tertiary-container":"#1bbd85","on-secondary-fixed-variant":"#2f2ebe","secondary-fixed-dim":"#c0c1ff","inverse-on-surface":"#283044","on-error-container":"#ffdad6","on-tertiary-container":"#00452e","surface":"#0b1326","surface-dim":"#0b1326","on-primary-fixed":"#001f26","surface-container-lowest":"#060e20","primary-fixed":"#acedff","on-secondary-fixed":"#07006c","on-surface":"#dae2fd","tertiary-fixed":"#6ffbbe","surface-container-high":"#222a3d","on-primary-container":"#00424f","primary-container":"#06b6d4","on-tertiary-fixed":"#002113","on-surface-variant":"#bcc9cd","primary":"#4cd7f6","surface-tint":"#4cd7f6"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"margin-tablet":"1.5rem","space-sm":"0.5rem","gutter-desktop":"1.5rem","margin":"1rem","space-xs":"0.25rem","margin-desktop":"2rem","space-lg":"1.25rem","space-xl":"2rem","gutter":"1rem","space-md":"0.75rem"},"fontFamily":{"label-code-sm":["JetBrains Mono"],"headline-lg":["Inter"],"label-code":["JetBrains Mono"],"headline-lg-mobile":["Inter"],"label-ui":["Inter"],"headline-md":["Inter"],"body-sm":["Inter"],"body-md":["Inter"],"headline-sm":["Inter"],"body-lg":["Inter"]},"fontSize":{"label-code-sm":["11px",{"lineHeight":"14px","letterSpacing":"0em","fontWeight":"400"}],"headline-lg":["30px",{"lineHeight":"38px","letterSpacing":"-0.02em","fontWeight":"600"}],"label-code":["12px",{"lineHeight":"16px","letterSpacing":"-0.02em","fontWeight":"500"}],"headline-lg-mobile":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"label-ui":["11px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","letterSpacing":"0.01em","fontWeight":"400"}],"body-md":["13px",{"lineHeight":"18px","letterSpacing":"0em","fontWeight":"400"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"-0.005em","fontWeight":"600"}],"body-lg":["15px",{"lineHeight":"22px","letterSpacing":"0em","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest flex flex-col z-50 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-space-md flex items-center gap-space-sm bg-surface-container-low/40"><img alt="Homelab Message Scheduler Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XK2pTRczi-8Rfi_WW3TnseGqIVMQQPrF1ILr-soB2Y-84mapUKcf5h7QqrhuwK3KTQMCwSt2gC9pQK0DhN0hI1DKMSBBZT_aktwcNK3oBhNztqYTrmjVy9kyz62VTM2ZkZdZmUpebn8f14V03NUR7339iQFFvcdbUrvLDcGGshURjHOO5ERLa6IzW-YRyrV5phzaslCJ2BxFRvYqnygvTx_dXf7b6Qz34EnX6zwU5cSU5OwABOwiP-_g"/><div class="flex flex-col min-w-0"><span class="font-headline-sm text-headline-sm text-on-surface truncate tracking-tight">Homelab Scheduler</span><span class="font-label-ui text-label-ui text-primary uppercase tracking-wider truncate">Despachante</span></div></div><div class="px-space-md py-space-sm"><div class="bg-surface-container-low px-space-sm py-space-xs rounded flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span></span><span class="font-label-code-sm text-label-code-sm text-on-surface-variant">Tick local (SQLite)</span></div><span class="font-label-code-sm text-label-code-sm text-tertiary">SYNC</span></div></div><nav class="flex-1 px-space-sm py-space-xs flex flex-col gap-space-xs" data-active-classes="bg-surface-container-high text-primary font-headline-sm rounded"><a class="flex items-center justify-between px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="contatos" href="#" id="scr-contacts"><span class="font-body-md text-body-md">Contatos</span><span class="font-label-code-sm text-label-code-sm text-outline">/contacts</span></a><a aria-current="page" class="flex items-center justify-between px-space-md py-space-sm transition-colors bg-surface-container-high text-primary font-headline-sm rounded" data-path="modelos" href="#" id="scr-templates"><span class="font-body-md text-body-md">Modelos</span><span class="font-label-code-sm text-label-code-sm text-outline">/templates</span></a><a class="flex items-center justify-between px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="agendas" href="#" id="scr-jobs"><span class="font-body-md text-body-md">Agendas</span><span class="font-label-code-sm text-label-code-sm text-outline">/jobs</span></a></nav><div class="p-space-md bg-surface-container-lowest flex flex-col gap-space-sm"><div class="bg-surface-container-low p-space-sm rounded flex flex-col gap-space-xs"><div class="flex items-center justify-between"><span class="font-label-ui text-label-ui uppercase text-on-surface-variant">Credencial API</span><span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span></div><span class="font-label-code-sm text-label-code-sm text-tertiary truncate">x-api-key: configurada</span><span class="font-label-code-sm text-label-code-sm text-outline">Armazenada no cliente</span></div><div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm pt-space-xs"><span>Node: hl-node-01</span><span>v2.4.1</span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-gutter-desktop"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded bg-surface-container-low text-tertiary"><span class="material-symbols-outlined text-[16px]">bolt</span><span class="font-label-code text-label-code font-semibold">DISPATCHER PRONTO</span></div><div class="hidden lg:flex items-center gap-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm"><span class="text-outline">DRIVER:</span><span class="text-on-surface">SQLite WAL-mode</span></div></div><div class="flex items-center gap-space-md"><div aria-label="Controle de tema" class="flex items-center p-0.5 rounded bg-surface-container-low" role="group"><button class="px-space-sm py-0.5 rounded font-label-ui text-label-ui text-on-surface-variant hover:text-on-surface" type="button">light</button><button class="px-space-sm py-0.5 rounded font-label-ui text-label-ui bg-surface-container text-primary shadow-[0_1px_8px_rgba(0,0,0,0.04)] font-bold" type="button">system</button><button class="px-space-sm py-0.5 rounded font-label-ui text-label-ui text-on-surface-variant hover:text-on-surface" type="button">dark</button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-16 bg-surface min-h-screen px-gutter-desktop py-margin-desktop"><div class="flex flex-col w-full" data-state="ready" id="scr-templates">
+<!-- Top Telemetry & Context Banner -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter-desktop mb-space-lg items-stretch">
+<div class="md:col-span-8 bg-surface-container-lowest p-space-lg rounded-xl flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="absolute -right-12 -top-12 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+<div>
+<div class="flex items-center gap-space-sm mb-space-xs">
+<span class="font-label-ui text-label-ui uppercase tracking-widest text-primary font-semibold">Motor de Mensageria</span>
+<span class="text-outline">/</span>
+<span class="font-label-code-sm text-label-code-sm text-tertiary">GET /templates</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Modelos de Mensagem</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl mt-space-xs">
+          Estruture padrões de despacho e interpolação léxica para rotinas locais de notificação. Variáveis suportadas são injetadas em tempo de execução via tick local SQLite.
+        </p>
+</div>
+<!-- Quick Metrics Bar -->
+<div class="grid grid-cols-3 gap-space-md pt-space-lg mt-space-lg border-t-0 bg-surface-container-low/50 -mx-space-lg -mb-space-lg px-space-lg py-space-md">
+<div>
+<span class="font-label-ui text-label-ui text-on-surface-variant uppercase block">Modelos Ativos</span>
+<span class="font-headline-md text-headline-md text-on-surface font-semibold" id="val-total-templates">3</span>
+</div>
+<div>
+<span class="font-label-ui text-label-ui text-on-surface-variant uppercase block">Motor Léxico</span>
+<span class="font-headline-md text-headline-md text-tertiary font-semibold">Parser v1.2</span>
+</div>
+<div>
+<span class="font-label-ui text-label-ui text-on-surface-variant uppercase block">Placeholders Válidos</span>
+<span class="font-headline-md text-headline-md text-primary font-semibold">8 Variáveis</span>
+</div>
+</div>
+</div>
+<!-- Homelab Node Status Card -->
+<div class="md:col-span-4 bg-surface-container-low p-space-lg rounded-xl flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">database</span>
+<span class="font-label-ui text-label-ui uppercase text-on-surface tracking-wider font-semibold">Payload Store</span>
+</div>
+<span class="px-space-sm py-0.5 rounded bg-tertiary/10 text-tertiary font-label-code-sm text-label-code-sm font-semibold">HEALTHY</span>
+</div>
+<div class="my-space-md">
+<div class="text-on-surface-variant font-label-code-sm text-label-code-sm mb-space-xs flex justify-between">
+<span>Buffer Alocado</span>
+<span class="text-on-surface font-medium">12.4 KB / 512 KB</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full transition-all duration-500" style="width: 14%;"></div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-sm rounded text-on-surface-variant font-label-code-sm text-label-code-sm flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="text-outline">Lock WAL:</span>
+<span class="text-tertiary font-mono">EXCLUSIVE_NONE</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-outline">Constraint 409:</span>
+<span class="text-on-surface font-mono">CASCADE_PREVENT</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Work Area: Grid 12 Cols -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-start">
+<!-- LEFT PANEL: Template List (wdg-template-list) - 7 cols -->
+<div class="lg:col-span-7 flex flex-col gap-space-md" id="wdg-template-list">
+<!-- Search and Header Toolbar -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-space-md shadow-sm">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-on-surface">Catálogo</span>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container text-primary font-label-code-sm text-label-code-sm font-semibold" id="badge-template-count">3 registrados</span>
+</div>
+<div class="relative flex-1 sm:max-w-xs">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="w-full pl-8 pr-3 py-1.5 bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-sm font-body-sm rounded focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="filter-template-input" placeholder="Filtrar por nome ou ID..." type="text"/>
+</div>
+</div>
+<!-- Feed / Cards Container -->
+<div class="flex flex-col gap-space-md" id="template-card-container">
+<!-- Card 1: Lembrete de Backup -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm hover:bg-surface-container transition-all flex flex-col justify-between group" data-template-id="tpl_01HZX89J4V01">
+<div>
+<div class="flex items-start justify-between gap-space-md mb-space-sm">
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm mb-space-xs">
+<span class="font-label-code-sm text-label-code-sm text-primary font-medium px-space-xs py-0.5 bg-primary/10 rounded">tpl_01HZX89J4V01</span>
+<span class="font-label-code-sm text-label-code-sm text-outline">len: 73</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate group-hover:text-primary transition-colors">Lembrete de Backup Semanal</h2>
+</div>
+<div class="flex items-center gap-space-xs shrink-0">
+<button class="btn-edit-template px-space-sm py-1 bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface rounded font-label-ui text-label-ui transition-colors flex items-center gap-1 shadow-sm" data-body="Olá {{name}}, o backup do homelab foi concluído em {{date}} às {{time}} com sucesso." data-id="tpl_01HZX89J4V01" data-name="Lembrete de Backup Semanal" type="button">
+<span class="material-symbols-outlined text-[15px]">edit</span>
+<span>Editar</span>
+</button>
+<button class="btn-delete-template px-space-sm py-1 bg-error-container/20 hover:bg-error-container text-error hover:text-on-error-container rounded font-label-ui text-label-ui transition-colors flex items-center gap-1" data-id="tpl_01HZX89J4V01" data-name="Lembrete de Backup Semanal" type="button">
+<span class="material-symbols-outlined text-[15px]">delete</span>
+<span>Excluir</span>
+</button>
+</div>
+</div>
+<!-- Body with Variable Highlight -->
+<div class="bg-surface-container-lowest p-space-md rounded font-label-code text-label-code text-on-surface-variant leading-relaxed tracking-normal select-all">
+              Olá <span class="bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">{{name}}</span>, o backup do homelab foi concluído em <span class="bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">{{date}}</span> às <span class="bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">{{time}}</span> com sucesso.
+            </div>
+</div>
+<div class="flex items-center justify-between mt-space-md pt-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm">
+<span class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined text-[14px]">link</span>
+<span>1 Job Vinculado (/jobs/daily-bkp)</span>
+</span>
+<span class="text-outline">Modificado há 2h</span>
+</div>
+</div>
+<!-- Card 2: Bom dia Automatizado -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm hover:bg-surface-container transition-all flex flex-col justify-between group" data-template-id="tpl_02HZX9A8KL02">
+<div>
+<div class="flex items-start justify-between gap-space-md mb-space-sm">
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm mb-space-xs">
+<span class="font-label-code-sm text-label-code-sm text-primary font-medium px-space-xs py-0.5 bg-primary/10 rounded">tpl_02HZX9A8KL02</span>
+<span class="font-label-code-sm text-label-code-sm text-outline">len: 62</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate group-hover:text-primary transition-colors">Bom dia Automatizado</h2>
+</div>
+<div class="flex items-center gap-space-xs shrink-0">
+<button class="btn-edit-template px-space-sm py-1 bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface rounded font-label-ui text-label-ui transition-colors flex items-center gap-1 shadow-sm" data-body="Bom dia, {{name}}! Hoje é {{weekday}}, {{day_name}} de {{month_name}}." data-id="tpl_02HZX9A8KL02" data-name="Bom dia Automatizado" type="button">
+<span class="material-symbols-outlined text-[15px]">edit</span>
+<span>Editar</span>
+</button>
+<button class="btn-delete-template px-space-sm py-1 bg-error-container/20 hover:bg-error-container text-error hover:text-on-error-container rounded font-label-ui text-label-ui transition-colors flex items-center gap-1" data-id="tpl_02HZX9A8KL02" data-name="Bom dia Automatizado" type="button">
+<span class="material-symbols-outlined text-[15px]">delete</span>
+<span>Excluir</span>
+</button>
+</div>
+</div>
+<!-- Body with Variable Highlight -->
+<div class="bg-surface-container-lowest p-space-md rounded font-label-code text-label-code text-on-surface-variant leading-relaxed tracking-normal select-all">
+              Bom dia, <span class="bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">{{name}}</span>! Hoje é <span class="bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">{{weekday}}</span>, <span class="bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">{{day_name}}</span> de <span class="bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">{{month_name}}</span>.
+            </div>
+</div>
+<div class="flex items-center justify-between mt-space-md pt-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm">
+<span class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined text-[14px]">link</span>
+<span>2 Jobs Vinculados</span>
+</span>
+<span class="text-outline">Modificado ontem</span>
+</div>
+</div>
+<!-- Card 3: Alerta de Temperatura Servidor -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm hover:bg-surface-container transition-all flex flex-col justify-between group" data-template-id="tpl_03HZX9Z1QQ03">
+<div>
+<div class="flex items-start justify-between gap-space-md mb-space-sm">
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm mb-space-xs">
+<span class="font-label-code-sm text-label-code-sm text-primary font-medium px-space-xs py-0.5 bg-primary/10 rounded">tpl_03HZX9Z1QQ03</span>
+<span class="font-label-code-sm text-label-code-sm text-outline">len: 71</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate group-hover:text-primary transition-colors">Alerta de Temperatura Servidor</h2>
+</div>
+<div class="flex items-center gap-space-xs shrink-0">
+<button class="btn-edit-template px-space-sm py-1 bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface rounded font-label-ui text-label-ui transition-colors flex items-center gap-1 shadow-sm" data-body="[ALERTA {{time}}] O sensor do rack atingiu limite de atenção em {{date}}." data-id="tpl_03HZX9Z1QQ03" data-name="Alerta de Temperatura Servidor" type="button">
+<span class="material-symbols-outlined text-[15px]">edit</span>
+<span>Editar</span>
+</button>
+<button class="btn-delete-template px-space-sm py-1 bg-error-container/20 hover:bg-error-container text-error hover:text-on-error-container rounded font-label-ui text-label-ui transition-colors flex items-center gap-1" data-id="tpl_03HZX9Z1QQ03" data-name="Alerta de Temperatura Servidor" type="button">
+<span class="material-symbols-outlined text-[15px]">delete</span>
+<span>Excluir</span>
+</button>
+</div>
+</div>
+<!-- Body with Variable Highlight -->
+<div class="bg-surface-container-lowest p-space-md rounded font-label-code text-label-code text-on-surface-variant leading-relaxed tracking-normal select-all">
+              [ALERTA <span class="bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">{{time}}</span>] O sensor do rack atingiu limite de atenção em <span class="bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">{{date}}</span>.
+            </div>
+</div>
+<div class="flex items-center justify-between mt-space-md pt-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm">
+<span class="flex items-center gap-1 text-outline">
+<span class="material-symbols-outlined text-[14px]">link_off</span>
+<span>Nenhum job vinculado</span>
+</span>
+<span class="text-outline">Criado há 4 dias</span>
+</div>
+</div>
+</div>
+<!-- Delete Conflict Modal / Notification Bar -->
+<div class="hidden p-space-md rounded-xl bg-error-container/20 text-on-error-container flex items-start gap-space-md shadow-md animate-pulse" id="delete-conflict-alert">
+<span class="material-symbols-outlined text-error text-[24px] shrink-0">report_problem</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm text-error font-semibold">Falha na Exclusão (HTTP 409 Conflict)</span>
+<p class="font-body-sm text-body-sm text-on-surface mt-0.5" id="delete-conflict-msg">
+            Não é possível excluir este modelo pois ele possui jobs scheduled ativos na fila do despachante. Remova os agendamentos vinculados primeiro.
+          </p>
+<div class="mt-space-sm">
+<button class="px-space-sm py-0.5 bg-error-container text-on-error-container rounded font-label-ui text-label-ui" id="btn-dismiss-conflict" type="button">
+              Entendido
+            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT PANEL: Template Form & Placeholder Guide - 5 cols -->
+<div class="lg:col-span-5 flex flex-col gap-space-lg">
+<!-- FORM WIDGET: wdg-template-form -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm" id="wdg-template-form">
+<div class="flex items-center justify-between pb-space-md mb-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]" id="form-icon">add_box</span>
+<span class="font-headline-sm text-headline-sm text-on-surface" id="form-title">Criar Modelo</span>
+</div>
+<button class="px-space-sm py-1 bg-surface-container hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface rounded font-label-ui text-label-ui flex items-center gap-1 transition-colors" id="btn-reset-form" type="button">
+<span class="material-symbols-outlined text-[15px]">restart_alt</span>
+<span>Limpar / Novo</span>
+</button>
+</div>
+<form class="flex flex-col gap-space-md" id="template-editor-form">
+<!-- Hidden ID for PATCH switching -->
+<input id="input-template-id" type="hidden" value=""/>
+<!-- Field: Name -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<label class="font-label-ui text-label-ui text-on-surface uppercase font-semibold" for="template-name-input">
+                Nome do Modelo <span class="text-error">*</span>
+</label>
+<span class="font-label-code-sm text-label-code-sm text-outline" id="name-counter">0 / 80</span>
+</div>
+<input class="w-full px-space-md py-space-sm bg-surface-container-lowest text-on-surface placeholder:text-outline font-body-md text-body-md rounded focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="template-name-input" maxlength="80" name="name" placeholder="ex: Aviso de Deploy Finalizado" required="" type="text"/>
+<span class="font-body-sm text-body-sm text-outline">Identificador legível no despachante (1 a 80 caracteres).</span>
+</div>
+<!-- Field: Body -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<label class="font-label-ui text-label-ui text-on-surface uppercase font-semibold" for="template-body-input">
+                Corpo da Mensagem <span class="text-error">*</span>
+</label>
+<span class="font-label-code-sm text-label-code-sm text-outline" id="body-counter">0 caracteres</span>
+</div>
+<textarea class="w-full p-space-md bg-surface-container-lowest text-on-surface placeholder:text-outline font-label-code text-label-code rounded focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed shadow-inner" id="template-body-input" name="body" placeholder="Digite o texto da mensagem e clique nas tags abaixo para injetar as variáveis dinâmicas..." required="" rows="6"></textarea>
+<span class="font-body-sm text-body-sm text-outline">Permite formatação textual padrão e variáveis entre chaves duplas.</span>
+</div>
+<!-- Dynamic Live Preview Strip -->
+<div class="bg-surface-container p-space-sm rounded flex flex-col gap-1">
+<span class="font-label-ui text-label-ui uppercase text-outline">Preview com Dados Mock</span>
+<div class="font-label-code-sm text-label-code-sm text-tertiary whitespace-pre-wrap break-words min-h-[2.5rem]" id="live-preview-box">
+              Digite no campo acima para gerar a simulação imediata...
+            </div>
+</div>
+<!-- Form Status Feedback -->
+<div class="hidden p-space-sm rounded font-label-code-sm text-label-code-sm flex items-center gap-space-sm" id="form-feedback-box">
+<span class="material-symbols-outlined text-[16px]" id="feedback-icon">info</span>
+<span id="feedback-text">Status pronto</span>
+</div>
+<!-- Submit Buttons -->
+<div class="flex items-center gap-space-sm pt-space-xs">
+<button class="flex-1 py-space-sm px-space-md bg-primary hover:bg-primary-container text-on-primary rounded font-label-ui text-label-ui font-semibold flex items-center justify-center gap-space-xs shadow-md transition-all active:scale-[0.98]" id="btn-submit-template" type="submit">
+<span class="material-symbols-outlined text-[18px]">send</span>
+<span id="submit-btn-label">Criar Modelo (POST)</span>
+</button>
+</div>
+</form>
+</div>
+<!-- PLACEHOLDER GUIDE SECTION -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[20px]">variable_insert</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Guia de Placeholders Dinâmicos</h3>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Clique nas tags para inseri-las diretamente na posição atual do cursor no formulário.
+        </p>
+<!-- Destinatário -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-label-ui text-label-ui uppercase tracking-wider text-outline">Destinatário</span>
+<div class="flex flex-wrap gap-space-xs">
+<button class="btn-insert-placeholder px-space-sm py-1 bg-surface-container hover:bg-primary/20 hover:text-primary text-on-surface rounded font-label-code text-label-code transition-colors flex items-center gap-1 group shadow-xs" data-var="{{name}}" type="button">
+<span class="text-primary group-hover:underline">{{name}}</span>
+<span class="text-outline text-label-code-sm">(Nome contato)</span>
+</button>
+</div>
+</div>
+<!-- Relógio e Data -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-label-ui text-label-ui uppercase tracking-wider text-outline">Relógio &amp; Calendário (Tick Local)</span>
+<div class="flex flex-wrap gap-space-xs">
+<button class="btn-insert-placeholder px-space-sm py-1 bg-surface-container hover:bg-primary/20 hover:text-primary text-on-surface rounded font-label-code text-label-code transition-colors group shadow-xs" data-var="{{date}}" type="button">
+<span class="text-primary group-hover:underline">{{date}}</span>
+<span class="text-outline text-label-code-sm ml-1">DD/MM/AAAA</span>
+</button>
+<button class="btn-insert-placeholder px-space-sm py-1 bg-surface-container hover:bg-primary/20 hover:text-primary text-on-surface rounded font-label-code text-label-code transition-colors group shadow-xs" data-var="{{date_iso}}" type="button">
+<span class="text-primary group-hover:underline">{{date_iso}}</span>
+<span class="text-outline text-label-code-sm ml-1">AAAA-MM-DD</span>
+</button>
+<button class="btn-insert-placeholder px-space-sm py-1 bg-surface-container hover:bg-primary/20 hover:text-primary text-on-surface rounded font-label-code text-label-code transition-colors group shadow-xs" data-var="{{time}}" type="button">
+<span class="text-primary group-hover:underline">{{time}}</span>
+<span class="text-outline text-label-code-sm ml-1">HH:MM:SS</span>
+</button>
+<button class="btn-insert-placeholder px-space-sm py-1 bg-surface-container hover:bg-primary/20 hover:text-primary text-on-surface rounded font-label-code text-label-code transition-colors group shadow-xs" data-var="{{weekday}}" type="button">
+<span class="text-primary group-hover:underline">{{weekday}}</span>
+<span class="text-outline text-label-code-sm ml-1">Segunda-feira</span>
+</button>
+<button class="btn-insert-placeholder px-space-sm py-1 bg-surface-container hover:bg-primary/20 hover:text-primary text-on-surface rounded font-label-code text-label-code transition-colors group shadow-xs" data-var="{{day_name}}" type="button">
+<span class="text-primary group-hover:underline">{{day_name}}</span>
+<span class="text-outline text-label-code-sm ml-1">15</span>
+</button>
+<button class="btn-insert-placeholder px-space-sm py-1 bg-surface-container hover:bg-primary/20 hover:text-primary text-on-surface rounded font-label-code text-label-code transition-colors group shadow-xs" data-var="{{month_name}}" type="button">
+<span class="text-primary group-hover:underline">{{month_name}}</span>
+<span class="text-outline text-label-code-sm ml-1">Outubro</span>
+</button>
+<button class="btn-insert-placeholder px-space-sm py-1 bg-surface-container hover:bg-primary/20 hover:text-primary text-on-surface rounded font-label-code text-label-code transition-colors group shadow-xs" data-var="{{year}}" type="button">
+<span class="text-primary group-hover:underline">{{year}}</span>
+<span class="text-outline text-label-code-sm ml-1">2025</span>
+</button>
+</div>
+</div>
+<!-- Strict Homelab Engine Warning -->
+<div class="bg-surface-container-lowest p-space-md rounded flex items-start gap-space-sm text-outline-variant">
+<span class="material-symbols-outlined text-outline text-[18px] shrink-0 mt-0.5">info</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+<strong>Aviso de sintaxe:</strong> Placeholders desconhecidos permanecerão literais no disparo. Variáveis de linguagens externas como <code class="text-outline font-mono">Jinja</code> ou interpolações <code class="text-outline font-mono">${var}</code> não são interpretadas pela API.
+          </p>
+</div>
+<!-- API Response Specs Checklist -->
+<div class="p-space-sm rounded bg-surface-container-highest/40 flex flex-col gap-space-xs font-label-code-sm text-label-code-sm">
+<span class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold">Tabela de Códigos HTTP</span>
+<div class="flex items-center justify-between text-outline">
+<span>200 OK / 201 Created</span>
+<span class="text-tertiary">Sucesso de operação</span>
+</div>
+<div class="flex items-center justify-between text-outline">
+<span>401 Unauthorized</span>
+<span class="text-error">Token x-api-key ausente/inválido</span>
+</div>
+<div class="flex items-center justify-between text-outline">
+<span>409 Conflict</span>
+<span class="text-error">Nome duplicado ou job ativo vinculado</span>
+</div>
+<div class="flex items-center justify-between text-outline">
+<span>422 Unprocessable</span>
+<span class="text-error">Payload malformado (body vazio / length &gt; 80)</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  (function initTemplateManager() {
+    const form = document.getElementById('template-editor-form');
+    const inputId = document.getElementById('input-template-id');
+    const inputName = document.getElementById('template-name-input');
+    const inputBody = document.getElementById('template-body-input');
+    const nameCounter = document.getElementById('name-counter');
+    const bodyCounter = document.getElementById('body-counter');
+    const livePreview = document.getElementById('live-preview-box');
+    const formTitle = document.getElementById('form-title');
+    const formIcon = document.getElementById('form-icon');
+    const submitBtnLabel = document.getElementById('submit-btn-label');
+    const btnReset = document.getElementById('btn-reset-form');
+    const filterInput = document.getElementById('filter-template-input');
+    const cardContainer = document.getElementById('template-card-container');
+    const feedbackBox = document.getElementById('form-feedback-box');
+    const feedbackText = document.getElementById('feedback-text');
+    const feedbackIcon = document.getElementById('feedback-icon');
+    const conflictAlert = document.getElementById('delete-conflict-alert');
+    const conflictMsg = document.getElementById('delete-conflict-msg');
+    const btnDismissConflict = document.getElementById('btn-dismiss-conflict');
+
+    // Live counter and preview handler
+    function updateCountersAndPreview() {
+      const nameVal = inputName.value || '';
+      const bodyVal = inputBody.value || '';
+      
+      nameCounter.textContent = `${nameVal.length} / 80`;
+      bodyCounter.textContent = `${bodyVal.length} caracteres`;
+
+      if (!bodyVal.trim()) {
+        livePreview.textContent = 'Digite no campo acima para gerar a simulação imediata...';
+        livePreview.className = 'font-label-code-sm text-label-code-sm text-outline italic whitespace-pre-wrap break-words min-h-[2.5rem]';
+        return;
+      }
+
+      // Mock interpolation replacement
+      const mocked = bodyVal
+        .replace(/\{\{name\}\}/g, 'Lucas Silva')
+        .replace(/\{\{date\}\}/g, '24/10/2025')
+        .replace(/\{\{date_iso\}\}/g, '2025-10-24')
+        .replace(/\{\{time\}\}/g, '14:32:00')
+        .replace(/\{\{weekday\}\}/g, 'Sexta-feira')
+        .replace(/\{\{day_name\}\}/g, '24')
+        .replace(/\{\{month_name\}\}/g, 'Outubro')
+        .replace(/\{\{year\}\}/g, '2025');
+
+      livePreview.textContent = mocked;
+      livePreview.className = 'font-label-code-sm text-label-code-sm text-tertiary whitespace-pre-wrap break-words min-h-[2.5rem]';
+    }
+
+    inputName.addEventListener('input', updateCountersAndPreview);
+    inputBody.addEventListener('input', updateCountersAndPreview);
+
+    // Insert Placeholders at cursor
+    document.querySelectorAll('.btn-insert-placeholder').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const textToInsert = btn.getAttribute('data-var');
+        const start = inputBody.selectionStart || 0;
+        const end = inputBody.selectionEnd || 0;
+        const val = inputBody.value;
+        inputBody.value = val.substring(0, start) + textToInsert + val.substring(end);
+        inputBody.focus();
+        inputBody.selectionStart = inputBody.selectionEnd = start + textToInsert.length;
+        updateCountersAndPreview();
+      });
+    });
+
+    // Reset Form to Create Mode
+    function resetForm() {
+      inputId.value = '';
+      inputName.value = '';
+      inputBody.value = '';
+      formTitle.textContent = 'Criar Modelo';
+      formIcon.textContent = 'add_box';
+      submitBtnLabel.textContent = 'Criar Modelo (POST)';
+      feedbackBox.classList.add('hidden');
+      updateCountersAndPreview();
+    }
+
+    btnReset.addEventListener('click', resetForm);
+
+    // Edit Template Action
+    function attachEditListeners() {
+      document.querySelectorAll('.btn-edit-template').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          const name = btn.getAttribute('data-name');
+          const body = btn.getAttribute('data-body');
+
+          inputId.value = id;
+          inputName.value = name;
+          inputBody.value = body;
+
+          formTitle.textContent = `Editar ${id}`;
+          formIcon.textContent = 'edit_note';
+          submitBtnLabel.textContent = 'Salvar Alterações (PATCH)';
+          feedbackBox.classList.add('hidden');
+
+          updateCountersAndPreview();
+          inputName.focus();
+          window.scrollTo({ top: form.offsetTop - 80, behavior: 'smooth' });
+        });
+      });
+    }
+
+    // Delete Template Action with 409 simulation
+    function attachDeleteListeners() {
+      document.querySelectorAll('.btn-delete-template').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          const name = btn.getAttribute('data-name');
+
+          // Simulated scheduled job dependency: tpl_01 and tpl_02 have bound jobs
+          if (id === 'tpl_01HZX89J4V01' || id === 'tpl_02HZX9A8KL02') {
+            conflictMsg.textContent = `Erro 409 Conflict: O modelo "${name}" (${id}) possui agendamentos ativos vinculados no despachante. Não é possível remover até que as rotas sejam desassociadas.`;
+            conflictAlert.classList.remove('hidden');
+            window.scrollTo({ top: conflictAlert.offsetTop - 100, behavior: 'smooth' });
+          } else {
+            // Can be deleted
+            const card = document.querySelector(`[data-template-id="${id}"]`);
+            if (card) {
+              card.style.opacity = '0.5';
+              setTimeout(() => {
+                card.remove();
+                conflictAlert.classList.add('hidden');
+                updateTemplateCount();
+              }, 250);
+            }
+          }
+        });
+      });
+    }
+
+    btnDismissConflict.addEventListener('click', () => {
+      conflictAlert.classList.add('hidden');
+    });
+
+    function updateTemplateCount() {
+      const cards = cardContainer.querySelectorAll('[data-template-id]');
+      const count = cards.length;
+      document.getElementById('badge-template-count').textContent = `${count} registrados`;
+      document.getElementById('val-total-templates').textContent = count;
+    }
+
+    // Form Submission (Mock POST / PATCH)
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const isEditing = Boolean(inputId.value);
+      const name = inputName.value.trim();
+      const body = inputBody.value.trim();
+
+      // Check validation
+      if (!name || name.length > 80 || !body) {
+        showFeedback('Erro 422: Parâmetros inválidos. Nome deve ter entre 1 e 80 caracteres.', 'error');
+        return;
+      }
+
+      // Check duplicate name on creation (mock 409)
+      if (!isEditing && (name.toLowerCase() === 'lembrete de backup semanal' || name.toLowerCase() === 'bom dia automatizado')) {
+        showFeedback(`Erro 409 Conflict: Já existe um modelo registrado com o nome "${name}".`, 'error');
+        return;
+      }
+
+      if (isEditing) {
+        // Update existing card in DOM
+        const existingCard = document.querySelector(`[data-template-id="${inputId.value}"]`);
+        if (existingCard) {
+          existingCard.querySelector('h2').textContent = name;
+          // Format body with variable highlighting
+          const formattedBody = escapeHtml(body).replace(/(\{\{[a-zA-Z0-9_]+\}\})/g, '<span class="bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">$1</span>');
+          existingCard.querySelector('.select-all').innerHTML = formattedBody;
+          
+          const editBtn = existingCard.querySelector('.btn-edit-template');
+          editBtn.setAttribute('data-name', name);
+          editBtn.setAttribute('data-body', body);
+        }
+        showFeedback(`Modelo ${inputId.value} salvo com sucesso (PATCH 200).`, 'success');
+      } else {
+        // Create new Card in DOM (POST mock)
+        const newId = `tpl_0${Math.floor(Math.random() * 89 + 10)}HZX${Date.now().toString().slice(-4)}`;
+        const formattedBody = escapeHtml(body).replace(/(\{\{[a-zA-Z0-9_]+\}\})/g, '<span class="bg-primary/20 text-primary px-1 py-0.5 rounded font-semibold">$1</span>');
+
+        const cardEl = document.createElement('div');
+        cardEl.className = 'bg-surface-container-low rounded-xl p-space-lg shadow-sm hover:bg-surface-container transition-all flex flex-col justify-between group';
+        cardEl.setAttribute('data-template-id', newId);
+        cardEl.innerHTML = `
+          <div>
+            <div class="flex items-start justify-between gap-space-md mb-space-sm">
+              <div class="flex flex-col min-w-0">
+                <div class="flex items-center gap-space-sm mb-space-xs">
+                  <span class="font-label-code-sm text-label-code-sm text-primary font-medium px-space-xs py-0.5 bg-primary/10 rounded">${newId}</span>
+                  <span class="font-label-code-sm text-label-code-sm text-outline">len: ${body.length}</span>
+                </div>
+                <h2 class="font-headline-sm text-headline-sm text-on-surface truncate group-hover:text-primary transition-colors">${escapeHtml(name)}</h2>
+              </div>
+              <div class="flex items-center gap-space-xs shrink-0">
+                <button 
+                  type="button" 
+                  class="btn-edit-template px-space-sm py-1 bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface rounded font-label-ui text-label-ui transition-colors flex items-center gap-1 shadow-sm"
+                  data-id="${newId}"
+                  data-name="${escapeHtml(name)}"
+                  data-body="${escapeHtml(body)}"
+                >
+                  <span class="material-symbols-outlined text-[15px]">edit</span>
+                  <span>Editar</span>
+                </button>
+                <button 
+                  type="button" 
+                  class="btn-delete-template px-space-sm py-1 bg-error-container/20 hover:bg-error-container text-error hover:text-on-error-container rounded font-label-ui text-label-ui transition-colors flex items-center gap-1"
+                  data-id="${newId}"
+                  data-name="${escapeHtml(name)}"
+                >
+                  <span class="material-symbols-outlined text-[15px]">delete</span>
+                  <span>Excluir</span>
+                </button>
+              </div>
+            </div>
+            <div class="bg-surface-container-lowest p-space-md rounded font-label-code text-label-code text-on-surface-variant leading-relaxed tracking-normal select-all">
+              ${formattedBody}
+            </div>
+          </div>
+          <div class="flex items-center justify-between mt-space-md pt-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm">
+            <span class="flex items-center gap-1 text-outline">
+              <span class="material-symbols-outlined text-[14px]">link_off</span>
+              <span>Nenhum job vinculado</span>
+            </span>
+            <span class="text-tertiary">Criado agora</span>
+          </div>
+        `;
+
+        cardContainer.prepend(cardEl);
+        attachEditListeners();
+        attachDeleteListeners();
+        updateTemplateCount();
+        showFeedback(`Modelo ${newId} criado com sucesso (POST 201).`, 'success');
+        resetForm();
+      }
+    });
+
+    function showFeedback(text, type) {
+      feedbackBox.classList.remove('hidden', 'bg-error-container/20', 'text-error', 'bg-tertiary/10', 'text-tertiary');
+      if (type === 'error') {
+        feedbackBox.classList.add('bg-error-container/20', 'text-error');
+        feedbackIcon.textContent = 'warning';
+      } else {
+        feedbackBox.classList.add('bg-tertiary/10', 'text-tertiary');
+        feedbackIcon.textContent = 'check_circle';
+      }
+      feedbackText.textContent = text;
+    }
+
+    function escapeHtml(string) {
+      const entityMap = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      };
+      return String(string).replace(/[&<>"']/g, s => entityMap[s]);
+    }
+
+    // Filter cards
+    filterInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      document.querySelectorAll('#template-card-container > div').forEach(card => {
+        const id = card.getAttribute('data-template-id') || '';
+        const name = card.querySelector('h2') ? card.querySelector('h2').textContent.toLowerCase() : '';
+        const text = card.querySelector('.select-all') ? card.querySelector('.select-all').textContent.toLowerCase() : '';
+        if (id.toLowerCase().includes(q) || name.includes(q) || text.includes(q)) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+    });
+
+    // Initial listener binding
+    attachEditListeners();
+    attachDeleteListeners();
+    updateCountersAndPreview();
+  })();
+</script></main></div></body></html>

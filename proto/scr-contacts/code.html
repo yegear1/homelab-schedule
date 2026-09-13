@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html class="dark" data-theme="system" lang="pt-BR"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>Homelab Scheduler - Despachante de Mensagens</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-low":"#131b2e","on-secondary-container":"#b0b2ff","on-background":"#dae2fd","background":"#0b1326","tertiary":"#4edea3","primary-fixed-dim":"#4cd7f6","surface-container-highest":"#2d3449","on-secondary":"#1000a9","on-tertiary-fixed-variant":"#005236","outline-variant":"#3d494c","on-primary":"#003640","inverse-primary":"#00687a","secondary":"#c0c1ff","surface-bright":"#31394d","tertiary-fixed-dim":"#4edea3","on-tertiary":"#003824","inverse-surface":"#dae2fd","surface-container":"#171f33","secondary-fixed":"#e1e0ff","secondary-container":"#3131c0","outline":"#869397","error":"#ffb4ab","on-primary-fixed-variant":"#004e5c","on-error":"#690005","error-container":"#93000a","surface-variant":"#2d3449","tertiary-container":"#1bbd85","on-secondary-fixed-variant":"#2f2ebe","secondary-fixed-dim":"#c0c1ff","inverse-on-surface":"#283044","on-error-container":"#ffdad6","on-tertiary-container":"#00452e","surface":"#0b1326","surface-dim":"#0b1326","on-primary-fixed":"#001f26","surface-container-lowest":"#060e20","primary-fixed":"#acedff","on-secondary-fixed":"#07006c","on-surface":"#dae2fd","tertiary-fixed":"#6ffbbe","surface-container-high":"#222a3d","on-primary-container":"#00424f","primary-container":"#06b6d4","on-tertiary-fixed":"#002113","on-surface-variant":"#bcc9cd","primary":"#4cd7f6","surface-tint":"#4cd7f6"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"margin-tablet":"1.5rem","space-sm":"0.5rem","gutter-desktop":"1.5rem","margin":"1rem","space-xs":"0.25rem","margin-desktop":"2rem","space-lg":"1.25rem","space-xl":"2rem","gutter":"1rem","space-md":"0.75rem"},"fontFamily":{"label-code-sm":["JetBrains Mono"],"headline-lg":["Inter"],"label-code":["JetBrains Mono"],"headline-lg-mobile":["Inter"],"label-ui":["Inter"],"headline-md":["Inter"],"body-sm":["Inter"],"body-md":["Inter"],"headline-sm":["Inter"],"body-lg":["Inter"]},"fontSize":{"label-code-sm":["11px",{"lineHeight":"14px","letterSpacing":"0em","fontWeight":"400"}],"headline-lg":["30px",{"lineHeight":"38px","letterSpacing":"-0.02em","fontWeight":"600"}],"label-code":["12px",{"lineHeight":"16px","letterSpacing":"-0.02em","fontWeight":"500"}],"headline-lg-mobile":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"label-ui":["11px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","letterSpacing":"0.01em","fontWeight":"400"}],"body-md":["13px",{"lineHeight":"18px","letterSpacing":"0em","fontWeight":"400"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"-0.005em","fontWeight":"600"}],"body-lg":["15px",{"lineHeight":"22px","letterSpacing":"0em","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest flex flex-col z-50 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-space-md flex items-center gap-space-sm bg-surface-container-low/40"><img alt="Homelab Message Scheduler Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XK2pTRczi-8Rfi_WW3TnseGqIVMQQPrF1ILr-soB2Y-84mapUKcf5h7QqrhuwK3KTQMCwSt2gC9pQK0DhN0hI1DKMSBBZT_aktwcNK3oBhNztqYTrmjVy9kyz62VTM2ZkZdZmUpebn8f14V03NUR7339iQFFvcdbUrvLDcGGshURjHOO5ERLa6IzW-YRyrV5phzaslCJ2BxFRvYqnygvTx_dXf7b6Qz34EnX6zwU5cSU5OwABOwiP-_g"/><div class="flex flex-col min-w-0"><span class="font-headline-sm text-headline-sm text-on-surface truncate tracking-tight">Homelab Scheduler</span><span class="font-label-ui text-label-ui text-primary uppercase tracking-wider truncate">Despachante</span></div></div><div class="px-space-md py-space-sm"><div class="bg-surface-container-low px-space-sm py-space-xs rounded flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span></span><span class="font-label-code-sm text-label-code-sm text-on-surface-variant">Tick local (SQLite)</span></div><span class="font-label-code-sm text-label-code-sm text-tertiary">SYNC</span></div></div><nav class="flex-1 px-space-sm py-space-xs flex flex-col gap-space-xs" data-active-classes="bg-surface-container-high text-primary font-headline-sm rounded"><a aria-current="page" class="flex items-center justify-between px-space-md py-space-sm transition-colors bg-surface-container-high text-primary font-headline-sm rounded" data-path="contatos" href="#" id="scr-contacts"><span class="font-body-md text-body-md">Contatos</span><span class="font-label-code-sm text-label-code-sm text-outline">/contacts</span></a><a class="flex items-center justify-between px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="modelos" href="#" id="scr-templates"><span class="font-body-md text-body-md">Modelos</span><span class="font-label-code-sm text-label-code-sm text-outline">/templates</span></a><a class="flex items-center justify-between px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="agendas" href="#" id="scr-jobs"><span class="font-body-md text-body-md">Agendas</span><span class="font-label-code-sm text-label-code-sm text-outline">/jobs</span></a></nav><div class="p-space-md bg-surface-container-lowest flex flex-col gap-space-sm"><div class="bg-surface-container-low p-space-sm rounded flex flex-col gap-space-xs"><div class="flex items-center justify-between"><span class="font-label-ui text-label-ui uppercase text-on-surface-variant">Credencial API</span><span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span></div><span class="font-label-code-sm text-label-code-sm text-tertiary truncate">x-api-key: configurada</span><span class="font-label-code-sm text-label-code-sm text-outline">Armazenada no cliente</span></div><div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm pt-space-xs"><span>Node: hl-node-01</span><span>v2.4.1</span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-gutter-desktop"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded bg-surface-container-low text-tertiary"><span class="material-symbols-outlined text-[16px]">bolt</span><span class="font-label-code text-label-code font-semibold">DISPATCHER PRONTO</span></div><div class="hidden lg:flex items-center gap-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm"><span class="text-outline">DRIVER:</span><span class="text-on-surface">SQLite WAL-mode</span></div></div><div class="flex items-center gap-space-md"><div aria-label="Controle de tema" class="flex items-center p-0.5 rounded bg-surface-container-low" role="group"><button class="px-space-sm py-0.5 rounded font-label-ui text-label-ui text-on-surface-variant hover:text-on-surface" type="button">light</button><button class="px-space-sm py-0.5 rounded font-label-ui text-label-ui bg-surface-container text-primary shadow-[0_1px_8px_rgba(0,0,0,0.04)] font-bold" type="button">system</button><button class="px-space-sm py-0.5 rounded font-label-ui text-label-ui text-on-surface-variant hover:text-on-surface" type="button">dark</button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-16 bg-surface min-h-screen px-gutter-desktop py-margin-desktop"><div class="flex flex-col w-full" data-state="ready" id="scr-contacts">
+<div class="flex flex-col lg:flex-row items-start justify-between gap-space-lg mb-space-xl pb-space-lg">
+<div class="flex flex-col gap-space-xs max-w-2xl">
+<div class="flex items-center gap-space-sm">
+<span class="px-space-sm py-0.5 rounded bg-surface-container-low font-label-code-sm text-label-code-sm text-primary uppercase tracking-widest">Módulo 01</span>
+<span class="text-outline font-label-code-sm text-label-code-sm">/</span>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">API Gateway WhatsApp Local</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Caderno de Contatos</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">
+        Gerencie as rotas de mensageria direta, listas prioritárias de broadcast e receptores automatizados para alertas de telemetria do cluster.
+      </p>
+</div>
+<div class="flex items-center gap-space-md w-full lg:w-auto justify-end">
+<div class="bg-surface-container-low p-space-md rounded flex items-center gap-space-lg shadow-sm">
+<div class="flex flex-col">
+<span class="font-label-ui text-label-ui uppercase text-outline">Cluster Telemetria</span>
+<span class="font-label-code text-label-code text-tertiary flex items-center gap-1">
+<span class="h-1.5 w-1.5 rounded-full bg-tertiary animate-pulse"></span>
+            DISPATCHER WAL: OK
+          </span>
+</div>
+<div class="h-8 w-px bg-surface-container-highest"></div>
+<div class="flex flex-col">
+<span class="font-label-ui text-label-ui uppercase text-outline">Capacidade Local</span>
+<span class="font-label-code text-label-code text-on-surface">4 Ativos / 10k max</span>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-gutter-desktop items-start">
+<section class="xl:col-span-8 flex flex-col gap-space-md" id="wdg-contact-list">
+<div class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">contacts</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Destinatários Registrados</h2>
+</div>
+<span class="px-space-sm py-0.5 rounded-full bg-primary/10 text-primary font-label-code-sm text-label-code-sm font-semibold" id="contact-count-badge">
+            4 contatos
+          </span>
+</div>
+<div class="relative flex-1 max-w-md">
+<span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface font-body-sm text-body-sm pl-9 pr-space-md py-space-sm rounded outline-none placeholder:text-outline/70 focus:bg-surface-container-high transition-colors" id="search-input" placeholder="Filtrar por nome, ID ou formato E.164..." type="text"/>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded shadow-md overflow-hidden flex flex-col">
+<div class="px-space-lg py-space-sm bg-surface-container-low/50 flex items-center justify-between text-outline font-label-ui text-label-ui uppercase tracking-wider">
+<div class="w-24">ID Node</div>
+<div class="flex-1 px-space-md">Contato &amp; Rotas Vinculadas</div>
+<div class="w-48 text-left">Número E.164</div>
+<div class="w-28 text-right">Ação</div>
+</div>
+<div class="flex flex-col divide-y divide-transparent" id="contact-rows-container">
+<div class="contact-row group px-space-lg py-space-md bg-surface-container-lowest hover:bg-surface-container-high/60 transition-colors flex items-center justify-between" data-id="ct-0091" data-name="Carlos Silva" data-phone="+5511988221049">
+<div class="w-24">
+<span class="font-label-code-sm text-label-code-sm px-space-xs py-0.5 rounded bg-surface-container-highest text-primary font-medium">ct-0091</span>
+</div>
+<div class="flex-1 px-space-md flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm">
+<span class="font-body-lg text-body-lg text-on-surface font-semibold truncate group-hover:text-primary transition-colors">Carlos Silva</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container text-on-surface-variant font-label-code-sm text-label-code-sm">WhatsApp</span>
+</div>
+<div class="flex items-center gap-space-xs font-label-code-sm text-label-code-sm text-on-surface-variant mt-0.5">
+<span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span>
+<span>3 recados ativos em fila de despacho</span>
+</div>
+</div>
+<div class="w-48 flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-outline text-[16px]">call</span>
+<span class="font-label-code text-label-code text-on-surface tracking-tight">+55 11 98822-1049</span>
+</div>
+<div class="w-28 flex justify-end">
+<a class="px-space-md py-1 rounded bg-surface-container hover:bg-primary hover:text-on-primary text-on-surface font-label-ui text-label-ui transition-all flex items-center gap-1 shadow-sm" href="/contacts/ct-0091">
+<span>Abrir Ficha</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</a>
+</div>
+</div>
+<div class="contact-row group px-space-lg py-space-md bg-surface-container-lowest hover:bg-surface-container-high/60 transition-colors flex items-center justify-between" data-id="ct-0092" data-name="Suporte Proxmox" data-phone="+5511971002299">
+<div class="w-24">
+<span class="font-label-code-sm text-label-code-sm px-space-xs py-0.5 rounded bg-surface-container-highest text-primary font-medium">ct-0092</span>
+</div>
+<div class="flex-1 px-space-md flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm">
+<span class="font-body-lg text-body-lg text-on-surface font-semibold truncate group-hover:text-primary transition-colors">Suporte Proxmox</span>
+<span class="px-1.5 py-0.2 rounded bg-tertiary/10 text-tertiary font-label-code-sm text-label-code-sm">SRE Alert</span>
+</div>
+<div class="flex items-center gap-space-xs font-label-code-sm text-label-code-sm text-on-surface-variant mt-0.5">
+<span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span>
+<span>1 rotina cron vinculada (pve-health-check)</span>
+</div>
+</div>
+<div class="w-48 flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-outline text-[16px]">call</span>
+<span class="font-label-code text-label-code text-on-surface tracking-tight">+55 11 97100-2299</span>
+</div>
+<div class="w-28 flex justify-end">
+<a class="px-space-md py-1 rounded bg-surface-container hover:bg-primary hover:text-on-primary text-on-surface font-label-ui text-label-ui transition-all flex items-center gap-1 shadow-sm" href="/contacts/ct-0092">
+<span>Abrir Ficha</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</a>
+</div>
+</div>
+<div class="contact-row group px-space-lg py-space-md bg-surface-container-lowest hover:bg-surface-container-high/60 transition-colors flex items-center justify-between" data-id="ct-0093" data-name="Mariana Costa" data-phone="+5521993128840">
+<div class="w-24">
+<span class="font-label-code-sm text-label-code-sm px-space-xs py-0.5 rounded bg-surface-container-highest text-primary font-medium">ct-0093</span>
+</div>
+<div class="flex-1 px-space-md flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm">
+<span class="font-body-lg text-body-lg text-on-surface font-semibold truncate group-hover:text-primary transition-colors">Mariana Costa</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container text-on-surface-variant font-label-code-sm text-label-code-sm">Pessoal</span>
+</div>
+<div class="flex items-center gap-space-xs font-label-code-sm text-label-code-sm text-on-surface-variant mt-0.5">
+<span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span>
+<span>2 recados agendados</span>
+</div>
+</div>
+<div class="w-48 flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-outline text-[16px]">call</span>
+<span class="font-label-code text-label-code text-on-surface tracking-tight">+55 21 99312-8840</span>
+</div>
+<div class="w-28 flex justify-end">
+<a class="px-space-md py-1 rounded bg-surface-container hover:bg-primary hover:text-on-primary text-on-surface font-label-ui text-label-ui transition-all flex items-center gap-1 shadow-sm" href="/contacts/ct-0093">
+<span>Abrir Ficha</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</a>
+</div>
+</div>
+<div class="contact-row group px-space-lg py-space-md bg-surface-container-lowest hover:bg-surface-container-high/60 transition-colors flex items-center justify-between" data-id="ct-0094" data-name="Família Notificações" data-phone="+5511965440011">
+<div class="w-24">
+<span class="font-label-code-sm text-label-code-sm px-space-xs py-0.5 rounded bg-surface-container-highest text-primary font-medium">ct-0094</span>
+</div>
+<div class="flex-1 px-space-md flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm">
+<span class="font-body-lg text-body-lg text-on-surface font-semibold truncate group-hover:text-primary transition-colors">Família Notificações</span>
+<span class="px-1.5 py-0.2 rounded bg-secondary-container/30 text-secondary font-label-code-sm text-label-code-sm">Grupo Broadcast</span>
+</div>
+<div class="flex items-center gap-space-xs font-label-code-sm text-label-code-sm text-on-surface-variant mt-0.5">
+<span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span>
+<span>4 recados automatizados ativos</span>
+</div>
+</div>
+<div class="w-48 flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-outline text-[16px]">group</span>
+<span class="font-label-code text-label-code text-on-surface tracking-tight">+55 11 96544-0011</span>
+</div>
+<div class="w-28 flex justify-end">
+<a class="px-space-md py-1 rounded bg-surface-container hover:bg-primary hover:text-on-primary text-on-surface font-label-ui text-label-ui transition-all flex items-center gap-1 shadow-sm" href="/contacts/ct-0094">
+<span>Abrir Ficha</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</a>
+</div>
+</div>
+</div>
+<div class="hidden p-space-xl text-center flex flex-col items-center justify-center gap-space-xs" id="no-contacts-found">
+<span class="material-symbols-outlined text-outline text-[32px]">person_off</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Nenhum contato encontrado</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Tente refinar os termos do filtro ou registre um novo canal à direita.</p>
+</div>
+</div>
+<div class="p-space-md rounded bg-surface-container-low flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm">
+<span class="material-symbols-outlined text-tertiary text-[16px]">sync</span>
+<span>Sincronização com repositório SQLite WAL local ativa (latência ~0.4ms)</span>
+</div>
+<span class="font-label-code-sm text-label-code-sm text-outline">GET /contacts: 200 OK</span>
+</div>
+</section>
+<aside class="xl:col-span-4 flex flex-col gap-space-md" id="wdg-contact-create">
+<div class="bg-surface-container-low p-space-lg rounded shadow-md flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">person_add</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Novo Destinatário</h2>
+</div>
+<span class="font-label-code-sm text-label-code-sm px-space-xs py-0.5 rounded bg-surface-container text-outline">POST /contacts</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Adiciona um destinatário à tabela SQLite local para uso imediato em templates e cron jobs.
+        </p>
+<form class="flex flex-col gap-space-md mt-space-xs" id="form-create-contact" onsubmit="event.preventDefault(); window.submitNewContact();">
+<div class="flex flex-col gap-space-xs">
+<div class="flex justify-between items-center">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="contact-name">
+                Identificador / Nome Completo
+              </label>
+<span class="font-label-code-sm text-label-code-sm text-outline">1-80 chars</span>
+</div>
+<input class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md px-space-md py-space-sm rounded outline-none placeholder:text-outline/60 focus:bg-surface-container-high transition-colors" id="contact-name" maxlength="80" name="name" placeholder="Ex: Alerta Infra / Dra. Marina" required="" type="text"/>
+</div>
+<div class="flex flex-col gap-space-xs">
+<div class="flex justify-between items-center">
+<label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="contact-phone">
+                Telefone de Despacho (E.164)
+              </label>
+<span class="font-label-code-sm text-label-code-sm text-outline">1-64 chars</span>
+</div>
+<input class="w-full bg-surface-container-lowest text-on-surface font-label-code text-label-code px-space-md py-space-sm rounded outline-none placeholder:text-outline/60 focus:bg-surface-container-high transition-colors" id="contact-phone" maxlength="64" name="phone" placeholder="+55 11 90000-0000" required="" type="text"/>
+<span class="font-label-code-sm text-label-code-sm text-outline">Inclua o DDI nacional (+55) para integração com gateway.</span>
+</div>
+<div class="hidden p-space-sm rounded flex items-start gap-space-xs font-body-sm text-body-sm transition-all" id="api-feedback">
+<span class="material-symbols-outlined text-[16px] mt-0.5" id="api-feedback-icon"></span>
+<div class="flex flex-col flex-1">
+<span class="font-label-code-sm text-label-code-sm font-semibold" id="api-feedback-title"></span>
+<span class="font-label-code-sm text-label-code-sm" id="api-feedback-msg"></span>
+</div>
+</div>
+<button class="w-full mt-space-xs py-space-sm px-space-md bg-primary hover:bg-primary-container text-on-primary font-label-ui text-label-ui uppercase tracking-wider rounded transition-all flex items-center justify-center gap-space-xs shadow-sm" id="btn-submit-contact" type="submit">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+<span>Adicionar Contato</span>
+</button>
+</form>
+<div class="flex flex-col gap-space-xs pt-space-md bg-surface-container-low">
+<span class="font-label-ui text-label-ui uppercase text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">info</span>
+            Resolução de Erros &amp; Códigos
+          </span>
+<div class="grid grid-cols-1 gap-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm">
+<div class="flex items-center justify-between p-1.5 rounded bg-surface-container-lowest">
+<span class="text-error font-medium">HTTP 401</span>
+<span>Chave x-api-key ausente/inválida</span>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-surface-container-lowest">
+<span class="text-error font-medium">HTTP 409</span>
+<span>Nome ou telefone já cadastrado</span>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-surface-container-lowest">
+<span class="text-error font-medium">HTTP 422</span>
+<span>Estrutura E.164 fora de conformidade</span>
+</div>
+</div>
+</div>
+<div class="p-space-sm rounded bg-surface-container-lowest flex items-start gap-space-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-outline text-[16px] mt-0.5">lock_person</span>
+<p class="font-body-sm text-body-sm text-outline">
+<span class="font-medium text-on-surface">Nota técnica homelab:</span> Os contatos não autenticam no sistema. A chave <code class="font-label-code-sm text-label-code-sm text-tertiary">x-api-key</code> opera localmente na máquina servidora para proteção do daemon.
+          </p>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<script>
+  (function() {
+    const searchInput = document.getElementById('search-input');
+    const rows = document.querySelectorAll('.contact-row');
+    const emptyState = document.getElementById('no-contacts-found');
+    const badge = document.getElementById('contact-count-badge');
+
+    if (searchInput) {
+      searchInput.addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+          const name = (row.getAttribute('data-name') || '').toLowerCase();
+          const phone = (row.getAttribute('data-phone') || '').toLowerCase();
+          const id = (row.getAttribute('data-id') || '').toLowerCase();
+
+          if (name.includes(query) || phone.includes(query) || id.includes(query)) {
+            row.style.display = 'flex';
+            visibleCount++;
+          } else {
+            row.style.display = 'none';
+          }
+        });
+
+        if (badge) {
+          badge.textContent = visibleCount + (visibleCount === 1 ? ' contato' : ' contatos');
+        }
+
+        if (emptyState) {
+          if (visibleCount === 0) {
+            emptyState.classList.remove('hidden');
+          } else {
+            emptyState.classList.add('hidden');
+          }
+        }
+      });
+    }
+
+    window.submitNewContact = function() {
+      const nameInput = document.getElementById('contact-name');
+      const phoneInput = document.getElementById('contact-phone');
+      const feedback = document.getElementById('api-feedback');
+      const feedbackTitle = document.getElementById('api-feedback-title');
+      const feedbackMsg = document.getElementById('api-feedback-msg');
+      const feedbackIcon = document.getElementById('api-feedback-icon');
+
+      const nameVal = nameInput.value.trim();
+      const phoneVal = phoneInput.value.trim();
+
+      feedback.classList.remove('hidden', 'bg-error-container/30', 'text-error', 'bg-tertiary/10', 'text-tertiary');
+
+      if (!phoneVal.startsWith('+')) {
+        feedback.classList.add('bg-error-container/30', 'text-error');
+        feedbackIcon.textContent = 'warning';
+        feedbackTitle.textContent = 'Erro 422 (Unprocessable Entity)';
+        feedbackMsg.textContent = 'Número inválido. O formato deve ser E.164 iniciando com sinal de adição (+) e DDI.';
+        return;
+      }
+
+      if (nameVal.toLowerCase() === 'carlos silva') {
+        feedback.classList.add('bg-error-container/30', 'text-error');
+        feedbackIcon.textContent = 'block';
+        feedbackTitle.textContent = 'Erro 409 (Conflict)';
+        feedbackMsg.textContent = 'Este contato já se encontra cadastrado no banco SQLite local.';
+        return;
+      }
+
+      feedback.classList.add('bg-tertiary/10', 'text-tertiary');
+      feedbackIcon.textContent = 'check_circle';
+      feedbackTitle.textContent = '201 Created';
+      feedbackMsg.textContent = 'Contato despachado para SQLite. Atualizando caderno...';
+
+      setTimeout(() => {
+        nameInput.value = '';
+        phoneInput.value = '';
+      }, 900);
+    };
+  })();
+</script></main></div></body></html>

@@ -33,3 +33,4 @@ Thumbs.db
 .gemini/
 .claude/
 .cursor/mcp.json
+*:Zone.Identifier
