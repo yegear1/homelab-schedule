@@ -673,7 +673,15 @@
                   <div class="flex flex-col">
                     <h3 class="font-headline-sm text-headline-sm text-on-surface">{job.title}</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-space-xs mt-space-xs text-label-code-sm font-mono text-on-surface-variant">
-                      <div><span class="text-outline">Para:</span> {job.target_number || job.to}</div>
+                      <div>
+                        <span class="text-outline">Para:</span>
+                        {#if job.to && job.to !== (job.target_number || job.to)}
+                          <span class="text-primary font-semibold">{job.to}</span>
+                          <span class="text-outline text-xs">({job.target_number || job.to})</span>
+                        {:else}
+                          <span>{job.target_number || job.to}</span>
+                        {/if}
+                      </div>
                       <div><span class="text-outline">Por:</span> {job.created_by || '—'}</div>
                       <div><span class="text-outline">Exec:</span> {job.cron_expr || job.run_at || '—'}</div>
                       <div><span class="text-outline">Next:</span> {job.next_run_at ? new Date(job.next_run_at).toLocaleTimeString('pt-BR') : '—'}</div>

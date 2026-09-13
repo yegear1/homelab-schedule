@@ -1,13 +1,18 @@
 <script lang="ts">
   import { api, ApiClientError } from '../lib/api';
+  import { router } from '../lib/router.svelte';
   import { toast } from '../lib/toast.svelte';
-  import type { Job, JobListItem, JobListFilter, JobKind, MessageTemplate } from '../lib/types';
+  import type { Contact, Job, JobListItem, JobListFilter, JobKind, MessageTemplate } from '../lib/types';
   import RescheduleModal from '../components/RescheduleModal.svelte';
   import ContactPickerModal from '../components/ContactPickerModal.svelte';
 
   let jobs = $state<JobListItem[]>([]);
   let selectedJob = $state<Job | null>(null);
   let templates = $state<MessageTemplate[]>([]);
+  let contacts = $state<Contact[]>([]);
+  let contactsByPhone = $derived(
+    new Map<string, Contact>(contacts.map((c) => [c.phone, c]))
+  );
   let loading = $state(true);
   let errorMsg = $state<string | null>(null);
 
@@ -40,6 +45,7 @@
   $effect(() => {
     loadJobs();
     loadTemplates();
+    loadContacts();
   });
 
   async function loadTemplates() {
@@ -48,6 +54,31 @@
     } catch {
       // Non-critical
     }
+  }
+
+  async function loadContacts() {
+    try {
+      contacts = await api.getContacts();
+    } catch {
+      // Non-critical
+    }
+  }
+
+  function resolveRecipient(job: JobListItem | Job) {
+    const target = job.target_number || job.to;
+    const contact = contactsByPhone.get(target);
+
+    const alias = job.to && job.to !== target && job.to !== job.target_number ? job.to : null;
+    const contactName = contact?.name || null;
+    const primaryName = alias || contactName;
+
+    return {
+      primaryName,
+      alias,
+      contactName,
+      targetNumber: target,
+      contact,
+    };
   }
 
   async function loadJobs() {
@@ -441,6 +472,7 @@
             {:else}
               {#each jobs as job (job.id)}
                 {@const isSelected = selectedJob?.id === job.id}
+                {@const recipient = resolveRecipient(job)}
                 <tr
                   class="transition-colors cursor-pointer group {isSelected ? 'bg-surface-container-high' : 'bg-surface-container hover:bg-surface-container-high/60'}"
                   data-job-id={job.id}
@@ -457,9 +489,30 @@
                     <div class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors">
                       {job.title}
                     </div>
-                    <div class="text-outline flex items-center gap-1 font-mono">
+                    <div class="text-outline flex items-center gap-1.5 flex-wrap font-mono mt-0.5">
                       <span class="material-symbols-outlined text-[13px]">call_made</span>
-                      <span>{job.target_number || job.to}</span>
+                      {#if recipient.primaryName}
+                        {#if recipient.contact}
+                          <button
+                            type="button"
+                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary font-label-code-sm text-label-code-sm font-semibold hover:bg-primary/20 transition-colors cursor-pointer"
+                            title="Ver perfil de {recipient.primaryName}"
+                            onclick={(e) => {
+                              e.stopPropagation();
+                              router.navigate(`/contacts/${recipient.contact!.id}`);
+                            }}
+                          >
+                            <span class="material-symbols-outlined text-[12px]">person</span>
+                            <span>{recipient.primaryName}</span>
+                          </button>
+                        {:else}
+                          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-highest text-tertiary font-label-code-sm text-label-code-sm font-semibold">
+                            <span class="material-symbols-outlined text-[12px]">bookmark</span>
+                            <span>{recipient.primaryName}</span>
+                          </span>
+                        {/if}
+                      {/if}
+                      <span class="text-label-code-sm">{recipient.targetNumber}</span>
                       {#if job.template_id}
                         <span class="text-outline-variant font-label-code-sm text-label-code-sm">• tpl: {job.template_id}</span>
                       {/if}
@@ -537,6 +590,8 @@
 
     <!-- WIDGET 3: JOB DETAIL (wdg-job-detail) - 5 cols on Desktop -->
     {#if selectedJob}
+      {@const recipient = resolveRecipient(selectedJob)}
+      {@const creatorContact = selectedJob.created_by ? contactsByPhone.get(selectedJob.created_by) : null}
       <section class="lg:col-span-5 bg-surface-container-low p-space-md rounded shadow-sm flex flex-col gap-space-md sticky top-20 border border-outline-variant/10" id="wdg-job-detail">
         <div class="flex items-center justify-between pb-space-xs">
           <div class="flex items-center gap-space-xs">
@@ -576,13 +631,59 @@
               {selectedJob.status}
             </span>
           </div>
-          <div>
+          <div class="col-span-2 sm:col-span-1">
             <span class="font-label-ui text-label-ui uppercase text-outline block">Destino (Target)</span>
-            <span class="font-label-code text-label-code text-on-surface font-mono" id="detail-target">{selectedJob.target_number || selectedJob.to}</span>
+            <div class="flex items-start justify-between gap-2 mt-0.5">
+              <div class="flex flex-col">
+                {#if recipient.primaryName}
+                  <div class="flex items-center gap-1 flex-wrap">
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded {recipient.contact ? 'bg-primary/10 text-primary' : 'bg-surface-container-highest text-tertiary'} font-label-code-sm text-label-code-sm font-semibold">
+                      <span class="material-symbols-outlined text-[12px]">{recipient.contact ? 'person' : 'bookmark'}</span>
+                      <span>{recipient.primaryName}</span>
+                    </span>
+                    {#if recipient.alias && recipient.contactName && recipient.alias !== recipient.contactName}
+                      <span class="text-outline text-label-code-sm font-mono text-[11px]">(alias: {recipient.alias})</span>
+                    {/if}
+                  </div>
+                {/if}
+                <span class="font-label-code text-label-code text-on-surface font-mono mt-0.5" id="detail-target">
+                  {recipient.targetNumber}
+                </span>
+              </div>
+
+              {#if recipient.contact}
+                <button
+                  type="button"
+                  class="px-2 py-1 rounded bg-primary/10 hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all shrink-0 cursor-pointer"
+                  onclick={() => router.navigate(`/contacts/${recipient.contact!.id}`)}
+                  title="Ver perfil completo de {recipient.contact.name}"
+                >
+                  <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+                  <span>Ver Perfil</span>
+                </button>
+              {/if}
+            </div>
           </div>
-          <div>
+
+          <div class="col-span-2 sm:col-span-1">
             <span class="font-label-ui text-label-ui uppercase text-outline block">Criado Por</span>
-            <span class="font-label-code text-label-code text-on-surface font-mono" id="detail-created-by">{selectedJob.created_by || '—'}</span>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              {#if creatorContact}
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 text-primary hover:underline font-label-code text-label-code font-mono cursor-pointer"
+                  onclick={() => router.navigate(`/contacts/${creatorContact.id}`)}
+                  title="Ver perfil de {creatorContact.name}"
+                >
+                  <span class="material-symbols-outlined text-[14px]">person</span>
+                  <span>{creatorContact.name} ({selectedJob.created_by})</span>
+                </button>
+              {:else}
+                <span class="font-label-code text-label-code text-on-surface font-mono" id="detail-created-by">
+                  {selectedJob.created_by || '—'}
+                </span>
+              {/if}
+            </div>
           </div>
           <div>
             <span class="font-label-ui text-label-ui uppercase text-outline block">Tipo (Kind)</span>
