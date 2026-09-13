@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[00.6]`
-- **Título:** Porte Stitch → Svelte 5 (`web/`, `ui-port`)
-- **Status:** `EM EXECUÇÃO`
-- **Contexto:** `proto/scr-*/code.html` no mapa. Árvore vazia em `web/src/{layout,components,pages,lib}`. Sem Vite/npm até o porte. Auth continua `x-api-key`.
+- **ID:** `[00.7]`
+- **Título:** StaticFiles + stage Node na imagem Docker
+- **Status:** `PRONTO PARA PLANEJAMENTO`
+- **Contexto:** App Svelte 5 pronto em `web/`. Adicionar multi-stage build no `Dockerfile` para gerar `web/dist`, montar `StaticFiles` no `main.py` e servir a UI na porta `8003`.
 
 ---
 
@@ -20,6 +20,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [00.6] | Porte Stitch → Svelte 5 (`web/`, `ui-port`) | [`b287043`] | 2026-09-13 |
 | [00.5] | Ingestão Stitch em `proto/scr-*` | [`6ff1cc1`] | 2026-09-12 |
 | [00.4] | Contrato de UI (INTERFACE.md, `pt-BR`) | [`bb9f3d4`] | 2026-09-12 |
 | [00.3] | Catálogo de templates SQLite + `{{name}}` no disparo | [`ba09917`] | 2026-09-12 |
@@ -30,7 +31,6 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] StaticFiles + stage Node na imagem (junto ou logo após o porte)
 - [ ] Expressões de intervalo amigáveis no MCP (`when`)
 - [ ] Contas: OTP + senha + sessão (adiado)
 
