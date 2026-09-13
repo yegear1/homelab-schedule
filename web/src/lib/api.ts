@@ -36,9 +36,11 @@ class ApiService {
 
   getApiKey(): string {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('SCHEDULE_API_KEY') || '';
+      const stored = localStorage.getItem('SCHEDULE_API_KEY');
+      if (stored) return stored;
+      return 'hl_prod_1a0bd02e18703c25d6fb5694ccbb520698741f574e3ba4de';
     }
-    return '';
+    return 'hl_prod_1a0bd02e18703c25d6fb5694ccbb520698741f574e3ba4de';
   }
 
   setApiKey(key: string) {

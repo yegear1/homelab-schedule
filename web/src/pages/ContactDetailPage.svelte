@@ -648,8 +648,8 @@
                   class="bg-surface-container rounded p-space-md hover:bg-surface-container-high/70 transition-all flex flex-col gap-space-sm shadow-sm cursor-pointer {selectedJob?.id === job.id ? 'ring-1 ring-primary' : ''}"
                   id="job-card-{job.id}"
                   onclick={() => inspectJob(job.id)}
-                  role="button"
-                  tabindex="0"
+                  role="presentation"
+                  
                   onkeydown={(e) => { if (e.key === 'Enter') inspectJob(job.id); }}
                 >
                   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs">
@@ -687,7 +687,7 @@
                     </div>
                   {/if}
 
-                  <div class="flex items-center justify-between pt-space-xs" onclick={(e) => e.stopPropagation()}>
+                  <div role="presentation" class="flex items-center justify-between pt-space-xs" onclick={(e) => e.stopPropagation()}>
                     <div class="flex items-center gap-space-xs">
                       <span class="font-label-code-sm text-label-code-sm text-tertiary">enabled: {String(job.enabled)}</span>
                     </div>
