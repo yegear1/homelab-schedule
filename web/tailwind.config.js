@@ -1,9 +1,10 @@
+// Space-separated RGB channels in :root need slash alpha, not rgba(r g b, a).
 function withOpacity(variableName) {
   return ({ opacityValue }) => {
     if (opacityValue !== undefined) {
-      return `rgba(var(${variableName}), ${opacityValue})`;
+      return `rgb(var(${variableName}) / ${opacityValue})`;
     }
-    return `rgb(var(${variableName}))`;
+    return `rgb(var(${variableName}) / 1)`;
   };
 }
 

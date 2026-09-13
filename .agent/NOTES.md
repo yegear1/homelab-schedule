@@ -34,6 +34,10 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-13] Tema sempre branco (tokens RGB + alpha)
+
+Canais em `app.css` são `R G B` (espaço). Tailwind 3 injeta `--tw-*-opacity` e, com `rgba(var(--token), a)`, o browser descarta a cor (`rgba(255 255 255, 1)` é inválido). Usar `rgb(var(--token) / a)`. Script inline em `index.html` aplica `class="dark"` / `data-theme` antes do paint.
+
 ### [2026-09-13] Remediações do QA Audit da UI (NF-01 a NF-15)
 
 - **Cura Definitiva de Cache Heurístico SPA (NF-01/09):** Respostas de fallback HTML do SPA (`index.html`) no backend (`main.py`) agora incluem cabeçalhos estritos `Cache-Control: no-cache, no-store, must-revalidate`, `Pragma: no-cache` e `Expires: 0`. No frontend (`api.ts`), todas as chamadas `fetch` utilizam `cache: 'no-store'`. Isso previne que navegadores ou proxies intermediários (Cloudflare) apliquem cache heurístico RFC 7234 e retornem HTML em chamadas subsequentes de API para rotas com o mesmo path (`/templates`, `/contacts`).
@@ -119,6 +123,7 @@ Alteração de contrato = schemas dos lados na mesma tarefa.
 - **SQLite:** um writer. Esquecer o `Event` após escrita atrasa até o cap de 5 min.
 - **YAML vs SQLite:** merge por `id` estável; cancel YAML → `409`.
 - **`GET /jobs?to=`:** intervalo de data, não destino. Pessoa: `GET /jobs?phone=`.
+- **Tema UI:** não misturar `rgba(var(--rgb-espaço), a)` com tokens `R G B`; o fundo cai no branco do user-agent e o seletor parece morto.
 
 ---
 

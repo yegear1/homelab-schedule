@@ -42,6 +42,7 @@ class ThemeManager {
     } else {
       root.classList.remove('dark');
     }
+    root.style.colorScheme = isDark ? 'dark' : 'light';
   }
 }
 
