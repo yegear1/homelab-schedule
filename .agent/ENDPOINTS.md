@@ -33,14 +33,16 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 | `last_run_at` | string ISO-8601 UTC \| null | |
 | `last_status` | string \| null | `queued` se o gateway respondeu 202 |
 | `last_error` | string \| null | Sem stack na resposta pública |
+| `retry_count` | int | Retentativas transitórias |
+| `created_by` | string | Telefone normalizado de quem criou; vazio se omitido |
 
 ### `GET /jobs`
 
-Query: `status` (`upcoming` \| `done` \| `paused` \| `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino). Lista **curta**: sem `content` completo (truncar ou omitir; `GET /jobs/{id}` tem o texto).
+Query: `status` (`upcoming` \| `done` \| `paused` \| `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino), `phone` (destino **ou** criador, normalizado; aceita nome/id de contato), `limit`. Lista **curta**: sem `content` completo.
 
-Não há query de destino no v1. Query `to` é **fim de intervalo de data** (ISO), não destinatário. Não use `?to=<id de chat>`.
+Query `to` é **fim de intervalo de data**. Filtro de pessoa: `?phone=`.
 
-`200` → `{ "jobs": [ JobListItem ] }`
+`200` → `{ "jobs": [ JobListItem ] }` (inclui `created_by`, sem `content`)
 
 ### `GET /jobs/{id}`
 
@@ -60,7 +62,7 @@ Cria recado sqlite.
 }
 ```
 
-Cron: `"kind": "cron", "cron_expr": "0 9 * * 1"` (segunda 09:00 no `TZ`). `to` default `eu`. `201` + Job. `422` schema. `401` chave inválida.
+Cron: `"kind": "cron", "cron_expr": "0 9 * * 1"` (segunda 09:00 no `TZ`). `to` default `eu`. `created_by` opcional (telefone, alias ou contato). `201` + Job. `422` schema. `401` chave inválida.
 
 ### `POST /jobs/{id}/run`
 

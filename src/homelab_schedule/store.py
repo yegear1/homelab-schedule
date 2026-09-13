@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from schemas.job import Job, JobKind, JobSource, JobStatus
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 APP_TZ = ZoneInfo("America/Sao_Paulo")
 
 _CREATE_JOBS = """
@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     last_run_at TEXT,
     last_status TEXT,
     last_error TEXT,
-    retry_count INTEGER NOT NULL DEFAULT 0
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    created_by TEXT NOT NULL DEFAULT ''
 )
 """
 
@@ -76,6 +77,14 @@ def init_schema(conn: sqlite3.Connection) -> None:
         conn.execute("PRAGMA user_version=3")
     if version < 4:
         conn.execute("PRAGMA user_version=4")
+    if version < 5:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()]
+        if "created_by" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN created_by TEXT NOT NULL DEFAULT ''")
+        conn.execute("PRAGMA user_version=5")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_jobs_phone ON jobs (target_number, created_by)"
+    )
     conn.commit()
 
 
@@ -120,4 +129,7 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         retry_count=int(row["retry_count"])
         if "retry_count" in row.keys() and row["retry_count"] is not None
         else 0,
+        created_by=str(row["created_by"])
+        if "created_by" in row.keys() and row["created_by"] is not None
+        else "",
     )

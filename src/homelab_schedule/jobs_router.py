@@ -32,8 +32,11 @@ def list_jobs(
     range_from: Annotated[datetime | None, Query(alias="from")] = None,
     range_to: Annotated[datetime | None, Query(alias="to")] = None,
     limit: Annotated[int | None, Query(ge=1, le=100)] = None,
+    phone: Annotated[str | None, Query()] = None,
 ) -> JobListResponse:
-    jobs = _service(request).list_jobs(status_filter, range_from, range_to, limit=limit)
+    jobs = _service(request).list_jobs(
+        status_filter, range_from, range_to, limit=limit, phone=phone
+    )
     return JobListResponse(jobs=jobs)
 
 

@@ -56,6 +56,7 @@ class JobService:
             cron_expr=payload.cron_expr,
             source=JobSource.SQLITE,
             status=JobStatus.SCHEDULED,
+            created_by=self._created_by(payload.created_by),
         )
         stored = self._repo.insert(job)
         self._notebook_changed.set()
@@ -73,8 +74,12 @@ class JobService:
         range_from: datetime | None,
         range_to: datetime | None,
         limit: int | None = None,
+        phone: str | None = None,
     ) -> list[JobListItem]:
-        jobs = self._repo.list_jobs(status_filter, range_from, range_to, limit=limit)
+        resolved_phone = self._resolve_to(phone) if phone else None
+        jobs = self._repo.list_jobs(
+            status_filter, range_from, range_to, limit=limit, phone=resolved_phone
+        )
         return [JobListItem.model_validate(job.model_dump()) for job in jobs]
 
     def cancel(self, job_id: str) -> None:
@@ -137,6 +142,11 @@ class JobService:
             if from_contact is not None:
                 return from_contact
         return resolve_destination(to, self._aliases)
+
+    def _created_by(self, raw: str | None) -> str:
+        if raw is None or raw.strip() == "":
+            return ""
+        return self._resolve_to(raw.strip())
 
 
 def _cancelled(job: Job) -> Job:

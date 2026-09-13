@@ -26,6 +26,7 @@ class CreateJobRequest(BaseModel):
     kind: JobKind
     run_at: datetime | None = None
     cron_expr: str | None = None
+    created_by: str | None = None
 
     @model_validator(mode="after")
     def _kind_schedule_fields(self) -> "CreateJobRequest":
@@ -53,6 +54,7 @@ class JobListItem(BaseModel):
     next_run_at: datetime | None = None
     last_run_at: datetime | None = None
     last_status: str | None = None
+    created_by: str = ""
 
 
 class JobListResponse(BaseModel):

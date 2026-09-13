@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[00.2]`
-- **Título:** `created_by` no job + `GET /jobs?phone=` (união destino ou criador)
+- **ID:** `[00.3]`
+- **Título:** Catálogo de templates SQLite + `{{name}}` e relógio no disparo
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** `[00.1]` entregou contatos HTTP. A ficha da pessoa precisa listar recados **para** o número e recados **criados** por ele.
+- **Contexto:** Contatos e ficha por `phone` existem. Falta modelo reutilizável com variáveis de contato e data.
 
 ---
 
@@ -20,13 +20,13 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [00.2] | `created_by` no job + `GET /jobs?phone=` | (este commit) | 2026-09-12 |
 | [00.1] | Contatos no SQLite + HTTP (nome, telefone, resolução de `to`) | [`0336dce`] | 2026-09-12 |
 
 ---
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[00.3]** Catálogo de templates SQLite + `{{name}}` e relógio no disparo
 - [ ] **[00.4]** Contrato de UI (`.agent/INTERFACE.md`, locale `pt-BR`) — só depois da API existir
 - [ ] Expressões de intervalo amigáveis no MCP (`when`)
 

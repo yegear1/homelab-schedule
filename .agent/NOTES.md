@@ -78,7 +78,7 @@ Alteração de contrato = schemas dos lados na mesma tarefa.
 - **Logs:** destino e `content` nunca são stream field.
 - **SQLite:** um writer. Esquecer o `Event` após escrita atrasa até o cap de 5 min.
 - **YAML vs SQLite:** merge por `id` estável; cancel YAML → `409`.
-- **`GET /jobs?to=`:** intervalo de data, não destino. Filtro por telefone: `[00.2]`.
+- **`GET /jobs?to=`:** intervalo de data, não destino. Pessoa: `GET /jobs?phone=`.
 
 ---
 
@@ -87,7 +87,7 @@ Alteração de contrato = schemas dos lados na mesma tarefa.
 | Débito | Motivo | Quando revisitar |
 |---|---|---|
 | Sem UI web no v0.2.0 | ADR-003 | Ciclo `[00.x]` (humano pediu) |
-| Sem `created_by` / filtro por telefone | Job só tem destino | `[00.2]` |
+| Sem `created_by` / filtro por telefone | Job só tem destino | Fechado em `[00.2]` (`?phone=`) |
 | Contatos só em `WHATSAPP_ALIASES` | Env, não CRUD | Fechado em `[00.1]` (`/contacts`) |
 | Templates só data/hora | Sem catálogo nem `{{name}}` | `[00.3]` |
 | Sem HA / multi-réplica | Um SQLite + um tick | Se houver segundo host |

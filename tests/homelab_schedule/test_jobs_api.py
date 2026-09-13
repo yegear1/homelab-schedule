@@ -317,3 +317,71 @@ def test_reschedule_missing_job_is_404(client: TestClient, api_key: str) -> None
         json={"run_at": "2026-09-13T10:00:00-03:00"},
     )
     assert response.status_code == 404
+
+
+def test_create_job_stores_created_by(client: TestClient, api_key: str) -> None:
+    created = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "x",
+            "content": "y",
+            "to": "eu",
+            "kind": "once",
+            "run_at": "2027-09-12T14:00:00-03:00",
+            "created_by": "5521912345678",
+        },
+    )
+    assert created.status_code == 201
+    assert created.json()["created_by"] == "5521912345678@c.us"
+
+
+def test_list_jobs_phone_unions_destination_and_creator(
+    client: TestClient, api_key: str
+) -> None:
+    for_them = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "para lia",
+            "content": "y",
+            "to": "5511911112222",
+            "kind": "once",
+            "run_at": "2027-09-12T14:00:00-03:00",
+        },
+    )
+    by_them = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "lia criou",
+            "content": "y",
+            "to": "eu",
+            "kind": "once",
+            "run_at": "2027-09-12T15:00:00-03:00",
+            "created_by": "5511911112222",
+        },
+    )
+    other = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "outro",
+            "content": "y",
+            "to": "eu",
+            "kind": "once",
+            "run_at": "2027-09-12T16:00:00-03:00",
+        },
+    )
+    assert for_them.status_code == 201
+    assert by_them.status_code == 201
+    assert other.status_code == 201
+    listed = client.get(
+        "/jobs?status=all&phone=5511911112222",
+        headers=_auth(api_key),
+    )
+    assert listed.status_code == 200
+    ids = {item["id"] for item in listed.json()["jobs"]}
+    assert for_them.json()["id"] in ids
+    assert by_them.json()["id"] in ids
+    assert other.json()["id"] not in ids

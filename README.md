@@ -58,7 +58,7 @@ No `mcp.json` local, `command`/`args` apontam para esse script (`uv run --direct
 
 ## HTTP (resumo)
 
-- Lista: `GET /jobs?status=upcoming|done|error|paused|all&limit=…`. Query `to` é **fim de intervalo de data**, não destino. Lista curta: sem `content`.
+- Lista: `GET /jobs?status=upcoming|done|error|paused|all&limit=…&phone=…`. Query `to` é **fim de intervalo de data**. `phone` une destino e criador.
 - Detalhe: `GET /jobs/{id}` (inclui `content` e `target_number`).
 - Criar / cancelar / disparar agora: `POST /jobs`, `POST /jobs/{id}/cancel`, `POST /jobs/{id}/run` (`run` não substitui o agendamento).
 - Adiar recado sqlite: `POST /jobs/{id}/reschedule`.

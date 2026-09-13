@@ -20,8 +20,8 @@ class JobRepository:
             INSERT INTO jobs (
                 id, title, content, "to", target_number, kind, run_at, cron_expr,
                 enabled, source, status, next_run_at, last_run_at,
-                last_status, last_error, retry_count
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                last_status, last_error, retry_count, created_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             _job_params(to_store),
         )
@@ -46,6 +46,7 @@ class JobRepository:
         range_from: datetime | None,
         range_to: datetime | None,
         limit: int | None = None,
+        phone: str | None = None,
     ) -> list[Job]:
         clauses: list[str] = []
         params: list[str | int] = []
@@ -60,6 +61,10 @@ class JobRepository:
             if encoded is not None:
                 clauses.append("next_run_at <= ?")
                 params.append(encoded)
+        if phone:
+            clauses.append("(target_number = ? OR created_by = ?)")
+            params.append(phone)
+            params.append(phone)
         sql = "SELECT * FROM jobs"
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
@@ -76,7 +81,8 @@ class JobRepository:
             UPDATE jobs SET
                 title = ?, content = ?, "to" = ?, target_number = ?, kind = ?, run_at = ?,
                 cron_expr = ?, enabled = ?, source = ?, status = ?,
-                next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?, retry_count = ?
+                next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?, retry_count = ?,
+                created_by = ?
             WHERE id = ?
             """,
             (
@@ -210,6 +216,7 @@ def _job_params(job: Job) -> tuple[
     str | None,
     str | None,
     int,
+    str,
 ]:
     return (
         job.id,
@@ -228,4 +235,5 @@ def _job_params(job: Job) -> tuple[
         job.last_status,
         job.last_error,
         job.retry_count,
+        job.created_by,
     )
