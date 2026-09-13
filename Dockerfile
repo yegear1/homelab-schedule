@@ -1,3 +1,14 @@
+# Stage 1: Build frontend Svelte 5 SPA
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /web
+COPY web/package*.json ./
+RUN npm ci
+
+COPY web/ ./
+RUN npm run build
+
+# Stage 2: Runtime Python 3.13
 FROM python:3.13-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /bin/uv
@@ -17,6 +28,9 @@ COPY src ./src
 COPY routines.yaml ./routines.yaml
 
 RUN uv sync --frozen --no-dev
+
+# Copy compiled frontend assets from Stage 1
+COPY --from=frontend-builder /web/dist /app/web/dist
 
 EXPOSE 8003
 

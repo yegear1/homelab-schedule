@@ -9,7 +9,9 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from homelab_schedule.aliases import parse_aliases
 from homelab_schedule.clock import SystemClock
@@ -46,6 +48,7 @@ def create_app(
     dispatcher: Dispatcher | None = None,
     now: Callable[[], datetime] | None = None,
     tick_cap_seconds: float = 300.0,
+    dist_dir: Path | None = None,
 ) -> FastAPI:
     resolved = settings if settings is not None else Settings()
     configure_logging()
@@ -118,12 +121,43 @@ def create_app(
         conn.close()
 
     app = FastAPI(title="homelab-schedule", lifespan=lifespan)
-    _register_error_handlers(app)
+
+    resolved_dist = dist_dir
+    if resolved_dist is None:
+        local_dist = Path("web/dist")
+        if local_dist.is_dir():
+            resolved_dist = local_dist
+        else:
+            repo_dist = Path(__file__).resolve().parent.parent.parent / "web" / "dist"
+            resolved_dist = repo_dist if repo_dist.is_dir() else local_dist
+    dist_index = resolved_dist / "index.html"
+
+    _register_error_handlers(app, dist_index)
     app.include_router(routines_router)
     app.include_router(jobs_router)
     app.include_router(contacts_router)
     app.include_router(templates_router)
     app.include_router(housekeeping_router)
+
+    if (resolved_dist / "assets").is_dir():
+        app.mount(
+            "/assets",
+            StaticFiles(directory=resolved_dist / "assets"),
+            name="assets",
+        )
+
+    @app.get("/", response_class=Response)
+    def root() -> Response:
+        if dist_index.is_file():
+            return FileResponse(dist_index)
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    def favicon() -> Response:
+        fav = resolved_dist / "favicon.ico"
+        if fav.is_file():
+            return FileResponse(fav)
+        return Response(status_code=204)
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
@@ -132,14 +166,34 @@ def create_app(
     return app
 
 
-def _register_error_handlers(app: FastAPI) -> None:
+def _is_html_request(request: Request, dist_index: Path) -> bool:
+    return (
+        request.method in ("GET", "HEAD")
+        and dist_index.is_file()
+        and "text/html" in request.headers.get("accept", "")
+    )
+
+
+def _register_error_handlers(app: FastAPI, dist_index: Path) -> None:
     @app.exception_handler(Unauthorized)
-    async def unauthorized(_: Request, exc: Unauthorized) -> JSONResponse:
+    async def unauthorized(request: Request, exc: Unauthorized) -> Response:
+        if _is_html_request(request, dist_index):
+            return FileResponse(dist_index)
         return JSONResponse({"detail": exc.message}, status_code=401)
 
     @app.exception_handler(EntityNotFound)
-    async def not_found(_: Request, exc: EntityNotFound) -> JSONResponse:
+    async def not_found(request: Request, exc: EntityNotFound) -> Response:
+        if _is_html_request(request, dist_index):
+            return FileResponse(dist_index)
         return JSONResponse({"detail": exc.message}, status_code=404)
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception(
+        request: Request, exc: StarletteHTTPException
+    ) -> Response:
+        if exc.status_code == 404 and _is_html_request(request, dist_index):
+            return FileResponse(dist_index)
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
     @app.exception_handler(Conflict)
     async def conflict(_: Request, exc: Conflict) -> JSONResponse:

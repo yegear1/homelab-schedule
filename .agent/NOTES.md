@@ -34,6 +34,11 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-13] Servir UI estática no FastAPI + Multi-stage Docker
+
+Dockerfile multi-stage: Stage 1 (`node:22-alpine`) compila o Svelte 5 SPA em `web/dist`, Stage 2 (`python:3.13-slim`) copia para `/app/web/dist`.
+FastAPI monta `/assets` com `StaticFiles`. Navegação no navegador (`GET`/`HEAD` com `Accept: text/html`) entrega `index.html` (SPA fallback em `/`, 401 de auth de rota e 404), preservando 401/404 JSON estritos para chamadas de API (`Accept: application/json` e mutações).
+
 ### [2026-09-13] Porte da UI em Svelte 5 (`web/`)
 
 Porte fiel dos protótipos Stitch (`proto/scr-*`) para Svelte 5 SPA com Tailwind e TypeScript. Chrome extraído em `web/src/layout/AppShell.svelte`, 4 rotas (`/contacts`, `/contacts/{id}`, `/templates`, `/jobs`) em `web/src/pages/`, cliente HTTP tipado em `web/src/lib/api.ts` com `x-api-key` no client e 202 tratado como enfileirado.

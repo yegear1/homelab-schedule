@@ -1,14 +1,29 @@
-.venv
-.git
-.pytest_cache
-.mypy_cache
-.ruff_cache
-.agent
-tests
-data
-*.sqlite
-.env
-.env.*
-!.env.example
-__pycache__
-.cursor
+# Git
+.git/
+.gitignore
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# SQLite data
+data/
+*.sqlite*
+
+# Agent and IDE
+.agent/
+.gemini/
+.idea/
+.vscode/
+
+# Node
+web/node_modules/
+web/dist/
+web/.vite/
