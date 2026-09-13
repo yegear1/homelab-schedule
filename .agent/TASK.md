@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[00.9]`
-- **Título:** Grupos de Envio (Múltiplos Destinatários, SQLite v7, Batch API & UI)
+- **ID:** `[00.10]`
+- **Título:** Expressões de intervalo amigáveis no MCP (`when`)
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Permitir agendar para múltiplos destinatários com o mesmo título/conteúdo/horário/criador através de `group_id` no SQLite (migração v7), endpoint batch e visualização/gestão agrupada na tela de Agendas.
+- **Contexto:** Permitir expressões amigáveis de intervalo (ex: 'em 10 minutos', 'amanhã às 14h') na tool MCP de agendamento.
 
 ---
 
@@ -20,6 +20,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [00.9] | Grupos de Envio (Múltiplos Destinatários, SQLite v7, Batch API & UI) | [`221997e`] | 2026-09-13 |
 | [00.8] | Exibição de Alias/Nome na Agenda + Link para Perfil | [`c55bf82`] | 2026-09-13 |
 | [00.7] | StaticFiles + stage Node na imagem Docker | [`95c9d91`, `c3822d6`] | 2026-09-13 |
 | [00.6] | Porte Stitch → Svelte 5 (`web/`, `ui-port`) | [`b287043`] | 2026-09-13 |
@@ -33,7 +34,6 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[00.10]** Expressões de intervalo amigáveis no MCP (`when`)
 - [ ] Contas: OTP + senha + sessão (adiado)
 
 ---
