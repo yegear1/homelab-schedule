@@ -33,4 +33,6 @@ Thumbs.db
 .gemini/
 .claude/
 .cursor/mcp.json
-*:Zone.Identifier
+web/node_modules/
+web/dist/
+web/.vite/

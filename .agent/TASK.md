@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[00.5]`
-- **Título:** Protótipo HTML das quatro telas (`ui-prototype`)
-- **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** `.agent/INTERFACE.md` aprovado (operador + `x-api-key`, locale `pt-BR`). Sem contas/OTP. Só proto estático depois de pedido explícito; porte no mesmo container depois do proto aprovado.
+- **ID:** `[00.6]`
+- **Título:** Porte Stitch → Svelte 5 (`web/`, `ui-port`)
+- **Status:** `EM EXECUÇÃO`
+- **Contexto:** `proto/scr-*/code.html` no mapa. Árvore vazia em `web/src/{layout,components,pages,lib}`. Sem Vite/npm até o porte. Auth continua `x-api-key`.
 
 ---
 
@@ -20,6 +20,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [00.5] | Ingestão Stitch em `proto/scr-*` | [`6ff1cc1`] | 2026-09-12 |
 | [00.4] | Contrato de UI (INTERFACE.md, `pt-BR`) | [`bb9f3d4`] | 2026-09-12 |
 | [00.3] | Catálogo de templates SQLite + `{{name}}` no disparo | [`ba09917`] | 2026-09-12 |
 | [00.2] | `created_by` no job + `GET /jobs?phone=` | [`8d3485c`] | 2026-09-12 |
@@ -29,7 +30,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] UI no mesmo container (`ui-port`, depois do proto aprovado)
+- [ ] StaticFiles + stage Node na imagem (junto ou logo após o porte)
 - [ ] Expressões de intervalo amigáveis no MCP (`when`)
 - [ ] Contas: OTP + senha + sessão (adiado)
 

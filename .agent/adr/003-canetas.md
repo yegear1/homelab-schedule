@@ -18,7 +18,7 @@ Canetas **neste repositório**:
 2. **HTTP** — caneta de máquina e backend do MCP.
 3. **YAML** — caneta de rotina permanente.
 
-Fora de escopo neste repo: UI web, CalDAV, e-mail, Telegram, bots de chat, issues GitHub como fila de lembrete. Um bot ou outro serviço pode ser **caller HTTP** (`/jobs`); o código não mora aqui.
+Fora de escopo neste repo: CalDAV, e-mail, Telegram, bots de chat, issues GitHub como fila de lembrete. **UI web do operador** passou a ser in-tree: ver [ADR-007](007-ui-mesmo-repo.md). Um bot ou outro serviço pode ser **caller HTTP** (`/jobs`); o código de mensageiro não mora aqui.
 
 Destinos: alias (`eu`, …) via `WHATSAPP_ALIASES` (nome histórico da env). Default `to=eu`.
 

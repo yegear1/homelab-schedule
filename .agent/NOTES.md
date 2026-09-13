@@ -28,10 +28,15 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 | [ADR-004](adr/004-dispatch-gatekeeper.md) | Dispatch só via POST /send; 202 = sucesso | Aprovado | 2026-09-11 |
 | [ADR-005](adr/005-mcp-superficie-fechada.md) | MCP superfície fechada (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`) | Aprovado | 2026-09-11 |
 | [ADR-006](adr/006-tick-next-run.md) | Avisos no tempo: `next_run_at` + tick asyncio | Aprovado | 2026-09-11 |
+| [ADR-007](adr/007-ui-mesmo-repo.md) | UI operador no mesmo repo (`web/` + `proto/`, Svelte 5) | Aprovado | 2026-09-12 |
 
 ---
 
 ## Decisões que não estão só no ADR
+
+### [2026-09-13] Porte da UI em Svelte 5 (`web/`)
+
+Porte fiel dos protótipos Stitch (`proto/scr-*`) para Svelte 5 SPA com Tailwind e TypeScript. Chrome extraído em `web/src/layout/AppShell.svelte`, 4 rotas (`/contacts`, `/contacts/{id}`, `/templates`, `/jobs`) em `web/src/pages/`, cliente HTTP tipado em `web/src/lib/api.ts` com `x-api-key` no client e 202 tratado como enfileirado.
 
 ### [2026-09-12] UI: operador agora, contas depois
 
