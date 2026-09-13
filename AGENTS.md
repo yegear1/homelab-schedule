@@ -65,6 +65,8 @@ Permitido: `up -d`, `logs`, `build`, `restart`, `exec`, `down` (sem `-v`).
 
 Todo serviço de aplicação no compose **deve**: `container_name` estável; `LOG_FORMAT=json`; `NO_COLOR=1`; `ENV`/`ENVIRONMENT`; `SERVICE_NAME=homelab-schedule`; `APP=homelab-schedule`; driver `json-file` `max-size: 10m`, `max-file: 3`. Imagem: uvicorn `--no-access-log` (`GET /health` o Vector pode descartar no perfil HDD). Skill global `victorialogs-integration` ao tocar logs ou compose.
 
+Para composes/imagens ainda sem versão fixada: ao fixar versão, pesquisar e adotar a **última versão estável** lançada (evitar versões arbitrárias ou tags instáveis como `latest` sem critério).
+
 ---
 
 ## MCP
