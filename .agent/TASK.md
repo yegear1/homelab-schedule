@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[00.7]`
-- **Título:** StaticFiles + stage Node na imagem Docker
+- **ID:** `[00.8]`
+- **Título:** Expressões de intervalo amigáveis no MCP (`when`)
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** App Svelte 5 pronto em `web/`. Adicionar multi-stage build no `Dockerfile` para gerar `web/dist`, montar `StaticFiles` no `main.py` e servir a UI na porta `8003`.
+- **Contexto:** Permitir expressões amigáveis relativas (ex: `em 10 minutos`, `amanhã às 14h`) no parâmetro `when` das tools MCP além do ISO-8601 UTC.
 
 ---
 
@@ -20,6 +20,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [00.7] | StaticFiles + stage Node na imagem Docker | [`95c9d91`] | 2026-09-13 |
 | [00.6] | Porte Stitch → Svelte 5 (`web/`, `ui-port`) | [`b287043`] | 2026-09-13 |
 | [00.5] | Ingestão Stitch em `proto/scr-*` | [`6ff1cc1`] | 2026-09-12 |
 | [00.4] | Contrato de UI (INTERFACE.md, `pt-BR`) | [`bb9f3d4`] | 2026-09-12 |
@@ -31,7 +32,6 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] Expressões de intervalo amigáveis no MCP (`when`)
 - [ ] Contas: OTP + senha + sessão (adiado)
 
 ---
