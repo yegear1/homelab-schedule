@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from '../lib/api';
   import { toast } from '../lib/toast.svelte';
+  import { focusTrap } from '../lib/focusTrap';
 
   interface Props {
     open: boolean;
@@ -56,7 +57,13 @@
 
 {#if open}
   <div class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-space-md" id="modal-reschedule">
-    <div class="bg-surface-container-low rounded-xl p-space-lg max-w-md w-full shadow-2xl flex flex-col gap-space-md border border-outline-variant/30">
+    <div
+      use:focusTrap
+      class="bg-surface-container-low rounded-xl p-space-lg max-w-md w-full shadow-2xl flex flex-col gap-space-md border border-outline-variant/30"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
       <div class="flex items-center justify-between pb-space-xs">
         <div class="flex items-center gap-space-xs">
           <span class="material-symbols-outlined text-primary text-[20px]">edit_calendar</span>

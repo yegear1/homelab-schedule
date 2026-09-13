@@ -48,6 +48,7 @@ def test_root_serves_index_html(client: TestClient) -> None:
     assert response.status_code == 200
     assert "<!DOCTYPE html>" in response.text
     assert "Mock App" in response.text
+    assert "no-cache" in response.headers.get("cache-control", "")
 
 
 def test_assets_served_statically(client: TestClient) -> None:
@@ -60,12 +61,14 @@ def test_browser_navigation_to_auth_route_returns_index_html(client: TestClient)
     response = client.get("/contacts", headers={"Accept": "text/html,application/xhtml+xml"})
     assert response.status_code == 200
     assert "Mock App" in response.text
+    assert "no-cache" in response.headers.get("cache-control", "")
 
 
 def test_browser_navigation_to_unmatched_route_returns_index_html(client: TestClient) -> None:
     response = client.get("/unknown-page", headers={"Accept": "text/html"})
     assert response.status_code == 200
     assert "Mock App" in response.text
+    assert "no-cache" in response.headers.get("cache-control", "")
 
 
 def test_api_request_to_auth_route_without_key_returns_401_json(client: TestClient) -> None:

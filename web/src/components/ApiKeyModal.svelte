@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from '../lib/api';
   import { toast } from '../lib/toast.svelte';
+  import { focusTrap } from '../lib/focusTrap';
 
   interface Props {
     open: boolean;
@@ -40,7 +41,13 @@
     onclick={(e) => { if (e.target === e.currentTarget) onclose(); }}
     role="presentation"
   >
-    <div class="bg-surface-container-low max-w-md w-full rounded p-space-lg shadow-xl flex flex-col gap-space-md border border-outline-variant/30 cursor-default" role="dialog" aria-modal="true" tabindex="-1">
+    <div
+      use:focusTrap
+      class="bg-surface-container-low max-w-md w-full rounded p-space-lg shadow-xl flex flex-col gap-space-md border border-outline-variant/30 cursor-default"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
       <div class="flex items-center justify-between pb-space-xs">
         <div class="flex items-center gap-space-xs">
           <span class="material-symbols-outlined text-primary text-[20px]">key</span>

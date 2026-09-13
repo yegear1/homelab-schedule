@@ -45,6 +45,23 @@
     return templates.filter((t) => t.name.toLowerCase().includes(q) || t.id.toLowerCase().includes(q) || t.body.toLowerCase().includes(q));
   });
 
+  const VALID_TAGS = new Set([
+    '{{name}}',
+    '{{date}}',
+    '{{date_iso}}',
+    '{{time}}',
+    '{{weekday}}',
+    '{{day_name}}',
+    '{{month_name}}',
+    '{{year}}',
+  ]);
+
+  const unknownPlaceholders = $derived.by(() => {
+    const matches = templateBody.match(/\{\{[^}]+\}\}/g) || [];
+    const unknowns = matches.filter((tag) => !VALID_TAGS.has(tag));
+    return Array.from(new Set(unknowns));
+  });
+
   const livePreview = $derived.by(() => {
     if (!templateBody.trim()) {
       return 'Digite no campo acima para gerar a simulação imediata...';
@@ -349,7 +366,7 @@
           </button>
         </div>
 
-        <form class="flex flex-col gap-space-md" id="template-editor-form" onsubmit={handleSubmit} novalidate>
+        <form class="flex flex-col gap-space-md" id="template-editor-form" onsubmit={handleSubmit}>
           <!-- Field: Name -->
           <div class="flex flex-col gap-space-xs">
             <div class="flex items-center justify-between">
@@ -369,6 +386,8 @@
               required
               type="text"
               bind:value={templateName}
+              oninvalid={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('Informe o nome do modelo.')}
+              oninput={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('')}
             />
             <span class="font-body-sm text-body-sm text-outline">Identificador legível no despachante (1 a 80 caracteres).</span>
           </div>
@@ -392,8 +411,17 @@
               rows="6"
               bind:this={bodyTextareaEl}
               bind:value={templateBody}
+              oninvalid={(e) => (e.currentTarget as HTMLTextAreaElement).setCustomValidity('Informe o corpo da mensagem do modelo.')}
+              oninput={(e) => (e.currentTarget as HTMLTextAreaElement).setCustomValidity('')}
             ></textarea>
             <span class="font-body-sm text-body-sm text-outline">Permite formatação textual padrão e variáveis entre chaves duplas.</span>
+
+            {#if unknownPlaceholders.length > 0}
+              <div class="p-space-xs px-space-sm rounded bg-error-container/20 text-error flex items-center gap-1.5 font-label-code-sm border border-error/30 font-mono mt-1" id="unknown-tags-warning">
+                <span class="material-symbols-outlined text-[15px]">warning</span>
+                <span>Tag(s) desconhecida(s) detectada(s): {unknownPlaceholders.join(', ')} (permanecerão como texto literal).</span>
+              </div>
+            {/if}
           </div>
 
           <!-- Live Preview Strip -->
@@ -460,10 +488,10 @@
               { tag: '{{date}}', label: 'DD/MM/AAAA' },
               { tag: '{{date_iso}}', label: 'AAAA-MM-DD' },
               { tag: '{{time}}', label: 'HH:MM:SS' },
-              { tag: '{{weekday}}', label: 'Segunda-feira' },
-              { tag: '{{day_name}}', label: '15' },
-              { tag: '{{month_name}}', label: 'Outubro' },
-              { tag: '{{year}}', label: '2026' }
+              { tag: '{{weekday}}', label: 'Dia da semana (ex: Segunda)' },
+              { tag: '{{day_name}}', label: 'Dia do mês (ex: 15)' },
+              { tag: '{{month_name}}', label: 'Mês (ex: Setembro)' },
+              { tag: '{{year}}', label: 'Ano (ex: 2026)' }
             ] as item}
               <button
                 class="btn-insert-placeholder px-space-sm py-1 bg-surface-container hover:bg-primary/20 hover:text-primary text-on-surface rounded font-label-code text-label-code transition-colors group shadow-xs"

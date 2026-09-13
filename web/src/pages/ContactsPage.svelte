@@ -74,15 +74,6 @@
       return;
     }
 
-    if (!trimmedPhone.startsWith('+')) {
-      formFeedback = {
-        type: 'error',
-        title: 'Erro 422 (Unprocessable Entity)',
-        message: 'Número inválido. O formato deve ser E.164 iniciando com sinal de adição (+) e DDI.',
-      };
-      return;
-    }
-
     creating = true;
     try {
       const created = await api.createContact({ name: trimmedName, phone: trimmedPhone });
@@ -295,11 +286,11 @@
           Adiciona um destinatário à tabela SQLite local para uso imediato em templates e cron jobs.
         </p>
 
-        <form class="flex flex-col gap-space-md mt-space-xs" id="form-create-contact" onsubmit={handleCreateContact} novalidate>
+        <form class="flex flex-col gap-space-md mt-space-xs" id="form-create-contact" onsubmit={handleCreateContact}>
           <div class="flex flex-col gap-space-xs">
             <div class="flex justify-between items-center">
-              <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="contact-name">
-                Identificador / Nome Completo
+              <label class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold" for="contact-name">
+                Identificador / Nome Completo <span class="text-error">*</span>
               </label>
               <span class="font-label-code-sm text-label-code-sm text-outline font-mono">1-80 chars</span>
             </div>
@@ -312,13 +303,15 @@
               required
               type="text"
               bind:value={newName}
+              oninvalid={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('Informe o nome do contato.')}
+              oninput={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('')}
             />
           </div>
 
           <div class="flex flex-col gap-space-xs">
             <div class="flex justify-between items-center">
-              <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="contact-phone">
-                Telefone de Despacho (E.164)
+              <label class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold" for="contact-phone">
+                Telefone ou Alias de Despacho <span class="text-error">*</span>
               </label>
               <span class="font-label-code-sm text-label-code-sm text-outline font-mono">1-64 chars</span>
             </div>
@@ -327,13 +320,15 @@
               id="contact-phone"
               maxlength="64"
               name="phone"
-              placeholder="+55 11 90000-0000"
+              placeholder="Ex: +55 11 90000-0000 ou alias"
               required
               type="text"
               bind:value={newPhone}
+              oninvalid={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('Informe o telefone ou destino do contato.')}
+              oninput={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('')}
             />
             <span class="font-label-code-sm text-label-code-sm text-outline">
-              Inclua o DDI nacional (+55) para integração com gateway.
+              Número internacional E.164, número nacional ou alias configurado.
             </span>
           </div>
 

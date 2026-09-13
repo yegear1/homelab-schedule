@@ -51,6 +51,7 @@
     {#each navItems as item}
       {@const isActive = router.route === item.routeName || (item.subRoute && router.route === item.subRoute)}
       <a
+        aria-current={isActive ? 'page' : undefined}
         class="flex items-center justify-between px-space-md py-space-sm transition-colors rounded {isActive ? 'bg-surface-container-high text-primary font-headline-sm' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'}"
         href={item.path}
         id="nav-{item.id}"
@@ -102,6 +103,10 @@
       <!-- Theme Switcher Group (light | system | dark) -->
       <div aria-label="Controle de tema" class="flex items-center p-0.5 rounded bg-surface-container-low" role="group">
         <button
+          id="theme-btn-light"
+          aria-label="Tema Claro (Light)"
+          aria-pressed={theme.mode === 'light'}
+          title="Tema Claro"
           class="px-space-sm py-0.5 rounded font-label-ui text-label-ui transition-colors {theme.mode === 'light' ? 'bg-surface-container text-primary shadow-sm font-bold' : 'text-on-surface-variant hover:text-on-surface'}"
           onclick={() => theme.setMode('light')}
           type="button"
@@ -109,6 +114,10 @@
           light
         </button>
         <button
+          id="theme-btn-system"
+          aria-label="Tema do Sistema (System)"
+          aria-pressed={theme.mode === 'system'}
+          title="Tema do Sistema"
           class="px-space-sm py-0.5 rounded font-label-ui text-label-ui transition-colors {theme.mode === 'system' ? 'bg-surface-container text-primary shadow-sm font-bold' : 'text-on-surface-variant hover:text-on-surface'}"
           onclick={() => theme.setMode('system')}
           type="button"
@@ -116,6 +125,10 @@
           system
         </button>
         <button
+          id="theme-btn-dark"
+          aria-label="Tema Escuro (Dark)"
+          aria-pressed={theme.mode === 'dark'}
+          title="Tema Escuro"
           class="px-space-sm py-0.5 rounded font-label-ui text-label-ui transition-colors {theme.mode === 'dark' ? 'bg-surface-container text-primary shadow-sm font-bold' : 'text-on-surface-variant hover:text-on-surface'}"
           onclick={() => theme.setMode('dark')}
           type="button"

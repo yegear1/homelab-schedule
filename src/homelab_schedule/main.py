@@ -149,7 +149,7 @@ def create_app(
     @app.get("/", response_class=Response)
     def root() -> Response:
         if dist_index.is_file():
-            return FileResponse(dist_index)
+            return _html_response(dist_index)
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     @app.get("/favicon.ico", include_in_schema=False)
@@ -166,6 +166,17 @@ def create_app(
     return app
 
 
+def _html_response(dist_index: Path) -> Response:
+    return FileResponse(
+        dist_index,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
+
+
 def _is_html_request(request: Request, dist_index: Path) -> bool:
     if request.method not in ("GET", "HEAD") or not dist_index.is_file():
         return False
@@ -179,13 +190,13 @@ def _register_error_handlers(app: FastAPI, dist_index: Path) -> None:
     @app.exception_handler(Unauthorized)
     async def unauthorized(request: Request, exc: Unauthorized) -> Response:
         if _is_html_request(request, dist_index):
-            return FileResponse(dist_index)
+            return _html_response(dist_index)
         return JSONResponse({"detail": exc.message}, status_code=401)
 
     @app.exception_handler(EntityNotFound)
     async def not_found(request: Request, exc: EntityNotFound) -> Response:
         if _is_html_request(request, dist_index):
-            return FileResponse(dist_index)
+            return _html_response(dist_index)
         return JSONResponse({"detail": exc.message}, status_code=404)
 
     @app.exception_handler(StarletteHTTPException)
@@ -193,7 +204,7 @@ def _register_error_handlers(app: FastAPI, dist_index: Path) -> None:
         request: Request, exc: StarletteHTTPException
     ) -> Response:
         if exc.status_code == 404 and _is_html_request(request, dist_index):
-            return FileResponse(dist_index)
+            return _html_response(dist_index)
         return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
     @app.exception_handler(Conflict)

@@ -2,6 +2,7 @@
   import { api } from '../lib/api';
   import type { Contact } from '../lib/types';
   import { toast } from '../lib/toast.svelte';
+  import { focusTrap } from '../lib/focusTrap';
 
   interface Props {
     open: boolean;
@@ -48,7 +49,13 @@
 
 {#if open}
   <div class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-space-md" id="wdg-contact-pick">
-    <div class="bg-surface-container-low max-w-md w-full rounded shadow-xl p-space-md flex flex-col gap-space-sm border border-outline-variant/30">
+    <div
+      use:focusTrap
+      class="bg-surface-container-low max-w-md w-full rounded shadow-xl p-space-md flex flex-col gap-space-sm border border-outline-variant/30"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
       <div class="flex items-center justify-between pb-space-xs">
         <div class="flex items-center gap-space-xs">
           <span class="material-symbols-outlined text-primary text-[20px]">contacts</span>

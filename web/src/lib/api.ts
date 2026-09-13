@@ -28,6 +28,37 @@ export class ApiClientError extends Error {
   }
 }
 
+function localizeDetail(detail: unknown): string {
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item: { msg?: string; loc?: (string | number)[] }) => {
+        let msg = item.msg || '';
+        if (msg.includes('Field required')) msg = 'Campo obrigatório';
+        else if (msg.includes('String should have at least')) {
+          msg = msg
+            .replace('String should have at least', 'Deve ter ao menos')
+            .replace('characters', 'caracteres')
+            .replace('character', 'caractere');
+        } else if (msg.includes('String should have at most')) {
+          msg = msg
+            .replace('String should have at most', 'Deve ter no máximo')
+            .replace('characters', 'caracteres')
+            .replace('character', 'caractere');
+        } else if (msg.includes('Input should be a valid string')) {
+          msg = 'Formato inválido';
+        }
+        const field = item.loc && item.loc.length > 1 ? String(item.loc[item.loc.length - 1]) : '';
+        return field ? `${field}: ${msg}` : msg;
+      })
+      .filter(Boolean)
+      .join('; ');
+  }
+  return '';
+}
+
 class ApiService {
   private getBaseUrl(): string {
     if (typeof window !== 'undefined') {
@@ -76,6 +107,7 @@ class ApiService {
     let response: Response;
     try {
       response = await fetch(url, {
+        cache: 'no-store',
         ...options,
         headers,
       });
@@ -88,10 +120,9 @@ class ApiService {
       let detail = `Erro na requisição (HTTP ${response.status})`;
       try {
         const errorData = await response.json();
-        if (errorData && typeof errorData.detail === 'string') {
-          detail = errorData.detail;
-        } else if (errorData && Array.isArray(errorData.detail)) {
-          detail = errorData.detail.map((d: { msg?: string }) => d.msg || '').filter(Boolean).join('; ');
+        if (errorData && errorData.detail) {
+          const localized = localizeDetail(errorData.detail);
+          if (localized) detail = localized;
         }
       } catch {
         // Response wasn't JSON

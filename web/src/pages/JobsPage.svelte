@@ -5,6 +5,7 @@
   import type { Contact, Job, JobListItem, JobListFilter, JobKind, MessageTemplate } from '../lib/types';
   import RescheduleModal from '../components/RescheduleModal.svelte';
   import ContactPickerModal from '../components/ContactPickerModal.svelte';
+  import { focusTrap } from '../lib/focusTrap';
 
   let jobs = $state<JobListItem[]>([]);
   let selectedJob = $state<Job | null>(null);
@@ -588,7 +589,7 @@
               <th class="py-2.5 px-space-sm">Título &amp; Destino</th>
               <th class="py-2.5 px-space-sm">Tipo / Próx. Execução</th>
               <th class="py-2.5 px-space-sm">Origem</th>
-              <th class="py-2.5 px-space-sm text-right min-w-[155px]">Ações</th>
+              <th class="py-2.5 px-space-sm text-right min-w-[195px]">Ações</th>
             </tr>
           </thead>
           <tbody class="font-label-code-sm text-label-code-sm divide-y divide-surface-container-high/20" id="job-table-body">
@@ -679,10 +680,10 @@
                     </div>
                   </td>
 
-                  <td class="py-2.5 px-space-sm text-right min-w-[155px]" onclick={(e) => e.stopPropagation()}>
-                    <div class="flex items-center justify-end gap-1">
+                  <td class="py-2.5 px-space-sm text-right min-w-[195px]" onclick={(e) => e.stopPropagation()}>
+                    <div class="flex items-center justify-end gap-1.5 flex-nowrap">
                       <button
-                        class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all"
+                        class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
                         onclick={() => handleRun(job.id)}
                         title="POST /jobs/{job.id}/run"
                         type="button"
@@ -692,7 +693,7 @@
 
                       {#if job.source !== 'yaml'}
                         <button
-                          class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all"
+                          class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
                           onclick={() => openReschedule(job.id, job.source)}
                           title="Reagendar"
                           type="button"
@@ -703,13 +704,14 @@
                           class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all"
                           onclick={() => handleCancel(job)}
                           title="Cancelar Recado"
+                          aria-label="Cancelar Recado"
                           type="button"
                         >
                           <span class="material-symbols-outlined text-[16px]">cancel</span>
                         </button>
                       {:else}
                         <button
-                          class="px-2 py-1 rounded bg-surface-container-lowest text-outline-variant opacity-40 font-label-ui text-label-ui uppercase tracking-wider cursor-not-allowed"
+                          class="px-2 py-1 rounded bg-surface-container-lowest text-outline-variant opacity-50 font-label-ui text-label-ui uppercase tracking-wider cursor-not-allowed font-semibold"
                           disabled
                           title="Recados YAML são imutáveis via API (409)"
                           type="button"
@@ -1002,7 +1004,14 @@
   <!-- WIDGET 4: FORMULÁRIO DE AGENDAMENTO AVULSO (wdg-job-create) [MODAL OVERLAY] -->
   {#if createModalOpen}
     <div class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-space-md" id="modal-job-create">
-      <section class="bg-surface-container-low max-w-2xl w-full rounded shadow-xl p-space-lg flex flex-col max-h-[90vh] overflow-y-auto border border-outline-variant/30" id="wdg-job-create">
+      <section
+        use:focusTrap
+        class="bg-surface-container-low max-w-2xl w-full rounded shadow-xl p-space-lg flex flex-col max-h-[90vh] overflow-y-auto border border-outline-variant/30"
+        id="wdg-job-create"
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+      >
         <div class="flex items-center justify-between pb-space-sm mb-space-md border-b border-outline-variant/10">
           <div class="flex items-center gap-space-xs">
             <span class="material-symbols-outlined text-primary text-[22px]">add_circle</span>
@@ -1016,10 +1025,10 @@
           </button>
         </div>
 
-        <form class="flex flex-col gap-space-md" id="form-job-create" onsubmit={handleCreateJob} novalidate>
+        <form class="flex flex-col gap-space-md" id="form-job-create" onsubmit={handleCreateJob}>
           <!-- Título -->
           <div class="flex flex-col gap-1">
-            <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="create-title">
+            <label class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold" for="create-title">
               Título do Recado <span class="text-primary">*</span>
             </label>
             <input
@@ -1030,6 +1039,8 @@
               required
               type="text"
               bind:value={createTitle}
+              oninvalid={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('Informe o título do recado.')}
+              oninput={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('')}
             />
           </div>
 
@@ -1050,7 +1061,7 @@
 
             {#if createKind === 'once'}
               <div class="flex flex-col gap-1" id="field-run-at-container">
-                <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="create-run-at">
+                <label class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold" for="create-run-at">
                   Data e Hora (run_at) <span class="text-primary">*</span>
                 </label>
                 <input
@@ -1060,11 +1071,13 @@
                   type="datetime-local"
                   required
                   bind:value={createRunAt}
+                  oninvalid={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('Informe a data e hora para execução única.')}
+                  oninput={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('')}
                 />
               </div>
             {:else}
               <div class="flex flex-col gap-1" id="field-cron-container">
-                <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="create-cron-expr">
+                <label class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold" for="create-cron-expr">
                   Expressão Cron de 5 Campos <span class="text-primary">*</span>
                 </label>
                 <input
@@ -1075,6 +1088,8 @@
                   required
                   type="text"
                   bind:value={createCronExpr}
+                  oninvalid={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('Informe a expressão cron de 5 campos.')}
+                  oninput={(e) => (e.currentTarget as HTMLInputElement).setCustomValidity('')}
                 />
                 <span class="font-label-code-sm text-label-code-sm text-outline">Formato: minuto hora dia mês dia_semana</span>
               </div>
