@@ -34,6 +34,12 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-13] Grupos de Envio (Múltiplos Destinatários, group_id no SQLite v7)
+
+- **Contexto:** Necessidade de criar um mesmo agendamento (título, conteúdo/modelo, horário, criador) para múltiplos contatos e gerenciar o envio coletivo ou individual.
+- **Decisão:** Abordagem de jobs individuais com chave de agrupamento `group_id TEXT` indexada na tabela `jobs` (`user_version` 7). Preserva o modelo de execução atômico do `due-tick`, permitindo que o sucesso/falha/retry de um destinatário não interfira nos demais.
+- **Superfície:** `POST /jobs/batch` (cria os N registros e gera `group_id`), `POST /jobs/group/{group_id}/cancel`, `POST /jobs/group/{group_id}/run` (202 Accepted em lote), e filtro `group_id` no `GET /jobs`. Na UI, chips múltiplos no modal de criação e card de membros no drawer com disparo/cancelamento em lote.
+
 ### [2026-09-13] Servir UI estática no FastAPI + Multi-stage Docker
 
 Dockerfile multi-stage: Stage 1 (`node:22-alpine`) compila o Svelte 5 SPA em `web/dist`, Stage 2 (`python:3.13-slim`) copia para `/app/web/dist`.

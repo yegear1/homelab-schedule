@@ -8,6 +8,9 @@ import type {
   Job,
   JobListItem,
   CreateJobRequest,
+  CreateBatchJobsRequest,
+  CreateBatchJobsResponse,
+  GroupActionResponse,
   RescheduleJobRequest,
   RunNowResponse,
   JobListFilter
@@ -177,6 +180,7 @@ class ApiService {
     to?: string;
     limit?: number;
     phone?: string;
+    group_id?: string;
   }): Promise<JobListItem[]> {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
@@ -184,6 +188,7 @@ class ApiService {
     if (params?.to) query.set('to', params.to);
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.phone) query.set('phone', params.phone);
+    if (params?.group_id) query.set('group_id', params.group_id);
 
     const q = query.toString();
     const res = await this.request<{ jobs: JobListItem[] }>(`/jobs${q ? `?${q}` : ''}`);
@@ -201,8 +206,21 @@ class ApiService {
     });
   }
 
+  async createBatchJobs(payload: CreateBatchJobsRequest): Promise<CreateBatchJobsResponse> {
+    return this.request<CreateBatchJobsResponse>('/jobs/batch', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async cancelJob(id: string): Promise<void> {
     return this.request<void>(`/jobs/${encodeURIComponent(id)}/cancel`, {
+      method: 'POST',
+    });
+  }
+
+  async cancelGroup(groupId: string): Promise<GroupActionResponse> {
+    return this.request<GroupActionResponse>(`/jobs/group/${encodeURIComponent(groupId)}/cancel`, {
       method: 'POST',
     });
   }
@@ -216,6 +234,12 @@ class ApiService {
 
   async runJob(id: string): Promise<RunNowResponse> {
     return this.request<RunNowResponse>(`/jobs/${encodeURIComponent(id)}/run`, {
+      method: 'POST',
+    });
+  }
+
+  async runGroup(groupId: string): Promise<GroupActionResponse> {
+    return this.request<GroupActionResponse>(`/jobs/group/${encodeURIComponent(groupId)}/run`, {
       method: 'POST',
     });
   }

@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from schemas.job import Job, JobKind, JobSource, JobStatus
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 APP_TZ = ZoneInfo("America/Sao_Paulo")
 
 _CREATE_JOBS = """
@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     last_error TEXT,
     retry_count INTEGER NOT NULL DEFAULT 0,
     created_by TEXT NOT NULL DEFAULT '',
-    template_id TEXT
+    template_id TEXT,
+    group_id TEXT
 )
 """
 
@@ -100,10 +101,16 @@ def init_schema(conn: sqlite3.Connection) -> None:
         if "template_id" not in cols:
             conn.execute("ALTER TABLE jobs ADD COLUMN template_id TEXT")
         conn.execute("PRAGMA user_version=6")
+    if version < 7:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()]
+        if "group_id" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN group_id TEXT")
+        conn.execute("PRAGMA user_version=7")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_jobs_phone ON jobs (target_number, created_by)"
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_template_id ON jobs (template_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_group_id ON jobs (group_id)")
     conn.commit()
 
 
@@ -153,5 +160,8 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         else "",
         template_id=str(row["template_id"])
         if "template_id" in row.keys() and row["template_id"] is not None
+        else None,
+        group_id=str(row["group_id"])
+        if "group_id" in row.keys() and row["group_id"] is not None
         else None,
     )

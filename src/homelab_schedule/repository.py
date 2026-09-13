@@ -20,8 +20,8 @@ class JobRepository:
             INSERT INTO jobs (
                 id, title, content, "to", target_number, kind, run_at, cron_expr,
                 enabled, source, status, next_run_at, last_run_at,
-                last_status, last_error, retry_count, created_by, template_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                last_status, last_error, retry_count, created_by, template_id, group_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             _job_params(to_store),
         )
@@ -47,6 +47,7 @@ class JobRepository:
         range_to: datetime | None,
         limit: int | None = None,
         phone: str | None = None,
+        group_id: str | None = None,
     ) -> list[Job]:
         clauses: list[str] = []
         params: list[str | int] = []
@@ -65,6 +66,9 @@ class JobRepository:
             clauses.append("(target_number = ? OR created_by = ?)")
             params.append(phone)
             params.append(phone)
+        if group_id:
+            clauses.append("group_id = ?")
+            params.append(group_id)
         sql = "SELECT * FROM jobs"
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
@@ -75,6 +79,13 @@ class JobRepository:
         rows = self._conn.execute(sql, tuple(params)).fetchall()
         return [_row_to_job(row) for row in rows]
 
+    def list_by_group(self, group_id: str) -> list[Job]:
+        rows = self._conn.execute(
+            "SELECT * FROM jobs WHERE group_id = ? ORDER BY next_run_at IS NULL, next_run_at ASC",
+            (group_id,),
+        ).fetchall()
+        return [_row_to_job(row) for row in rows]
+
     def update(self, job: Job) -> Job:
         self._conn.execute(
             """
@@ -82,7 +93,7 @@ class JobRepository:
                 title = ?, content = ?, "to" = ?, target_number = ?, kind = ?, run_at = ?,
                 cron_expr = ?, enabled = ?, source = ?, status = ?,
                 next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?, retry_count = ?,
-                created_by = ?, template_id = ?
+                created_by = ?, template_id = ?, group_id = ?
             WHERE id = ?
             """,
             (
@@ -230,6 +241,7 @@ def _job_params(job: Job) -> tuple[
     int,
     str,
     str | None,
+    str | None,
 ]:
     return (
         job.id,
@@ -250,4 +262,5 @@ def _job_params(job: Job) -> tuple[
         job.retry_count,
         job.created_by,
         job.template_id,
+        job.group_id,
     )

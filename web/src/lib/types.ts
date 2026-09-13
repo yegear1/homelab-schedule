@@ -22,6 +22,7 @@ export interface Job {
   retry_count: number;
   created_by: string;
   template_id: string | null;
+  group_id?: string | null;
 }
 
 export interface JobListItem {
@@ -40,6 +41,7 @@ export interface JobListItem {
   last_status: string | null;
   created_by: string;
   template_id: string | null;
+  group_id?: string | null;
 }
 
 export interface CreateJobRequest {
@@ -52,6 +54,30 @@ export interface CreateJobRequest {
   cron_expr?: string | null;
   created_by?: string | null;
   template_id?: string | null;
+  group_id?: string | null;
+}
+
+export interface CreateBatchJobsRequest {
+  title: string;
+  content?: string | null;
+  recipients: string[];
+  kind: JobKind;
+  run_at?: string | null;
+  cron_expr?: string | null;
+  created_by?: string | null;
+  template_id?: string | null;
+}
+
+export interface CreateBatchJobsResponse {
+  group_id: string;
+  count: number;
+  jobs: Job[];
+}
+
+export interface GroupActionResponse {
+  group_id: string;
+  affected: number;
+  status: string;
 }
 
 export interface RescheduleJobRequest {

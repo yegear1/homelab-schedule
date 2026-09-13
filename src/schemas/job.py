@@ -40,6 +40,7 @@ class Job(BaseModel):
     retry_count: int = 0
     created_by: str = ""
     template_id: str | None = None
+    group_id: str | None = None
 
     @model_validator(mode="after")
     def _kind_schedule_fields(self) -> "Job":

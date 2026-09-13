@@ -312,6 +312,99 @@ def test_migration_v5_to_v6_adds_templates_and_template_id(tmp_path: Path) -> No
     migrated.close()
 
 
+def test_migration_v6_to_v7_adds_group_id(tmp_path: Path) -> None:
+    import sqlite3
+
+    db = tmp_path / "v6.sqlite"
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute(
+        """
+        CREATE TABLE jobs (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            "to" TEXT NOT NULL,
+            target_number TEXT NOT NULL DEFAULT '',
+            kind TEXT NOT NULL,
+            run_at TEXT,
+            cron_expr TEXT,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL,
+            next_run_at TEXT,
+            last_run_at TEXT,
+            last_status TEXT,
+            last_error TEXT,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT NOT NULL DEFAULT '',
+            template_id TEXT
+        )
+        """
+    )
+    conn.execute(
+        "CREATE TABLE contacts (id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL)"
+    )
+    conn.execute(
+        """
+        CREATE TABLE templates (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO jobs (
+            id, title, content, "to", target_number, kind, run_at, enabled, source, status
+        ) VALUES (
+            'j6', 'v6 job', 'hello', 'eu', '5511999998888@c.us', 'once',
+            '2026-09-12T17:00:00+00:00', 1, 'sqlite', 'scheduled'
+        )
+        """
+    )
+    conn.execute("PRAGMA user_version=6")
+    conn.commit()
+    conn.close()
+
+    migrated = connect(str(db))
+    version = migrated.execute("PRAGMA user_version").fetchone()
+    assert version is not None and int(version[0]) == SCHEMA_VERSION
+    cols = {str(row[1]) for row in migrated.execute("PRAGMA table_info(jobs)")}
+    assert "group_id" in cols
+    repo = JobRepository(migrated)
+    job = repo.get("j6")
+    assert job is not None
+    assert job.group_id is None
+
+    # Test roundtrip with group_id populated
+    from schemas.job import Job, JobKind, JobSource, JobStatus
+
+    group_job = Job(
+        id="j7",
+        title="Group Job",
+        content="Hello Group",
+        to="amigo",
+        target_number="5511888887777@c.us",
+        kind=JobKind.ONCE,
+        run_at="2026-09-15T12:00:00+00:00",
+        enabled=True,
+        source=JobSource.SQLITE,
+        status=JobStatus.SCHEDULED,
+        next_run_at="2026-09-15T12:00:00+00:00",
+        group_id="grp-xyz",
+    )
+    repo.insert(group_job)
+    by_group = repo.list_by_group("grp-xyz")
+    assert len(by_group) == 1
+    assert by_group[0].id == "j7"
+    assert by_group[0].group_id == "grp-xyz"
+    migrated.close()
+
+
 def test_reconnect_existing_file_keeps_schema(tmp_path: Path) -> None:
     db = tmp_path / "schedule.sqlite"
     first = connect(str(db))

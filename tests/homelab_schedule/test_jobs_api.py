@@ -385,3 +385,81 @@ def test_list_jobs_phone_unions_destination_and_creator(
     assert for_them.json()["id"] in ids
     assert by_them.json()["id"] in ids
     assert other.json()["id"] not in ids
+
+
+def test_create_batch_jobs_success(client: TestClient, api_key: str) -> None:
+    res = client.post(
+        "/jobs/batch",
+        headers=_auth(api_key),
+        json={
+            "recipients": ["5511999991111", "5511999992222"],
+            "title": "Aviso Grupo",
+            "content": "Olá {{name}}, temos reunião.",
+            "kind": "once",
+            "run_at": "2027-09-12T14:00:00-03:00",
+            "created_by": "5511988887777",
+        },
+    )
+    assert res.status_code == 201
+    body = res.json()
+    assert body["count"] == 2
+    group_id = body["group_id"]
+    assert group_id.startswith("grp_")
+    assert len(body["jobs"]) == 2
+    for job in body["jobs"]:
+        assert job["group_id"] == group_id
+        assert job["title"] == "Aviso Grupo"
+
+    # Filter by group_id in GET /jobs
+    filter_res = client.get(f"/jobs?group_id={group_id}", headers=_auth(api_key))
+    assert filter_res.status_code == 200
+    group_jobs = filter_res.json()["jobs"]
+    assert len(group_jobs) == 2
+    assert {j["id"] for j in group_jobs} == {j["id"] for j in body["jobs"]}
+
+
+def test_group_cancel_and_run(client: TestClient, api_key: str) -> None:
+    # 1. Create batch to test run
+    run_batch = client.post(
+        "/jobs/batch",
+        headers=_auth(api_key),
+        json={
+            "recipients": ["5511999991111", "5511999992222"],
+            "title": "Disparo Grupo",
+            "content": "Texto rápido",
+            "kind": "once",
+            "run_at": "2027-09-12T14:00:00-03:00",
+        },
+    ).json()
+    run_group_id = run_batch["group_id"]
+
+    run_res = client.post(f"/jobs/group/{run_group_id}/run", headers=_auth(api_key))
+    assert run_res.status_code == 202
+    assert run_res.json()["affected"] == 2
+
+    for job_summary in run_batch["jobs"]:
+        job_detail = client.get(f"/jobs/{job_summary['id']}", headers=_auth(api_key)).json()
+        assert job_detail["last_status"] == "queued"
+        assert job_detail["last_run_at"] is not None
+
+    # 2. Create batch to test cancel
+    cancel_batch = client.post(
+        "/jobs/batch",
+        headers=_auth(api_key),
+        json={
+            "recipients": ["5511999993333", "5511999994444"],
+            "title": "Cancel Grupo",
+            "content": "Texto cancelado",
+            "kind": "once",
+            "run_at": "2027-09-12T14:00:00-03:00",
+        },
+    ).json()
+    cancel_group_id = cancel_batch["group_id"]
+
+    cancel_res = client.post(f"/jobs/group/{cancel_group_id}/cancel", headers=_auth(api_key))
+    assert cancel_res.status_code == 200
+    assert cancel_res.json()["affected"] == 2
+
+    for job_summary in cancel_batch["jobs"]:
+        job_detail = client.get(f"/jobs/{job_summary['id']}", headers=_auth(api_key)).json()
+        assert job_detail["status"] == "done"

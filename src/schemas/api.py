@@ -3,7 +3,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, model_validator
 
-from schemas.job import JobKind, JobSource, JobStatus
+from schemas.job import Job, JobKind, JobSource, JobStatus
 
 
 class JobListFilter(StrEnum):
@@ -28,6 +28,7 @@ class CreateJobRequest(BaseModel):
     cron_expr: str | None = None
     created_by: str | None = None
     template_id: str | None = None
+    group_id: str | None = None
 
     @model_validator(mode="after")
     def _kind_schedule_fields(self) -> "CreateJobRequest":
@@ -61,6 +62,7 @@ class JobListItem(BaseModel):
     last_status: str | None = None
     created_by: str = ""
     template_id: str | None = None
+    group_id: str | None = None
 
 
 class JobListResponse(BaseModel):
@@ -94,3 +96,46 @@ class PurgeJobsResponse(BaseModel):
     status: str = "purged"
     deleted_count: int
     retention_days: int
+
+
+class CreateBatchJobsRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+    content: str | None = Field(default=None, min_length=1)
+    recipients: list[str] = Field(min_length=1)
+    kind: JobKind
+    run_at: datetime | None = None
+    cron_expr: str | None = None
+    created_by: str | None = None
+    template_id: str | None = None
+
+    @model_validator(mode="after")
+    def _kind_schedule_fields(self) -> "CreateBatchJobsRequest":
+        if self.content is None and not self.template_id:
+            raise ValueError("content or template_id is required")
+        if self.content is not None and self.template_id:
+            raise ValueError("provide content or template_id, not both")
+        if self.kind is JobKind.ONCE and self.run_at is None:
+            raise ValueError("kind=once requires run_at")
+        if self.kind is JobKind.CRON:
+            if self.cron_expr is None:
+                raise ValueError("kind=cron requires cron_expr")
+            if len(self.cron_expr.split()) != 5:
+                raise ValueError("cron_expr must have five fields")
+        clean_recipients = [r.strip() for r in self.recipients if r.strip()]
+        if not clean_recipients:
+            raise ValueError("recipients list cannot be empty")
+        self.recipients = clean_recipients
+        return self
+
+
+class CreateBatchJobsResponse(BaseModel):
+    group_id: str
+    count: int
+    jobs: list[Job]
+
+
+class GroupActionResponse(BaseModel):
+    group_id: str
+    affected: int
+    status: str
+

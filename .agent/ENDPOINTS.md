@@ -36,14 +36,15 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 | `retry_count` | int | Retentativas transitórias |
 | `created_by` | string | Telefone normalizado de quem criou; vazio se omitido |
 | `template_id` | string \| null | Catálogo; no disparo o `body` atual vence o snapshot |
+| `group_id` | string \| null | Identificador do lote para agendamentos com múltiplos destinatários |
 
 ### `GET /jobs`
 
-Query: `status` (`upcoming` \| `done` \| `paused` \| `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino), `phone` (destino **ou** criador, normalizado; aceita nome/id de contato), `limit`. Lista **curta**: sem `content` completo.
+Query: `status` (`upcoming` \| `done` \| `paused` \| `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino), `phone` (destino **ou** criador, normalizado; aceita nome/id de contato), `group_id` (filtro por grupo de envio), `limit`. Lista **curta**: sem `content` completo.
 
-Query `to` é **fim de intervalo de data**. Filtro de pessoa: `?phone=`.
+Query `to` é **fim de intervalo de data**. Filtro de pessoa: `?phone=`. Filtro de grupo: `?group_id=`.
 
-`200` → `{ "jobs": [ JobListItem ] }` (inclui `created_by` e `template_id`, sem `content`)
+`200` → `{ "jobs": [ JobListItem ] }` (inclui `created_by`, `template_id`, `group_id`, sem `content`)
 
 ### `GET /jobs/{id}`
 
@@ -51,7 +52,7 @@ Query `to` é **fim de intervalo de data**. Filtro de pessoa: `?phone=`.
 
 ### `POST /jobs`
 
-Cria recado sqlite.
+Cria recado sqlite individual.
 
 ```json
 {
@@ -65,13 +66,37 @@ Cria recado sqlite.
 
 Cron: `"kind": "cron", "cron_expr": "0 9 * * 1"` (segunda 09:00 no `TZ`). `to` default `eu`. `created_by` opcional (telefone, alias ou contato). `template_id` **ou** `content` (não os dois). Com `template_id`, o `body` é copiado para `content` (snapshot). `201` + Job. `404` template inexistente. `422` schema. `401` chave inválida.
 
+### `POST /jobs/batch`
+
+Cria múltiplos recados vinculados pelo mesmo `group_id` (um job individual por destinatário).
+
+```json
+{
+  "title": "Aviso da Reunião",
+  "content": "Reunião hoje às 15h.",
+  "recipients": ["eu", "5511999998888"],
+  "kind": "once",
+  "run_at": "2026-09-12T14:00:00-03:00"
+}
+```
+
+`201` → `{ "group_id": "grp_...", "count": 2, "jobs": [ Job, ... ] }`.
+
 ### `POST /jobs/{id}/run`
 
 Disparo imediato (não altera `once` para `done` se também houver `run_at` futuro — **run now não substitui o agendamento**). `202` `{ "status": "queued", "job_id": "..." }` se o gateway aceitou. `404`. `502` se o gateway falhar (não 202).
 
+### `POST /jobs/group/{group_id}/run`
+
+Dispara imediatamente todos os recados ativos vinculados ao `group_id`. `202` → `{ "group_id": "...", "affected": N, "status": "queued" }`.
+
 ### `POST /jobs/{id}/cancel`
 
 Sqlite: pontual → remove ou `status=done` cancelado; cron → `enabled=false` / `paused`. YAML: `409` com mensagem para editar o arquivo. `404`. `204` ou `200` com Job.
+
+### `POST /jobs/group/{group_id}/cancel`
+
+Cancela todos os recados sqlite ativos vinculados ao `group_id`. `200` → `{ "group_id": "...", "affected": N, "status": "cancelled" }`.
 
 Não há `PATCH` genérico. Recado sqlite: `POST /jobs/{id}/reschedule`. YAML: edite o arquivo.
 

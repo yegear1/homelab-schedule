@@ -23,13 +23,18 @@
   let filterPhone = $state('');
   let filterLimit = $state(50);
 
+  // Group & Batch State
+  let groupMembers = $state<JobListItem[]>([]);
+  let loadingGroupMembers = $state(false);
+
   // Create Job Modal State (wdg-job-create)
   let createModalOpen = $state(false);
   let createTitle = $state('');
   let createKind = $state<JobKind>('once');
   let createRunAt = $state('');
   let createCronExpr = $state('');
-  let createTo = $state('eu');
+  let createRecipients = $state<string[]>(['eu']);
+  let recipientInput = $state('');
   let createCreatedBy = $state('');
   let createPayloadMode = $state<'direct' | 'template'>('direct');
   let createContent = $state('');
@@ -114,8 +119,53 @@
   async function inspectJob(id: string) {
     try {
       selectedJob = await api.getJob(id);
+      if (selectedJob?.group_id) {
+        await loadGroupMembers(selectedJob.group_id);
+      } else {
+        groupMembers = [];
+      }
     } catch (err: unknown) {
       toast.error('Falha ao carregar detalhe do job.');
+    }
+  }
+
+  async function loadGroupMembers(groupId: string) {
+    loadingGroupMembers = true;
+    try {
+      groupMembers = await api.getJobs({ status: 'all', group_id: groupId });
+    } catch {
+      groupMembers = [];
+    } finally {
+      loadingGroupMembers = false;
+    }
+  }
+
+  async function handleRunGroup(groupId: string) {
+    try {
+      const res = await api.runGroup(groupId);
+      toast.queued(`Grupo ${groupId}: ${res.affected} recados enfileirados para disparo.`);
+      await loadJobs();
+      if (selectedJob?.group_id === groupId) {
+        await loadGroupMembers(groupId);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao disparar grupo';
+      toast.error(msg);
+    }
+  }
+
+  async function handleCancelGroup(groupId: string) {
+    if (!confirm(`Confirma cancelamento de todos os recados ativos deste grupo?`)) return;
+    try {
+      const res = await api.cancelGroup(groupId);
+      toast.success(`Grupo ${groupId}: ${res.affected} recados cancelados.`);
+      await loadJobs();
+      if (selectedJob?.group_id === groupId) {
+        await loadGroupMembers(groupId);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao cancelar grupo';
+      toast.error(msg);
     }
   }
 
@@ -175,9 +225,26 @@
     contactPickerOpen = true;
   }
 
+  function addRecipient(val?: string) {
+    const raw = val !== undefined ? val : recipientInput;
+    const clean = raw.trim();
+    if (!clean) return;
+    const parts = clean.split(/[,;\s]+/).map((p) => p.trim()).filter(Boolean);
+    const set = new Set(createRecipients);
+    for (const p of parts) {
+      set.add(p);
+    }
+    createRecipients = Array.from(set);
+    recipientInput = '';
+  }
+
+  function removeRecipient(index: number) {
+    createRecipients = createRecipients.filter((_, i) => i !== index);
+  }
+
   function onContactPicked(phoneOrAlias: string, _name: string) {
     if (contactPickerTargetField === 'to') {
-      createTo = phoneOrAlias;
+      addRecipient(phoneOrAlias);
     } else {
       createCreatedBy = phoneOrAlias;
     }
@@ -187,6 +254,15 @@
     e.preventDefault();
     if (!createTitle.trim()) {
       toast.error('Informe o título do recado.');
+      return;
+    }
+
+    if (recipientInput.trim()) {
+      addRecipient(recipientInput.trim());
+    }
+
+    if (createRecipients.length === 0) {
+      toast.error('Adicione ao menos um destinatário.');
       return;
     }
 
@@ -212,24 +288,40 @@
 
     creatingJob = true;
     try {
-      await api.createJob({
-        title: createTitle.trim(),
-        to: createTo.trim() || 'eu',
-        kind: createKind,
-        run_at: createKind === 'once' && createRunAt ? new Date(createRunAt).toISOString() : null,
-        cron_expr: createKind === 'cron' ? createCronExpr.trim() : null,
-        content: payloadContent,
-        template_id: payloadTemplateId,
-        created_by: createCreatedBy.trim() || null,
-      });
+      if (createRecipients.length > 1) {
+        const batchRes = await api.createBatchJobs({
+          title: createTitle.trim(),
+          recipients: createRecipients,
+          kind: createKind,
+          run_at: createKind === 'once' && createRunAt ? new Date(createRunAt).toISOString() : null,
+          cron_expr: createKind === 'cron' ? createCronExpr.trim() : null,
+          content: payloadContent,
+          template_id: payloadTemplateId,
+          created_by: createCreatedBy.trim() || null,
+        });
+        toast.success(`Grupo criado com ${batchRes.count} agendamentos vinculados.`);
+      } else {
+        await api.createJob({
+          title: createTitle.trim(),
+          to: createRecipients[0],
+          kind: createKind,
+          run_at: createKind === 'once' && createRunAt ? new Date(createRunAt).toISOString() : null,
+          cron_expr: createKind === 'cron' ? createCronExpr.trim() : null,
+          content: payloadContent,
+          template_id: payloadTemplateId,
+          created_by: createCreatedBy.trim() || null,
+        });
+        toast.success(`Job "${createTitle}" registrado na agenda.`);
+      }
 
-      toast.success(`Job "${createTitle}" registrado na agenda.`);
       createModalOpen = false;
       createTitle = '';
       createContent = '';
       createTemplateId = '';
       createRunAt = '';
       createCronExpr = '';
+      createRecipients = ['eu'];
+      recipientInput = '';
       await loadJobs();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao agendar';
@@ -486,8 +578,16 @@
                   </td>
 
                   <td class="py-2.5 px-space-sm">
-                    <div class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors">
-                      {job.title}
+                    <div class="flex items-center gap-2">
+                      <span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors">
+                        {job.title}
+                      </span>
+                      {#if job.group_id}
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary/15 text-secondary font-label-code-sm text-label-code-sm font-semibold" title="Grupo: {job.group_id}">
+                          <span class="material-symbols-outlined text-[12px]">group</span>
+                          <span>Grupo</span>
+                        </span>
+                      {/if}
                     </div>
                     <div class="text-outline flex items-center gap-1.5 flex-wrap font-mono mt-0.5">
                       <span class="material-symbols-outlined text-[13px]">call_made</span>
@@ -728,6 +828,82 @@
           </div>
         </div>
 
+        {#if selectedJob.group_id}
+          <div class="bg-surface-container p-space-sm rounded flex flex-col gap-space-xs border border-secondary/20" id="detail-group-card">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5 text-secondary font-semibold font-body-sm">
+                <span class="material-symbols-outlined text-[18px]">group</span>
+                <span>Grupo de Envio ({groupMembers.length} destinatários)</span>
+              </div>
+              <span class="font-label-code-sm text-[11px] text-outline font-mono">{selectedJob.group_id}</span>
+            </div>
+
+            <p class="font-body-sm text-body-sm text-on-surface-variant">
+              Envio coletivo com status e execução individuais por destinatário.
+            </p>
+
+            <!-- Ações em Lote do Grupo -->
+            <div class="flex items-center gap-2 pt-1 flex-wrap">
+              <button
+                type="button"
+                class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary text-secondary hover:text-on-secondary font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer font-semibold"
+                id="btn-group-run-all"
+                onclick={() => handleRunGroup(selectedJob!.group_id!)}
+                title="POST /jobs/group/{selectedJob.group_id}/run"
+              >
+                <span class="material-symbols-outlined text-[14px]">send</span>
+                <span>Disparar Todos</span>
+              </button>
+              {#if selectedJob.source !== 'yaml'}
+                <button
+                  type="button"
+                  class="px-2 py-1 rounded bg-error-container/20 hover:bg-error-container text-error hover:text-on-error font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer"
+                  id="btn-group-cancel-all"
+                  onclick={() => handleCancelGroup(selectedJob!.group_id!)}
+                  title="POST /jobs/group/{selectedJob.group_id}/cancel"
+                >
+                  <span class="material-symbols-outlined text-[14px]">cancel</span>
+                  <span>Cancelar Grupo</span>
+                </button>
+              {/if}
+            </div>
+
+            <!-- Lista de Membros do Grupo -->
+            {#if loadingGroupMembers}
+              <div class="py-2 text-center text-outline font-label-code-sm">Carregando membros do grupo...</div>
+            {:else if groupMembers.length > 0}
+              <div class="flex flex-col gap-1 mt-1 max-h-48 overflow-y-auto">
+                {#each groupMembers as member (member.id)}
+                  {@const memberRecipient = resolveRecipient(member)}
+                  {@const isCurrent = member.id === selectedJob.id}
+                  <button
+                    type="button"
+                    class="flex items-center justify-between p-1.5 rounded transition-all text-left font-mono font-label-code-sm cursor-pointer {isCurrent ? 'bg-secondary/20 border border-secondary/30 text-on-surface' : 'bg-surface-container-lowest hover:bg-surface-container-high text-on-surface-variant'}"
+                    onclick={() => inspectJob(member.id)}
+                  >
+                    <div class="flex items-center gap-1.5 truncate">
+                      <span class="material-symbols-outlined text-[14px] {isCurrent ? 'text-secondary' : 'text-outline'}">
+                        {isCurrent ? 'radio_button_checked' : 'radio_button_unchecked'}
+                      </span>
+                      {#if memberRecipient.primaryName}
+                        <span class="font-semibold text-on-surface truncate">{memberRecipient.primaryName}</span>
+                        <span class="text-outline text-[11px]">({memberRecipient.targetNumber})</span>
+                      {:else}
+                        <span class="truncate">{memberRecipient.targetNumber}</span>
+                      {/if}
+                    </div>
+
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono shrink-0 {member.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : member.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
+                      <span class="h-1 w-1 rounded-full {member.status === 'scheduled' ? 'bg-tertiary' : member.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
+                      {member.status}
+                    </span>
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
+
         <!-- Comandos do Operador -->
         <div class="pt-space-xs flex flex-col gap-space-xs border-t border-outline-variant/10">
           <span class="font-label-ui text-label-ui uppercase text-outline">Comandos do Operador</span>
@@ -854,12 +1030,12 @@
             {/if}
           </div>
 
-          <!-- Destinatário (to) e Criador (created_by) -->
+          <!-- Destinatários (to / batch) e Criador (created_by) -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-1.5">
               <div class="flex items-center justify-between">
-                <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="create-to">
-                  Destinatário (to) <span class="text-primary">*</span>
+                <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="input-add-recipient">
+                  Destinatários <span class="text-primary">*</span>
                 </label>
                 <button
                   class="font-label-code-sm text-label-code-sm text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
@@ -867,18 +1043,68 @@
                   type="button"
                 >
                   <span class="material-symbols-outlined text-[14px]">contacts</span>
-                  <span>Selecionar Contato</span>
+                  <span>Adicionar Contato</span>
                 </button>
               </div>
-              <input
-                class="w-full bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-2 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
-                id="create-to"
-                name="to"
-                required
-                type="text"
-                bind:value={createTo}
-              />
-              <span class="font-body-sm text-body-sm text-outline">Padrão da API: "eu" ou número E.164 (+55...)</span>
+
+              <!-- Chips de Destinatários Selecionados -->
+              <div class="flex flex-wrap gap-1.5 p-1.5 rounded bg-surface-container-lowest min-h-[42px] border border-outline-variant/20 items-center">
+                {#if createRecipients.length === 0}
+                  <span class="text-outline text-label-code-sm font-mono px-1">Nenhum destinatário selecionado</span>
+                {:else}
+                  {#each createRecipients as rec, idx (rec)}
+                    {@const c = contactsByPhone.get(rec)}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-mono text-label-code-sm">
+                      <span class="material-symbols-outlined text-[12px]">{c ? 'person' : 'phone'}</span>
+                      <span class="font-semibold">{c ? c.name : rec}</span>
+                      {#if c && c.phone !== rec}
+                        <span class="text-outline text-[10px]">({rec})</span>
+                      {/if}
+                      <button
+                        type="button"
+                        class="hover:text-error ml-0.5 cursor-pointer flex items-center"
+                        title="Remover"
+                        onclick={() => removeRecipient(idx)}
+                      >
+                        <span class="material-symbols-outlined text-[14px]">close</span>
+                      </button>
+                    </span>
+                  {/each}
+                {/if}
+              </div>
+
+              <!-- Input para adicionar novo destinatário -->
+              <div class="flex items-center gap-1">
+                <input
+                  class="flex-1 bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-1.5 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                  id="input-add-recipient"
+                  placeholder="Número, alias ou 'eu'..."
+                  type="text"
+                  bind:value={recipientInput}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addRecipient();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  class="px-2.5 py-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-primary font-label-ui text-label-ui uppercase tracking-wider font-semibold cursor-pointer"
+                  onclick={() => addRecipient()}
+                >
+                  Adicionar
+                </button>
+              </div>
+
+              {#if createRecipients.length > 1}
+                <div class="flex items-center gap-1.5 text-secondary font-label-code-sm font-mono">
+                  <span class="material-symbols-outlined text-[14px]">group</span>
+                  <span>Envio em grupo: {createRecipients.length} agendamentos com group_id unificado.</span>
+                </div>
+              {:else}
+                <span class="font-body-sm text-body-sm text-outline">Padrão da API: "eu" ou número E.164 (+55...)</span>
+              {/if}
             </div>
 
             <div class="flex flex-col gap-1">

@@ -14,7 +14,10 @@ from homelab_schedule.repository import JobRepository
 from homelab_schedule.templates import render_outbound_message
 from homelab_schedule.templates_repository import TemplateRepository
 from schemas.api import (
+    CreateBatchJobsRequest,
+    CreateBatchJobsResponse,
     CreateJobRequest,
+    GroupActionResponse,
     JobListFilter,
     JobListItem,
     RescheduleJobRequest,
@@ -62,10 +65,44 @@ class JobService:
             status=JobStatus.SCHEDULED,
             created_by=self._created_by(payload.created_by),
             template_id=template_id,
+            group_id=payload.group_id,
         )
         stored = self._repo.insert(job)
         self._notebook_changed.set()
         return stored
+
+    def create_batch(self, payload: CreateBatchJobsRequest) -> CreateBatchJobsResponse:
+        group_id = f"grp_{uuid.uuid4().hex[:12]}"
+        content, template_id = self._content_from_payload(payload)
+        created_by = self._created_by(payload.created_by)
+        created_jobs: list[Job] = []
+
+        for recipient in payload.recipients:
+            target = self._resolve_to(recipient)
+            job = Job(
+                id=str(uuid.uuid4()),
+                title=payload.title,
+                content=content,
+                to=recipient,
+                target_number=target,
+                kind=payload.kind,
+                run_at=payload.run_at,
+                cron_expr=payload.cron_expr,
+                source=JobSource.SQLITE,
+                status=JobStatus.SCHEDULED,
+                created_by=created_by,
+                template_id=template_id,
+                group_id=group_id,
+            )
+            stored = self._repo.insert(job)
+            created_jobs.append(stored)
+
+        self._notebook_changed.set()
+        return CreateBatchJobsResponse(
+            group_id=group_id,
+            count=len(created_jobs),
+            jobs=created_jobs,
+        )
 
     def get(self, job_id: str) -> Job:
         job = self._repo.get(job_id)
@@ -80,10 +117,16 @@ class JobService:
         range_to: datetime | None,
         limit: int | None = None,
         phone: str | None = None,
+        group_id: str | None = None,
     ) -> list[JobListItem]:
         resolved_phone = self._resolve_to(phone) if phone else None
         jobs = self._repo.list_jobs(
-            status_filter, range_from, range_to, limit=limit, phone=resolved_phone
+            status_filter,
+            range_from,
+            range_to,
+            limit=limit,
+            phone=resolved_phone,
+            group_id=group_id,
         )
         return [JobListItem.model_validate(job.model_dump()) for job in jobs]
 
@@ -141,6 +184,30 @@ class JobService:
         )
         return RunNowResponse(status="queued", job_id=job.id)
 
+    def cancel_group(self, group_id: str) -> GroupActionResponse:
+        jobs = self._repo.list_by_group(group_id)
+        if not jobs:
+            raise EntityNotFound(f"group {group_id} not found")
+        affected = 0
+        for job in jobs:
+            if job.source is JobSource.YAML:
+                continue
+            if job.status is not JobStatus.PAUSED and job.status is not JobStatus.DONE:
+                self._repo.update(_cancelled(job))
+                affected += 1
+        self._notebook_changed.set()
+        return GroupActionResponse(group_id=group_id, affected=affected, status="cancelled")
+
+    async def run_group_now(self, group_id: str) -> GroupActionResponse:
+        jobs = self._repo.list_by_group(group_id)
+        if not jobs:
+            raise EntityNotFound(f"group {group_id} not found")
+        affected = 0
+        for job in jobs:
+            await self.run_now(job.id)
+            affected += 1
+        return GroupActionResponse(group_id=group_id, affected=affected, status="queued")
+
     def _resolve_to(self, to: str) -> str:
         if self._contacts is not None:
             from_contact = self._contacts.resolve_to(to)
@@ -153,7 +220,9 @@ class JobService:
             return ""
         return self._resolve_to(raw.strip())
 
-    def _content_from_payload(self, payload: CreateJobRequest) -> tuple[str, str | None]:
+    def _content_from_payload(
+        self, payload: CreateJobRequest | CreateBatchJobsRequest
+    ) -> tuple[str, str | None]:
         template_id = payload.template_id
         catalog_body: str | None = None
         if template_id:
