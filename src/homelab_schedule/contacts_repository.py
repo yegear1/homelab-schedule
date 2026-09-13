@@ -38,6 +38,13 @@ class ContactRepository:
         ).fetchone()
         return _row_to_contact(row)
 
+    def get_by_phone(self, phone: str) -> Contact | None:
+        row = self._conn.execute(
+            "SELECT id, name, phone FROM contacts WHERE phone = ?",
+            (phone,),
+        ).fetchone()
+        return _row_to_contact(row)
+
     def list_all(self) -> list[Contact]:
         rows = self._conn.execute(
             "SELECT id, name, phone FROM contacts ORDER BY name COLLATE NOCASE"

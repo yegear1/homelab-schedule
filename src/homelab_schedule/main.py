@@ -33,6 +33,9 @@ from homelab_schedule.repository import JobRepository
 from homelab_schedule.routines import merge_routines
 from homelab_schedule.routines_router import router as routines_router
 from homelab_schedule.store import connect
+from homelab_schedule.templates_repository import TemplateRepository
+from homelab_schedule.templates_router import router as templates_router
+from homelab_schedule.templates_service import TemplateService
 from homelab_schedule.tick import run_tick
 from schemas.api import HealthResponse
 
@@ -68,13 +71,22 @@ def create_app(
             active = GatekeeperDispatcher(http_client, resolved.whatsapp_api_key)
         contacts_repo = ContactRepository(conn)
         contact_service = ContactService(contacts_repo, repo)
+        templates_repo = TemplateRepository(conn)
+        template_service = TemplateService(templates_repo, repo)
         service = JobService(
-            repo, notebook_changed, active, aliases, clock_now, contact_service
+            repo,
+            notebook_changed,
+            active,
+            aliases,
+            clock_now,
+            contact_service,
+            templates_repo,
         )
         stop = asyncio.Event()
         app.state.api_key = resolved.schedule_api_key
         app.state.job_service = service
         app.state.contact_service = contact_service
+        app.state.template_service = template_service
         app.state.notebook_changed = notebook_changed
         app.state.conn = conn
         app.state.dispatcher = active
@@ -93,6 +105,8 @@ def create_app(
                 cap_seconds=tick_cap_seconds,
                 routines_path=routines_file,
                 retention_days=resolved.job_retention_days,
+                dest_name=contact_service.name_for_phone,
+                template_body=templates_repo.body_for,
             )
         )
         yield
@@ -108,6 +122,7 @@ def create_app(
     app.include_router(routines_router)
     app.include_router(jobs_router)
     app.include_router(contacts_router)
+    app.include_router(templates_router)
     app.include_router(housekeeping_router)
 
     @app.get("/health", response_model=HealthResponse)

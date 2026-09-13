@@ -11,7 +11,7 @@ from homelab_schedule.cron import next_cron_utc
 from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.repository import JobRepository
 from homelab_schedule.routines import merge_routines
-from homelab_schedule.templates import render_template
+from homelab_schedule.templates import render_outbound_message
 from schemas.job import Job, JobKind, JobStatus
 
 _LOG = logging.getLogger("homelab_schedule.tick")
@@ -33,6 +33,8 @@ async def run_tick(
     cap_seconds: float = 300.0,
     routines_path: Path | None = None,
     retention_days: int = 365,
+    dest_name: Callable[[str], str | None] | None = None,
+    template_body: Callable[[str], str | None] | None = None,
 ) -> None:
     last_routines_mtime: float | None = _get_mtime(routines_path)
     last_housekeeping: datetime | None = None
@@ -59,7 +61,14 @@ async def run_tick(
                         "housekeeping_purged",
                         extra={"deleted_count": deleted, "retention_days": retention_days},
                     )
-        failed = await fire_due(repo, dispatcher, aliases, current_now)
+        failed = await fire_due(
+            repo,
+            dispatcher,
+            aliases,
+            current_now,
+            dest_name=dest_name,
+            template_body=template_body,
+        )
         delay = _next_delay(repo, current_now, cap_seconds, failed)
         try:
             await asyncio.wait_for(wake.wait(), timeout=delay)
@@ -82,11 +91,22 @@ async def fire_due(
     dispatcher: Dispatcher,
     aliases: dict[str, str],
     now: datetime,
+    dest_name: Callable[[str], str | None] | None = None,
+    template_body: Callable[[str], str | None] | None = None,
 ) -> bool:
     failed = False
     for job in repo.list_due(now):
         dest = job.target_number or resolve_destination(job.to, aliases)
-        content_to_send = render_template(job.content, now)
+        catalog: str | None = None
+        if job.template_id and template_body is not None:
+            catalog = template_body(job.template_id)
+        name = dest_name(dest) if dest_name is not None else None
+        content_to_send = render_outbound_message(
+            stored_content=job.content,
+            when=now,
+            dest_name=name,
+            catalog_body=catalog,
+        )
         result = await dispatcher.send(phone_number=dest, content=content_to_send)
         if result.ok:
             repo.update(_after_success(job, now))

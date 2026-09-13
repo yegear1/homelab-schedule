@@ -56,3 +56,9 @@ class ContactService:
         if by_name is not None:
             return by_name.phone
         return None
+
+    def name_for_phone(self, phone: str) -> str | None:
+        contact = self._repo.get_by_phone(phone)
+        if contact is None:
+            return None
+        return contact.name

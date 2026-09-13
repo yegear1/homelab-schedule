@@ -195,6 +195,39 @@ async def test_fire_due_renders_dynamic_template(tmp_path: Path) -> None:
 
 
 @pytest.mark.anyio
+async def test_fire_due_renders_name_and_live_catalog(tmp_path: Path) -> None:
+    conn = connect(str(tmp_path / "schedule.sqlite"))
+    repo = JobRepository(conn)
+    now = datetime(2026, 9, 11, 15, 0, tzinfo=UTC)
+    repo.insert(
+        Job(
+            id="named-job",
+            title="named",
+            content="snapshot {{name}}",
+            to="eu",
+            target_number="5521999887766@c.us",
+            kind=JobKind.ONCE,
+            run_at=now,
+            next_run_at=now,
+            status=JobStatus.SCHEDULED,
+            template_id="tpl-1",
+        )
+    )
+    dispatcher = RecordingDispatcher()
+    failed = await fire_due(
+        repo,
+        dispatcher,
+        {},
+        now,
+        dest_name=lambda phone: "Mae" if phone == "5521999887766@c.us" else None,
+        template_body=lambda tid: "Oi {{name}}." if tid == "tpl-1" else None,
+    )
+    assert failed is False
+    assert dispatcher.calls[0][1] == "Oi Mae."
+    conn.close()
+
+
+@pytest.mark.anyio
 async def test_fire_due_transient_failure_schedules_retry(tmp_path: Path) -> None:
     conn = connect(str(tmp_path / "schedule.sqlite"))
     repo = JobRepository(conn)

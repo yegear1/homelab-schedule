@@ -20,16 +20,21 @@ class HealthResponse(BaseModel):
 
 class CreateJobRequest(BaseModel):
     title: str = Field(min_length=1, max_length=120)
-    content: str = Field(min_length=1)
+    content: str | None = Field(default=None, min_length=1)
     to: str = "eu"
     target_number: str | None = None
     kind: JobKind
     run_at: datetime | None = None
     cron_expr: str | None = None
     created_by: str | None = None
+    template_id: str | None = None
 
     @model_validator(mode="after")
     def _kind_schedule_fields(self) -> "CreateJobRequest":
+        if self.content is None and not self.template_id:
+            raise ValueError("content or template_id is required")
+        if self.content is not None and self.template_id:
+            raise ValueError("provide content or template_id, not both")
         if self.kind is JobKind.ONCE and self.run_at is None:
             raise ValueError("kind=once requires run_at")
         if self.kind is JobKind.CRON:
@@ -55,6 +60,7 @@ class JobListItem(BaseModel):
     last_run_at: datetime | None = None
     last_status: str | None = None
     created_by: str = ""
+    template_id: str | None = None
 
 
 class JobListResponse(BaseModel):

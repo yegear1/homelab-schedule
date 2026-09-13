@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Contacts notebook (`GET/POST /contacts`, `GET/PATCH/DELETE /contacts/{id}`). Job `to` resolves contact id/name before env aliases.
 - Job `created_by` and `GET /jobs?phone=` (union of destination or creator).
+- Message template catalog (`GET/POST /templates`, `GET/PATCH/DELETE /templates/{id}`). Jobs may reference `template_id`; dispatch merges `{{name}}` from the destination contact with clock placeholders.
 ## [0.2.0] - 2026-09-12
 
 ### Added

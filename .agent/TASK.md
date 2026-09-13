@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[00.3]`
-- **Título:** Catálogo de templates SQLite + `{{name}}` e relógio no disparo
+- **ID:** `[00.4]`
+- **Título:** Contrato de UI (`.agent/INTERFACE.md`, locale `pt-BR`)
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Contatos e ficha por `phone` existem. Falta modelo reutilizável com variáveis de contato e data.
+- **Contexto:** Contatos, ficha `?phone=` e catálogo `/templates` existem. UI no mesmo container só depois deste contrato aprovado.
 
 ---
 
@@ -20,6 +20,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [00.3] | Catálogo de templates SQLite + `{{name}}` no disparo | | 2026-09-12 |
 | [00.2] | `created_by` no job + `GET /jobs?phone=` | [`8d3485c`] | 2026-09-12 |
 | [00.1] | Contatos no SQLite + HTTP (nome, telefone, resolução de `to`) | [`0336dce`] | 2026-09-12 |
 
@@ -27,7 +28,6 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[00.4]** Contrato de UI (`.agent/INTERFACE.md`, locale `pt-BR`) — só depois da API existir
 - [ ] Expressões de intervalo amigáveis no MCP (`when`)
 
 ---

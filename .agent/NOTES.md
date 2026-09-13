@@ -33,7 +33,11 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
-### [2026-09-12] Higiene pós-`v0.2.0`
+### [2026-09-12] Catálogo de templates
+
+HTTP `/templates` no SQLite (`user_version` 6). Sem tool MCP. Job: `template_id` **ou** `content`. Snapshot do `body` no create; no disparo o `body` atual do catálogo vence se o id ainda existir. `{{name}}` vem do contato com `phone = target_number`; senão a tag fica literal. Sem Jinja.
+
+---
 
 - **Contexto:** Tag + GitHub Release + README/env já existiam; `NOTES.md` ainda era dump de todo o ciclo e o backlog não tinha sido promovido.
 - **Decisão:** Enxugar NOTES (o detalhe vive no `git log` e nos ADRs). Corrigir ADR-002 (watch YAML) e ADR-005 (`reschedule`). Reiniciar numeração; próxima tarefa `[00.1]`.
@@ -50,7 +54,7 @@ Canetas versionadas = MCP, HTTP, YAML. Dispatch = `POST /send` genérico. Caller
 
 - `target_number` no job (migração v1→v2); tick não re-resolve alias.
 - `retry_count` (v2→v3): até 3 retries transitórios; 401/422 falham na hora.
-- Placeholders temporais no disparo (`templates.py`); sem Jinja2.
+- Placeholders no disparo (`templates.py`): relógio + `{{name}}` do contato destino; sem Jinja2. Catálogo SQLite (`/templates`).
 - `GET /jobs` e MCP: `status` (inclui `error`) + `limit`. Query `to` = fim de **data**.
 - `JOB_RETENTION_DAYS` (padrão 365; `0` desliga). Purge só `done`/`error` sqlite.
 - YAML: merge por `id` + reload `mtime` / `POST /routines/reload`.
@@ -63,6 +67,7 @@ Canetas versionadas = MCP, HTTP, YAML. Dispatch = `POST /send` genérico. Caller
 |---|---|---|---|
 | HTTP `/jobs` | MCP, curl, callers | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
 | HTTP `/contacts` | UI / curl | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
+| HTTP `/templates` | UI / curl | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
 | MCP stdio | Agente Cursor | HTTP local | [ADR-005](adr/005-mcp-superficie-fechada.md) |
 | `routines.yaml` | Git / operador | Loader + watch | [CHANNELS.md](CHANNELS.md) |
 | `POST /send` | Dispatcher | Gateway `WHATSAPP_API_URL` | `phone_number`, `content`, `quote_id`, `x-api-key` |
@@ -89,5 +94,5 @@ Alteração de contrato = schemas dos lados na mesma tarefa.
 | Sem UI web no v0.2.0 | ADR-003 | Ciclo `[00.x]` (humano pediu) |
 | Sem `created_by` / filtro por telefone | Job só tem destino | Fechado em `[00.2]` (`?phone=`) |
 | Contatos só em `WHATSAPP_ALIASES` | Env, não CRUD | Fechado em `[00.1]` (`/contacts`) |
-| Templates só data/hora | Sem catálogo nem `{{name}}` | `[00.3]` |
+| Templates só data/hora | Sem catálogo nem `{{name}}` | Fechado em `[00.3]` (`/templates`) |
 | Sem HA / multi-réplica | Um SQLite + um tick | Se houver segundo host |

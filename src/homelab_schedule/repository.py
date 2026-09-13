@@ -20,8 +20,8 @@ class JobRepository:
             INSERT INTO jobs (
                 id, title, content, "to", target_number, kind, run_at, cron_expr,
                 enabled, source, status, next_run_at, last_run_at,
-                last_status, last_error, retry_count, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                last_status, last_error, retry_count, created_by, template_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             _job_params(to_store),
         )
@@ -82,7 +82,7 @@ class JobRepository:
                 title = ?, content = ?, "to" = ?, target_number = ?, kind = ?, run_at = ?,
                 cron_expr = ?, enabled = ?, source = ?, status = ?,
                 next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?, retry_count = ?,
-                created_by = ?
+                created_by = ?, template_id = ?
             WHERE id = ?
             """,
             (
@@ -164,6 +164,18 @@ class JobRepository:
             return 0
         return int(row["n"])
 
+    def count_scheduled_for_template(self, template_id: str) -> int:
+        row = self._conn.execute(
+            """
+            SELECT COUNT(*) AS n FROM jobs
+            WHERE template_id = ? AND status = ?
+            """,
+            (template_id, JobStatus.SCHEDULED.value),
+        ).fetchone()
+        if row is None:
+            return 0
+        return int(row["n"])
+
 
 def _apply_status_filter(
     clauses: list[str],
@@ -217,6 +229,7 @@ def _job_params(job: Job) -> tuple[
     str | None,
     int,
     str,
+    str | None,
 ]:
     return (
         job.id,
@@ -236,4 +249,5 @@ def _job_params(job: Job) -> tuple[
         job.last_error,
         job.retry_count,
         job.created_by,
+        job.template_id,
     )

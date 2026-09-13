@@ -35,6 +35,7 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 | `last_error` | string \| null | Sem stack na resposta pública |
 | `retry_count` | int | Retentativas transitórias |
 | `created_by` | string | Telefone normalizado de quem criou; vazio se omitido |
+| `template_id` | string \| null | Catálogo; no disparo o `body` atual vence o snapshot |
 
 ### `GET /jobs`
 
@@ -42,7 +43,7 @@ Query: `status` (`upcoming` \| `done` \| `paused` \| `all`, default `upcoming`),
 
 Query `to` é **fim de intervalo de data**. Filtro de pessoa: `?phone=`.
 
-`200` → `{ "jobs": [ JobListItem ] }` (inclui `created_by`, sem `content`)
+`200` → `{ "jobs": [ JobListItem ] }` (inclui `created_by` e `template_id`, sem `content`)
 
 ### `GET /jobs/{id}`
 
@@ -62,7 +63,7 @@ Cria recado sqlite.
 }
 ```
 
-Cron: `"kind": "cron", "cron_expr": "0 9 * * 1"` (segunda 09:00 no `TZ`). `to` default `eu`. `created_by` opcional (telefone, alias ou contato). `201` + Job. `422` schema. `401` chave inválida.
+Cron: `"kind": "cron", "cron_expr": "0 9 * * 1"` (segunda 09:00 no `TZ`). `to` default `eu`. `created_by` opcional (telefone, alias ou contato). `template_id` **ou** `content` (não os dois). Com `template_id`, o `body` é copiado para `content` (snapshot). `201` + Job. `404` template inexistente. `422` schema. `401` chave inválida.
 
 ### `POST /jobs/{id}/run`
 
@@ -105,6 +106,38 @@ Campos opcionais `name` e/ou `phone`. `200`. `409` unicidade. `404`.
 ### `DELETE /contacts/{id}`
 
 `204`. `409` se existir job `status=scheduled` com aquele `target_number`. `404`.
+
+## Templates
+
+Catálogo de textos reutilizáveis (SQLite). Sem Jinja. Placeholders no disparo: relógio (`{{date}}`, `{{time}}`, `{{day_name}}`, …) e `{{name}}` do contato cujo `phone` = `target_number`. Tag desconhecida permanece literal. Sem CRUD no MCP (ADR-005).
+
+### Recurso `MessageTemplate`
+
+| Campo | Tipo | Notas |
+| :--- | :--- | :--- |
+| `id` | string | UUID |
+| `name` | string | 1–80, único `NOCASE` |
+| `body` | string | Texto com placeholders |
+
+### `GET /templates`
+
+`200` → `{ "templates": [ MessageTemplate ] }` ordenado por nome.
+
+### `POST /templates`
+
+`{ "name": "Bom dia", "body": "Oi {{name}}, hoje é {{date}}." }` → `201`. `409` nome repetido. `422`. `401`.
+
+### `GET /templates/{id}`
+
+`200`. `404`.
+
+### `PATCH /templates/{id}`
+
+Campos opcionais `name` e/ou `body`. `200`. `409` unicidade. `404`.
+
+### `DELETE /templates/{id}`
+
+`204`. `409` se existir job `status=scheduled` com aquele `template_id`. `404`.
 
 ## Erros
 

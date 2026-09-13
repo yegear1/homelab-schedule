@@ -11,7 +11,8 @@ from homelab_schedule.cron import next_cron_utc
 from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.errors import EntityNotFound, GatekeeperError, YamlJobImmutable
 from homelab_schedule.repository import JobRepository
-from homelab_schedule.templates import render_template
+from homelab_schedule.templates import render_outbound_message
+from homelab_schedule.templates_repository import TemplateRepository
 from schemas.api import (
     CreateJobRequest,
     JobListFilter,
@@ -31,6 +32,7 @@ class JobService:
         aliases: dict[str, str],
         now: Callable[[], datetime],
         contacts: ContactService | None = None,
+        templates: TemplateRepository | None = None,
     ) -> None:
         self._repo = repo
         self._notebook_changed = notebook_changed
@@ -38,6 +40,7 @@ class JobService:
         self._aliases = aliases
         self._now = now
         self._contacts = contacts
+        self._templates = templates
 
     def create(self, payload: CreateJobRequest) -> Job:
         target = (
@@ -45,10 +48,11 @@ class JobService:
             if payload.target_number
             else self._resolve_to(payload.to)
         )
+        content, template_id = self._content_from_payload(payload)
         job = Job(
             id=str(uuid.uuid4()),
             title=payload.title,
-            content=payload.content,
+            content=content,
             to=payload.to,
             target_number=target,
             kind=payload.kind,
@@ -57,6 +61,7 @@ class JobService:
             source=JobSource.SQLITE,
             status=JobStatus.SCHEDULED,
             created_by=self._created_by(payload.created_by),
+            template_id=template_id,
         )
         stored = self._repo.insert(job)
         self._notebook_changed.set()
@@ -119,7 +124,7 @@ class JobService:
         job = self.get(job_id)
         dest = job.target_number or resolve_destination(job.to, self._aliases)
         now_instant = self._now()
-        content_to_send = render_template(job.content, now_instant)
+        content_to_send = self._render_outbound(job, dest, now_instant)
         result = await self._dispatcher.send(phone_number=dest, content=content_to_send)
         self._notebook_changed.set()
         if not result.ok:
@@ -147,6 +152,38 @@ class JobService:
         if raw is None or raw.strip() == "":
             return ""
         return self._resolve_to(raw.strip())
+
+    def _content_from_payload(self, payload: CreateJobRequest) -> tuple[str, str | None]:
+        template_id = payload.template_id
+        catalog_body: str | None = None
+        if template_id:
+            if self._templates is None:
+                raise EntityNotFound("template not found")
+            stored = self._templates.get(template_id)
+            if stored is None:
+                raise EntityNotFound("template not found")
+            catalog_body = stored.body
+        if payload.content is not None:
+            return payload.content, template_id
+        if catalog_body is None:
+            raise EntityNotFound("template not found")
+        return catalog_body, template_id
+
+    def _render_outbound(self, job: Job, dest: str, when: datetime) -> str:
+        catalog_body: str | None = None
+        if job.template_id and self._templates is not None:
+            stored = self._templates.get(job.template_id)
+            if stored is not None:
+                catalog_body = stored.body
+        dest_name: str | None = None
+        if self._contacts is not None:
+            dest_name = self._contacts.name_for_phone(dest)
+        return render_outbound_message(
+            stored_content=job.content,
+            when=when,
+            dest_name=dest_name,
+            catalog_body=catalog_body,
+        )
 
 
 def _cancelled(job: Job) -> Job:

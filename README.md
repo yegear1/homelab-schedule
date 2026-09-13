@@ -9,7 +9,7 @@ Este repositório **não** inclui cliente de WhatsApp, bot nem fila anti-ban. S�
 | Canal | Quem usa | Neste repo |
 | :--- | :--- | :--- |
 | **MCP** (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`) | Agente no Cursor | Sim |
-| **HTTP** (`/jobs`, `/contacts`, `/health`, `/routines/reload`, `/housekeeping/purge`) | Scripts, MCP e callers | Sim |
+| **HTTP** (`/jobs`, `/contacts`, `/templates`, `/health`, `/routines/reload`, `/housekeeping/purge`) | Scripts, MCP e callers | Sim |
 | **YAML** (`routines.yaml`) | Rotinas permanentes (reload por mtime ou `POST /routines/reload`) | Sim |
 
 Você anota em linguagem natural (*“amanhã 14h, pagar condomínio”*). Destinos: contato (nome ou id), alias `WHATSAPP_ALIASES`, ou número. No create, o servidor grava `target_number` e o tick envia para esse valor.
@@ -63,6 +63,7 @@ No `mcp.json` local, `command`/`args` apontam para esse script (`uv run --direct
 - Criar / cancelar / disparar agora: `POST /jobs`, `POST /jobs/{id}/cancel`, `POST /jobs/{id}/run` (`run` não substitui o agendamento).
 - Adiar recado sqlite: `POST /jobs/{id}/reschedule`.
 - Contatos: `GET/POST /contacts`, `GET/PATCH/DELETE /contacts/{id}` (DELETE `409` se houver job `scheduled` para o telefone).
+- Templates: `GET/POST /templates`, `GET/PATCH/DELETE /templates/{id}` (DELETE `409` se houver job `scheduled` com aquele `template_id`). `POST /jobs` aceita `template_id` **ou** `content`. No disparo: `{{name}}` do contato destino + tags de data/hora.
 - Rotinas YAML e expurgo: `POST /routines/reload`, `POST /housekeeping/purge`.
 
 ## Gateway de envio
