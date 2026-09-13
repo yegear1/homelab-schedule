@@ -73,9 +73,13 @@
     const target = job.target_number || job.to;
     const contact = contactsByPhone.get(target);
 
-    const alias = job.to && job.to !== target && job.to !== job.target_number ? job.to : null;
+    const cleanTarget = target.replace(/@c\.us$/, '');
+    const cleanTo = (job.to || '').replace(/@c\.us$/, '');
+    const isRealAlias = cleanTo !== '' && cleanTo !== cleanTarget && cleanTo !== 'eu';
+
+    const alias = isRealAlias ? job.to : null;
     const contactName = contact?.name || null;
-    const primaryName = alias || contactName;
+    const primaryName = contactName || alias;
 
     return {
       primaryName,
