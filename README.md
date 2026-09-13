@@ -1,28 +1,27 @@
 # homelab-schedule
 
-Agenda leve do homelab: um container Python agenda recados **pontuais** e **recorrentes** e dispara `POST /send` na [WhatsApp API](https://github.com/yegear/whatsapp-api) (`gatekeeper-py`).
+Agenda leve em um container: jobs **pontuais** e **recorrentes** que, no horário, fazem `POST /send` em um gateway HTTP que você configura. Versão **0.2.0** (`homelab-schedule-mcp`). Notas: [CHANGELOG](./CHANGELOG.md) · [GitHub Release](https://github.com/yegear1/homelab-schedule/releases/tag/v0.2.0).
 
-O envio é assíncrono. `202 Accepted` significa que a mensagem entrou na fila. O gateway aplica delay anti-ban; este serviço **não** faz polling nem reenvia na hora.
+Este repositório **não** inclui cliente de WhatsApp, bot nem fila anti-ban. Só agenda e dispara. Qualquer serviço que aceite o payload abaixo serve (`202` = aceito na fila). Este serviço não faz polling e não reenvia na hora. Falha transitória (rede, 5xx) reagenda até 3 vezes com backoff; 401/422 marcam o job como `error` na hora.
 
 ## Canetas (mesmo caderno)
 
-| Canal | Quem usa | v1 neste repo |
+| Canal | Quem usa | Neste repo |
 | :--- | :--- | :--- |
 | **MCP** (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`) | Agente no Cursor | Sim |
-| **HTTP** (`/jobs`, `/health`, `/routines/reload`, `/housekeeping/purge`) | Scripts e o próprio MCP | Sim |
-| **YAML** (`routines.yaml`) | Rotinas permanentes do homelab (reload automático por mtime ou `/routines/reload`) | Sim |
-| **WhatsApp** (`!lembra` / `!agenda` / `!cancela`; `!agenda all` admin) | Celular; lista pessoal por número | Só [contrato](.agent/CHANNELS.md); implementação no `whatsapp-api` |
+| **HTTP** (`/jobs`, `/health`, `/routines/reload`, `/housekeeping/purge`) | Scripts, MCP e callers | Sim |
+| **YAML** (`routines.yaml`) | Rotinas permanentes (reload por mtime ou `POST /routines/reload`) | Sim |
 
-Você anota em português (*“amanhã 14h, pagar condomínio”*). O agente (MCP) ou o bot grava um job. Destinos usam **alias** (`eu`, `grupo-homelab`), não JID cru no dia a dia.
+Você anota em linguagem natural (*“amanhã 14h, pagar condomínio”*). O MCP (ou `POST /jobs`) grava o recado. Destinos usam **alias** (`eu`, etc., via `WHATSAPP_ALIASES`). No create, o servidor grava `target_number` (destino normalizado) e o tick envia para esse valor — não resolve o alias de novo na hora do disparo.
 
 ## Stack
 
 - Python 3.13+, UV, FastAPI, sqlite3 WAL, tick `next_run_at` (sem APScheduler/Alembic)
 - Um processo: API HTTP + scheduler
 - Logs NDJSON (VictoriaLogs / Vector)
-- Compose no homelab; `TZ=America/Sao_Paulo`
+- Compose no homelab; `TZ=America/Sao_Paulo`; HTTP padrão **8003**
 
-Detalhe para agentes: [`AGENTS.md`](./AGENTS.md), [`.agent/NOTES.md`](./.agent/NOTES.md), [`.agent/TASK.md`](./.agent/TASK.md).
+Detalhe para agentes: [`AGENTS.md`](./AGENTS.md), [`.agent/NOTES.md`](./.agent/NOTES.md), [`.agent/TASK.md`](./.agent/TASK.md). Contrato HTTP: [`.agent/ENDPOINTS.md`](./.agent/ENDPOINTS.md).
 
 ## Desenvolvimento
 
@@ -43,7 +42,7 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-O SQLite vive no volume `schedule-data`. Segredos ficam no `.env`, não no YAML. `WHATSAPP_API_URL` deve alcançar o gatekeeper a partir do container.
+O SQLite vive no volume `schedule-data`. Segredos ficam no `.env`, não no YAML. `WHATSAPP_API_URL` é a URL **do gateway de envio** (nome histórico da variável; não implica um repositório específico) e precisa ser alcançável a partir do container. Auth **desta** API: header `x-api-key` = `SCHEDULE_API_KEY` (exceto `GET /health`).
 
 ## MCP (Cursor)
 
@@ -55,34 +54,51 @@ uv run homelab-schedule-mcp
 
 No `mcp.json` local, `command`/`args` apontam para esse script (`uv run --directory <repo> homelab-schedule-mcp`) com `SCHEDULE_API_URL` e `SCHEDULE_API_KEY` no `env` do servidor. O MCP só encapsula a HTTP; não abre o SQLite.
 
-## Integração WhatsApp & Gateways Compatíveis
+`list_agenda` aceita `status` (`upcoming` / `done` / `error` / `paused` / `all`) e `limit` (teto 50). `reschedule` só vale para recados sqlite (YAML → edite `routines.yaml`).
 
-Variáveis `WHATSAPP_API_URL` e `WHATSAPP_API_KEY`. Payload canônico enviado no POST: `phone_number` (número normalizado ou JID `@c.us` / `@g.us`), `content`, header `x-api-key`. Playbook: skill global `whatsapp`.
+## HTTP (resumo)
 
-> **Arquitetura Aberta:** Embora o conector padrão do homelab seja a WhatsApp API (`gatekeeper-py`), o `homelab-schedule` foi concebido com uma interface de disparo desacoplada (`Dispatcher`). Qualquer serviço HTTP ou webhook que aceite o payload canônico (`phone_number` e `content`) pode ser utilizado como endpoint de envio.
+- Lista: `GET /jobs?status=upcoming|done|error|paused|all&limit=…`. Query `to` é **fim de intervalo de data**, não destino. Lista curta: sem `content`.
+- Detalhe: `GET /jobs/{id}` (inclui `content` e `target_number`).
+- Criar / cancelar / disparar agora: `POST /jobs`, `POST /jobs/{id}/cancel`, `POST /jobs/{id}/run` (`run` não substitui o agendamento).
+- Adiar recado sqlite: `POST /jobs/{id}/reschedule`.
+- Rotinas YAML e expurgo: `POST /routines/reload`, `POST /housekeeping/purge`.
+
+## Gateway de envio
+
+No tick (e em `POST /jobs/{id}/run`), o serviço chama:
+
+`POST {WHATSAPP_API_URL}/send`
+
+| Peça | Valor |
+| :--- | :--- |
+| Header | `x-api-key: {WHATSAPP_API_KEY}` |
+| JSON | `phone_number`, `content` (opcionalmente `quote_id`) |
+| Sucesso | **`202 Accepted`** — mensagem aceita pelo gateway; não significa entrega ao destinatário |
+
+`phone_number` é o `target_number` do job (E.164, id de chat, ou o que o seu gateway esperar). Um backend de WhatsApp é um caso de uso, não uma dependência deste código.
 
 ## Housekeeping & Retenção
 
-- **Expurgo Automático Diário:** O loop de tick executa um housekeeping diário expurgando jobs finalizados (`status IN ('done', 'error')` e `source = 'sqlite'`) com idade superior a `JOB_RETENTION_DAYS` (padrão: 365 dias / 1 ano). Configure `JOB_RETENTION_DAYS=0` para desativar o expurgo automático.
-- **Expurgo Manual via API:** `POST /housekeeping/purge?days=365` (requer `x-api-key`). Jobs com status `scheduled` e rotinas de arquivo (`source = 'yaml'`) são sempre preservados.
+- **Expurgo automático diário:** o tick remove jobs `done`/`error` com `source = sqlite` mais velhos que `JOB_RETENTION_DAYS` (padrão 365; `0` desativa).
+- **Expurgo manual:** `POST /housekeeping/purge?days=365` (`x-api-key`). Jobs `scheduled` e rotinas `yaml` são preservados.
 
-## Templates Dinâmicos de Mensagem
+## Templates dinâmicos de mensagem
 
-No momento do disparo, variáveis de data/hora no `content` do recado são interpoladas automaticamente no fuso horário configurado (`TZ`, padrão `America/Sao_Paulo`):
+No disparo, placeholders de data/hora no `content` são interpolados no `TZ` (padrão `America/Sao_Paulo`). O texto gravado no job/YAML **não** é reescrito — rotinas `cron` interpolam de novo a cada ciclo.
 
-| Placeholder | Exemplo de Saída | Descrição |
+| Placeholder | Exemplo | Descrição |
 | :--- | :--- | :--- |
-| `{{date}}` | `11/09/2026` | Data no formato brasileiro `DD/MM/YYYY` |
-| `{{date_iso}}` | `2026-09-11` | Data no formato `YYYY-MM-DD` |
-| `{{time}}` | `08:00` | Horário no formato `HH:MM` |
-| `{{weekday}}` | `sex` | Dia da semana curto em português |
+| `{{date}}` | `11/09/2026` | Data `DD/MM/YYYY` |
+| `{{date_iso}}` | `2026-09-11` | Data `YYYY-MM-DD` |
+| `{{time}}` | `08:00` | Horário `HH:MM` |
+| `{{weekday}}` | `sex` | Dia da semana curto (pt) |
 | `{{day_name}}` | `sexta-feira` | Dia da semana por extenso |
-| `{{month_name}}` | `setembro` | Nome do mês por extenso |
-| `{{year}}` | `2026` | Ano atual com 4 dígitos |
+| `{{month_name}}` | `setembro` | Mês por extenso |
+| `{{year}}` | `2026` | Ano com 4 dígitos |
 
-O template permanece intacto na definição do job para que rotinas recorrentes (`cron`) sejam interpoladas a cada ciclo.
+Não há catálogo nomeado de modelos nem variáveis de contato nesta versão — só relógio no texto do job.
 
 ## Repositório
 
-GitHub: [`yegear1/homelab-schedule`](https://github.com/yegear1/homelab-schedule). Versão atual: `0.2.0` (`homelab-schedule-mcp`).
-
+GitHub: [`yegear1/homelab-schedule`](https://github.com/yegear1/homelab-schedule).

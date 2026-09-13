@@ -7,7 +7,7 @@ description: Anotar, listar ou cancelar um item da agenda respeitando aliases, f
 
 ## 1. Contexto e Objetivo
 
-O caderno é estruturado; a caneta humana é linguagem natural. Esta skill impede o agente de inventar crontab no SQLite ou POST no gatekeeper direto.
+O caderno é estruturado; a caneta humana é linguagem natural. Esta skill impede o agente de inventar crontab no SQLite ou `POST /send` direto.
 
 ---
 
@@ -16,7 +16,7 @@ O caderno é estruturado; a caneta humana é linguagem natural. Esta skill imped
 - “Anota”, “me lembra”, “agenda”, “o que tem marcado”, “cancela o lembrete”.
 - Implementar `POST /jobs` / loader YAML / tools MCP que criam jobs.
 
-Não usar: mandar WhatsApp na hora sem job (isso não é agenda). Bug de outro app → skill global `github-bug-issue`.
+Não usar: disparar `/send` na hora sem job (isso não é agenda). Bug de outro app → skill global `github-bug-issue`.
 
 ---
 
@@ -33,8 +33,8 @@ Não usar: mandar WhatsApp na hora sem job (isso não é agenda). Bug de outro a
 ### Passo 1: Extrair quatro campos
 
 1. **when** — pontual (data/hora) ou recorrente (cron / “toda segunda 9h”). Fuso `America/Sao_Paulo` se o humano não disser outro.
-2. **content** — texto que vai no WhatsApp (a anotação).
-3. **to** — default `eu`; senão alias conhecido. Não pedir JID se o alias existir.
+2. **content** — texto da mensagem (a anotação).
+3. **to** — default `eu`; senão alias conhecido. Não pedir id cru se o alias existir.
 4. **title** — uma linha; se faltar, derive do content (curto).
 
 Se `when` estiver ambíguo, **uma** pergunta. Não grave.
@@ -42,8 +42,7 @@ Se `when` estiver ambíguo, **uma** pergunta. Não grave.
 ### Passo 2: Gravar pela caneta certa
 
 - Recado pontual ou cron ad-hoc → MCP `schedule` (ou `POST /jobs`).
-- Política permanente do homelab → editar `routines.yaml` + id estável, não SQLite.
-- Celular → fora deste repo (CHANNELS.md).
+- Política permanente → editar `routines.yaml` + id estável, não SQLite.
 
 ### Passo 3: Confirmar
 
@@ -91,4 +90,4 @@ Resposta ao humano: gravado `abc123`, dispara sábado 12/09 14:00 BRT, destino `
 - [ ] when/to/content resolvidos
 - [ ] caneta certa (sqlite vs yaml)
 - [ ] confirmação com next_run
-- [ ] sem payload de gatekeeper no MCP
+- [ ] sem payload de `/send` no MCP

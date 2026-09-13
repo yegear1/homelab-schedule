@@ -20,9 +20,9 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 | :--- | :--- | :--- |
 | `id` | string | UUID (sqlite) ou id estável do YAML |
 | `title` | string | Uma linha para listar |
-| `content` | string | Texto do WhatsApp |
-| `to` | string | Alias (`eu`) ou JID |
-| `target_number` | string | JID normalizado do destino (preenchido no create). Caneta WhatsApp filtra por este campo |
+| `content` | string | Texto da mensagem |
+| `to` | string | Alias (`eu`) ou id de destino |
+| `target_number` | string | Destino normalizado (preenchido no create) |
 | `kind` | `once` \| `cron` | |
 | `run_at` | string ISO-8601 \| null | Obrigatório se `once`. Interpretação no `TZ` da app se sem offset |
 | `cron_expr` | string \| null | Cinco campos (min hour dom mon dow). Obrigatório se `cron` |
@@ -31,14 +31,14 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 | `status` | `scheduled` \| `done` \| `paused` \| `error` | `once` vira `done` após disparo ok |
 | `next_run_at` | string ISO-8601 UTC \| null | Relógio do tick (ADR-006). `once` usa `run_at` convertido; `cron` = próxima parede em `TZ` |
 | `last_run_at` | string ISO-8601 UTC \| null | |
-| `last_status` | string \| null | `queued` se gatekeeper 202 |
+| `last_status` | string \| null | `queued` se o gateway respondeu 202 |
 | `last_error` | string \| null | Sem stack na resposta pública |
 
 ### `GET /jobs`
 
 Query: `status` (`upcoming` \| `done` \| `paused` \| `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino). Lista **curta**: sem `content` completo (truncar ou omitir; `GET /jobs/{id}` tem o texto).
 
-Não há query de destino no v1. A caneta WhatsApp filtra no worker pelo `target_number` / alias do remetente ([CHANNELS.md](CHANNELS.md) §4). Não use `?to=<jid>`.
+Não há query de destino no v1. Query `to` é **fim de intervalo de data** (ISO), não destinatário. Não use `?to=<id de chat>`.
 
 `200` → `{ "jobs": [ JobListItem ] }`
 
@@ -64,13 +64,13 @@ Cron: `"kind": "cron", "cron_expr": "0 9 * * 1"` (segunda 09:00 no `TZ`). `to` d
 
 ### `POST /jobs/{id}/run`
 
-Disparo imediato (não altera `once` para `done` se também houver `run_at` futuro — **run now não substitui o agendamento**). `202` `{ "status": "queued", "job_id": "..." }` se o gatekeeper aceitou. `404`. `502` se o gatekeeper falhar (não 202).
+Disparo imediato (não altera `once` para `done` se também houver `run_at` futuro — **run now não substitui o agendamento**). `202` `{ "status": "queued", "job_id": "..." }` se o gateway aceitou. `404`. `502` se o gateway falhar (não 202).
 
 ### `POST /jobs/{id}/cancel`
 
 Sqlite: pontual → remove ou `status=done` cancelado; cron → `enabled=false` / `paused`. YAML: `409` com mensagem para editar o arquivo. `404`. `204` ou `200` com Job.
 
-Não há `PATCH` genérico no v1. Reagendar = cancel + create.
+Não há `PATCH` genérico. Recado sqlite: `POST /jobs/{id}/reschedule`. YAML: edite o arquivo.
 
 ## Erros
 

@@ -8,7 +8,7 @@
 
 ## 1. Contexto do Problema
 
-Agenda em um container: POSTs no gatekeeper, jobs pontuais e cron, sem Celery/n8n/fila extra. Homelab Python já usa UV e 3.13+. Foco: simplicidade e ociosidade barata (Mini PC).
+Agenda em um container: POSTs no gateway de envio, jobs pontuais e cron, sem Celery/n8n/fila extra. Homelab Python já usa UV e 3.13+. Foco: simplicidade e ociosidade barata (Mini PC).
 
 ## 2. Decisão Tomada
 

@@ -1,7 +1,7 @@
 [project]
 name = "homelab-schedule"
 version = "0.2.0"
-description = "Lightweight homelab agenda that dispatches WhatsApp reminders via the gatekeeper."
+description = "Lightweight agenda: one-off and recurring jobs that POST to a configurable HTTP send gateway."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

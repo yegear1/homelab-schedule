@@ -37,5 +37,4 @@ Há dois tipos de anotação: recado pontual (“amanhã 14h, condomínio”) e 
 
 ## 5. Referências e Links
 
-- `whatsapp-api` ADR-006 (SQLite WAL)
 - `.agent/CHANNELS.md`

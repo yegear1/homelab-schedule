@@ -16,13 +16,13 @@
 ## Visão
 
 ```text
-caneta MCP / HTTP / YAML (/ WhatsApp no outro repo)
+caneta MCP / HTTP / YAML
         → caderno (SQLite jobs + routines.yaml)
             → tick: next_run_at UTC + asyncio.Event
-                → POST gatekeeper /send  →  202 queued
+                → POST {WHATSAPP_API_URL}/send  →  202 queued
 ```
 
-Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
+Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1. Sem cliente de mensageiro neste repo.
 
 ---
 
@@ -32,7 +32,7 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 |---|---|---|---|
 | [ADR-001](adr/001-monolito-python-uv.md) | Um processo FastAPI + tick SQLite, UV, Python 3.13 | Aprovado | 2026-09-11 |
 | [ADR-002](adr/002-sqlite-e-yaml.md) | SQLite WAL para recados; YAML para rotinas permanentes | Aprovado | 2026-09-11 |
-| [ADR-003](adr/003-canetas.md) | Quatro canetas, um caderno; WhatsApp só contrato neste repo | Aprovado | 2026-09-11 |
+| [ADR-003](adr/003-canetas.md) | Três canetas neste repo; callers HTTP fora da árvore | Aprovado | 2026-09-11 |
 | [ADR-004](adr/004-dispatch-gatekeeper.md) | Dispatch só via POST /send; 202 = sucesso | Aprovado | 2026-09-11 |
 | [ADR-005](adr/005-mcp-superficie-fechada.md) | MCP com quatro tools; sem CRUD genérico | Aprovado | 2026-09-11 |
 | [ADR-006](adr/006-tick-next-run.md) | Avisos no tempo: `next_run_at` + tick asyncio | Aprovado | 2026-09-11 |
@@ -44,8 +44,14 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 ### [2026-09-12] Release pública `v0.2.0` (não reusar `v0.1.0`)
 
 - **Contexto:** Tag e GitHub Release `v0.1.0` já existiam (2026-09-11). O `main` acumulou features (reschedule, housekeeping, templates temporais, retries, porta 8003). Pedido humano de “versionar 0.1.0” choca com a tag já publicada.
-- **Decisão:** Publicar o HEAD atual como **`v0.2.0`**. Não mover/apagar `v0.1.0`. Asset de release: wheel Python (`uv build`), não binário Go da skill `github-releases` (books-cli). Repositório GitHub continua `yegear1/homelab-schedule` (privado até o humano abrir).
+- **Decisão:** Publicar o HEAD atual como **`v0.2.0`**. Não mover/apagar `v0.1.0`. Asset de release: wheel Python. Repositório GitHub: `yegear1/homelab-schedule`.
 - **Consequências:** `pyproject.toml` `version = "0.2.0"`. Numeração de tarefas do ciclo pós-`v0.1.0` arquivada; `[99.1]` volta ao Backlog Futuro.
+
+### [2026-09-12] Docs públicos sem contrato de bot / repo irmão
+
+- **Contexto:** Abrir o git não deve vazar spec de comandos de chat nem apontar para outro repositório privado.
+- **Decisão:** Canetas versionadas = MCP, HTTP, YAML. Dispatch = `POST /send` genérico. Nomes `WHATSAPP_*` permanecem no código (históricos).
+- **Consequências:** Callers externos usam `/jobs` por conta própria; este git não versiona spec de bot de chat.
 
 ### [2026-09-12] `AGENTS.md` alinhado ao contrato VictoriaLogs (`[02.4]`)
 
@@ -55,7 +61,7 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ### [2026-09-11] Retentativas de Disparo para Falhas Transitórias do Gateway (`[02.3]`)
 
-- **Contexto:** Instabilidades temporárias de rede ou do gateway (ex: reinício do container do WhatsApp, HTTP 500/502/503) marcavam imediatamente o job pontual como `error` definitivo, perdendo o disparo.
+- **Contexto:** Instabilidades temporárias de rede ou do gateway de envio (HTTP 500/502/503) marcavam imediatamente o job pontual como `error` definitivo, perdendo o disparo.
 - **Decisão:** Coluna `retry_count INTEGER NOT NULL DEFAULT 0` no SQLite (migração v2 → v3 no connect). Erros permanentes (401, 422) continuam falhando imediatamente. Erros transitórios reagendam o job até 3 vezes (`_MAX_RETRIES = 3`) com backoff exponencial (`2^retry_count` minutos: +2m, +4m, +8m). Sucesso (`202`) zera o `retry_count`. Rotinas YAML esgotam retentativas transitórias e saltam para o próximo ciclo cron regular.
 - **Consequências:** Lembretes tornam-se tolerantes a quedas curtas de conectividade sem risco de envio duplicado no mesmo instante.
 
@@ -91,7 +97,7 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ### [2026-09-11] Persistência de `target_number` normalizado e gateway agnóstico
 
-- **Contexto:** `[01.1]` precisava salvar o número resolvido no próprio aviso para evitar resoluções dinâmicas ambíguas no tick e permitir que o bot WhatsApp (`!agendar`) passe o número do remetente diretamente. Além disso, o scheduler deve ser aberto para qualquer gateway HTTP compatível.
+- **Contexto:** `[01.1]` precisava salvar o destino resolvido no próprio aviso para evitar resoluções dinâmicas ambíguas no tick. O scheduler permanece aberto a qualquer gateway HTTP compatível.
 - **Decisão:** Coluna `target_number TEXT` no SQLite (migração v1→v2 com backfill de `"to"`). Normalização aplicada no momento da criação (`CreateJobRequest.target_number` ou resolução de `to`). O tick e `run_now` utilizam diretamente `job.target_number`. README atualizado documentando compatibilidade com qualquer gateway webhook que aceite o payload.
 - **Consequências:** SQLite migra transparentemente no connect. MCP e bot gravam o número normalizado diretamente. Dispatcher permanece desacoplado via Protocol.
 
@@ -104,8 +110,8 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 ### [2026-09-11] Compose slim e NDJSON stdlib
 
 - **Contexto:** Homelab precisa de um container e logs que o Vector/VictoriaLogs parseiem.
-- **Decisão:** `python:3.13-slim` + `uv sync --frozen --no-dev`, um worker uvicorn, `--no-access-log`. Compose: `container_name=homelab-schedule`, `LOG_FORMAT=json`, `NO_COLOR=1`, `ENV`/`ENVIRONMENT`, volume `schedule-data` em `/data`. Formatter stdlib: `WARNING`→`warn`; extras não canônicos em `context` (JID/`content` não são stream field). Segredos só no `.env`.
-- **Consequências:** `WHATSAPP_API_URL` tem de resolver o gatekeeper a partir da rede Docker. Skill de anotação MCP é `[02.4]`.
+- **Decisão:** `python:3.13-slim` + `uv sync --frozen --no-dev`, um worker uvicorn, `--no-access-log`. Compose: `container_name=homelab-schedule`, `LOG_FORMAT=json`, `NO_COLOR=1`, `ENV`/`ENVIRONMENT`, volume `schedule-data` em `/data`. Formatter stdlib: `WARNING`→`warn`; extras não canônicos em `context` (destino/`content` não são stream field). Segredos só no `.env`.
+- **Consequências:** `WHATSAPP_API_URL` tem de resolver o gateway de envio a partir da rede Docker. Skill de anotação MCP é `[02.4]`.
 
 ### [2026-09-11] MCP stdio com quatro tools via HTTP
 
@@ -119,15 +125,15 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 - **Decisão:** Loader no lifespan (sem watch). `when` = cron de 5 campos. Merge atualiza título/conteúdo/`to`/cron; cron igual preserva `next_run_at`. Id sumiu do arquivo → yaml job `paused`. Id já usado por `source=sqlite` → `YamlIdConflict` (boot falha). PyYAML `safe_load`.
 - **Consequências:** Cancel HTTP de yaml continua 409. MCP `[02.2]` não precisa falar com o arquivo.
 
-### [2026-09-11] Tick `next_run_at` + gatekeeper httpx
+### [2026-09-11] Tick `next_run_at` + cliente HTTP `/send`
 
 - **Contexto:** `[01.3]` precisava disparar no tempo sem APScheduler e sem mentir 202.
-- **Decisão:** Loop asyncio no lifespan (cap 5 min, Event nas escritas). Cron de 5 campos no `TZ` com walker stdlib (sem croniter). Alias `WHATSAPP_ALIASES` → JID; POST `/send` com `phone_number`/`content`/`quote_id`/`x-api-key`. 202 → `last_status=queued`; 401/422 → `status=error` sem retry; 5xx → backoff 5s. Run-now não altera `next_run_at`.
-- **Consequências:** YAML merge ainda é `[02.1]`. Logs de falha não incluem JID/`content` como dimensão.
+- **Decisão:** Loop asyncio no lifespan (cap 5 min, Event nas escritas). Cron de 5 campos no `TZ` com walker stdlib (sem croniter). Alias `WHATSAPP_ALIASES` → destino; POST `/send` com `phone_number`/`content`/`quote_id`/`x-api-key`. 202 → `last_status=queued`; 401/422 → `status=error` sem retry; 5xx → backoff 5s. Run-now não altera `next_run_at`.
+- **Consequências:** YAML merge ainda é `[02.1]`. Logs de falha não incluem destino/`content` como dimensão.
 
 ### [2026-09-11] HTTP `/health` e `/jobs`; run-now 501 até o tick
 
-- **Contexto:** `[01.2]` precisava da caneta HTTP sem o cliente do gatekeeper.
+- **Contexto:** `[01.2]` precisava da caneta HTTP sem o cliente do gateway.
 - **Decisão:** FastAPI factory (`create_app`), auth `x-api-key` (`SCHEDULE_API_KEY`) em tudo exceto `/health`. Cancel sqlite `once` → `done` + `next_run_at` nulo; cron → `paused`. YAML → 409. Escritas (create/cancel/run) setam `asyncio.Event`. `POST /jobs/{id}/run` responde 501 e **não** muda o agendamento. Lista omite `content`.
 - **Consequências:** `[01.3]` troca o 501 por POST `/send` e liga o loop no Event. Uvicorn: `--factory homelab_schedule.main:create_app`.
 
@@ -145,28 +151,22 @@ Um container. Sem Redis, sem APScheduler, sem Alembic. Sem UI web no v1.
 
 ### [2026-09-11] Constituição greenfield preenchida
 
-- **Contexto:** Starter `template-agent` / greenfield ainda com colchetes. Escopo alinhado em chat: agenda container + WhatsApp + MCP + YAML v1 + contrato de comando WhatsApp.
-- **Decisão:** Owner GitHub `yegear`. Fuso `America/Sao_Paulo`. Porta HTTP `8002` (gatekeeper permanece `8001`). Auth desta API: `x-api-key` (`SCHEDULE_API_KEY`), distinta da chave do gatekeeper.
+- **Contexto:** Starter `template-agent` / greenfield ainda com colchetes. Escopo alinhado em chat: agenda container + MCP + YAML v1 + `POST /send`.
+- **Decisão:** Owner GitHub `yegear1`. Fuso `America/Sao_Paulo`. Porta HTTP originalmente `8002` (depois `8003`). Auth desta API: `x-api-key` (`SCHEDULE_API_KEY`), distinta da chave do gateway de envio.
 - **Alternativas:** Org `ye-sandbox` (rejeitada pelo humano). YAML só depois (rejeitada: YAML entra no v1).
 - **Consequências:** Código ainda não existe; próxima tarefa é bootstrap `uv`/`pyproject`.
 
 ### [2026-09-12] Porta HTTP 8003
 
-- **Contexto:** No mothership, `stock-monitoring-api` já publica `8002→8000`. `homelab-schedule` ficou em `Created` (`Bind for :::8002 failed`).
-- **Decisão:** Padrão deste serviço passa a `8003` (compose, Dockerfile, `APP_PORT`, MCP `SCHEDULE_API_URL`). Gatekeeper permanece `8001`; stock-monitoring fica com `8002`.
-- **Consequências:** `.env` no host precisa `APP_PORT=8003` e `SCHEDULE_API_URL=http://localhost:8003` (e o mesmo no `whatsapp-api` se apontar para esta API). Rebuild da imagem após mudar `EXPOSE`/`CMD`.
-
-### [2026-09-12] WhatsApp: agenda do remetente; `!agenda all` só admin
-
-- **Contexto:** A `SCHEDULE_API_KEY` no logic-worker lê `GET /jobs` inteiro. Proposta no `whatsapp-api`: `ADMIN_ONLY` em `!lembra` / `!agenda` / `!cancela` (evitar membro de grupo listar/cancelar o homelab).
-- **Decisão:** Isolamento na caneta, não na chave. Comandos pessoais escopam pelo JID do remetente (`target_number` ou alias que resolve para ele). `!agenda all` é o único comando de visão global e é `ADMIN_ONLY`. `GET /jobs?to=` continua sendo range de data; filtro de destino no worker até existir query `destination`.
-- **Consequências:** Qualquer número pode anotar a própria agenda. Rotinas YAML (`grupo-homelab`) não saem no `!agenda` privado. Cancelar job alheio fica no MCP/HTTP.
+- **Contexto:** A porta `8002` já estava em uso no host de compose.
+- **Decisão:** Padrão deste serviço passa a `8003` (compose, Dockerfile, `APP_PORT`, MCP `SCHEDULE_API_URL`).
+- **Consequências:** `.env` no host precisa `APP_PORT=8003` e `SCHEDULE_API_URL=http://localhost:8003`. Rebuild da imagem após mudar `EXPOSE`/`CMD`.
 
 ### [2026-09-11] Anotação em linguagem natural, store estruturado
 
 - **Contexto:** O que importa para o humano é *como anotar*, não cron cru.
 - **Decisão:** Usuário fala quando / para quem / o quê. Servidor grava `kind` (`once` \| `cron`), `run_at` ou `cron_expr`, `to` (alias), `title`, `content`. Agente confirma `id` + próximo disparo + destino + texto.
-- **Consequências:** MCP não exige que o modelo monte JSON do gatekeeper. Aliases em `WHATSAPP_ALIASES`.
+- **Consequências:** MCP não exige que o modelo monte JSON do `POST /send`. Aliases em `WHATSAPP_ALIASES`.
 
 ### [2026-09-11] Tick no SQLite, sem Alembic/APScheduler/Loguru
 
@@ -182,11 +182,10 @@ Schema canônico no código (`src/schemas/`) quando existir. Mapa:
 
 | Canal | Produtor | Consumidor | Payload |
 |---|---|---|---|
-| HTTP `/jobs` | MCP, curl, futuros callers | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
+| HTTP `/jobs` | MCP, curl, callers | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
 | MCP stdio | Agente Cursor | HTTP local | [ADR-005](adr/005-mcp-superficie-fechada.md) |
 | `routines.yaml` | Git / operador | Loader no boot + watch | [CHANNELS.md](CHANNELS.md) |
-| `POST /send` | Dispatcher deste repo | gatekeeper-py | skill `whatsapp`: `phone_number`, `content`, `quote_id`, header `x-api-key` |
-| Comando WhatsApp | logic-worker (`whatsapp-api`) | HTTP deste serviço | [CHANNELS.md](CHANNELS.md) — **não implementar aqui** |
+| `POST /send` | Dispatcher deste repo | Gateway em `WHATSAPP_API_URL` | `phone_number`, `content`, `quote_id`, header `x-api-key` |
 
 Alteração de contrato = atualizar schemas dos lados na mesma tarefa.
 
@@ -194,12 +193,12 @@ Alteração de contrato = atualizar schemas dos lados na mesma tarefa.
 
 ## Armadilhas
 
-- **Gatekeeper:** agentes alucinam `to`/`body`/`Authorization`. Só `phone_number` + `content` + `x-api-key`.
+- **Gateway `/send`:** agentes alucinam `to`/`body`/`Authorization`. Só `phone_number` + `content` + `x-api-key`.
 - **202:** não é “pendente de confirmação de entrega”. É enfileirado. Retry imediato duplica mensagem.
-- **VictoriaLogs:** JID e `content` são campo de evento, nunca stream field. Health `/health` o Vector pode descartar no HDD.
+- **VictoriaLogs:** destino e `content` são campo de evento, nunca stream field. Health `/health` o Vector pode descartar no HDD.
 - **SQLite:** um writer (este processo). Não expor o arquivo a outro container com write. Esquecer o `Event` após `POST /jobs` atrasa o aviso até o cap de 5 min.
 - **YAML vs SQLite:** rotina YAML não deve ser “copiada e esquecida” no SQLite de forma que um edit no git não atualize o job. Merge por `id` estável da rotina (campo `id` no YAML).
-- **Caneta WhatsApp:** não mandar JID no query `to` de `GET /jobs`. `!agenda` sem `all` nunca despeja a lista global no chat.
+- **`GET /jobs?to=`:** `to` é fim de intervalo de **data**, não destino.
 
 ---
 
@@ -207,7 +206,6 @@ Alteração de contrato = atualizar schemas dos lados na mesma tarefa.
 
 | Débito | Motivo | Quando revisitar |
 |---|---|---|
-| Comando `!lembra` / `!agenda` só no papel | Código no `whatsapp-api` | Quando o humano pedir no outro repo |
-| Sem UI web / CalDAV / e-mail | Peso; três canetas bastam | Se o humano pedir |
+| Sem UI web / CalDAV / e-mail | Peso; três canetas neste repo bastam | Se o humano pedir |
 | Sem HA / multi-réplica | Um SQLite + um tick | Se houver segundo host |
 | Catálogo de contatos/modelos | Aliases só no env; templates só data/hora | Épico discutido; não iniciado |

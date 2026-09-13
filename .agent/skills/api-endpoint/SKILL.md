@@ -37,12 +37,12 @@ Padroniza rotas HTTP deste serviço: tipagem Pydantic ponta a ponta, camadas des
 ### Passo 2: Camadas
 
 1. **Router:** valida, chama o service, status HTTP (`201` create, `200` leitura, `204` cancel sem body se for o caso). Sem SQL e sem httpx no router.
-2. **Service:** regras (alias → JID não acontece aqui se for dispatch — isso é `whatsapp-dispatch`). Exceções de domínio tipadas.
+2. **Service:** regras (alias → destino não acontece aqui se for dispatch — isso é `whatsapp-dispatch`). Exceções de domínio tipadas.
 3. **Repository:** SQLite. YAML não se apaga pelo repository de delete — `409`.
 
 ### Passo 3: Erros
 
-Handler global: `EntityNotFound` → 404; validação → 422; `Unauthorized` → 401; `YamlJobImmutable` → 409; gatekeeper down em run-now → 502. Sem path de arquivo nem keys na resposta.
+Handler global: `EntityNotFound` → 404; validação → 422; `Unauthorized` → 401; `YamlJobImmutable` → 409; gateway down em run-now → 502. Sem path de arquivo nem keys na resposta.
 
 ### Passo 4: Testes
 
@@ -81,7 +81,7 @@ Router devolve `JSONResponse` com status 201; a função acima é ilustrativa �
 ## 6. Armadilhas
 
 - ⚠️ Não retornar `200` com `{ "status": "error" }`.
-- ⚠️ Não falar com o gatekeeper no router (skill `whatsapp-dispatch`).
+- ⚠️ Não falar com o gateway no router (skill `whatsapp-dispatch`).
 - ⚠️ Não expor `PATCH` genérico (ADR-005 / ENDPOINTS: cancel + create).
 - 💡 `GET /jobs` lista curta; `content` completo só no get por id.
 

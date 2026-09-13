@@ -1,28 +1,27 @@
 ---
 name: whatsapp-dispatch
-description: Enviar o recado da agenda via gatekeeper POST /send (phone_number, content, x-api-key). 202 queued é sucesso.
+description: Enviar o recado da agenda via POST /send (phone_number, content, x-api-key). 202 queued é sucesso.
 ---
 
-# Dispatch WhatsApp (`whatsapp-dispatch`)
+# Dispatch HTTP (`whatsapp-dispatch`)
 
 ## 1. Contexto e Objetivo
 
-Único lugar deste repo que chama o gatekeeper. Segue a skill global `whatsapp` e o [ADR-004](../../adr/004-dispatch-gatekeeper.md).
+Único lugar deste repo que chama `{WHATSAPP_API_URL}/send`. Contrato: [ADR-004](../../adr/004-dispatch-gatekeeper.md). Nome da skill e das envs é histórico.
 
 ---
 
 ## 2. Quando Utilizar
 
 - Cliente HTTP do scheduler ou `POST /jobs/{id}/run`.
-- Normalização de alias → JID.
-- Retry / tratamento de 401/422/5xx do gatekeeper.
+- Normalização de alias → `target_number`.
+- Retry / tratamento de 401/422/5xx do gateway.
 
 ---
 
 ## 3. Ferramentas
 
-- Skill global **`whatsapp`** (contrato canônico).
-- **CLI:** pytest com httpx mockado. Não dispare WhatsApp real em teste.
+- **CLI:** pytest com httpx mockado. Não dispare envio real em teste.
 
 ---
 
@@ -30,7 +29,7 @@ description: Enviar o recado da agenda via gatekeeper POST /send (phone_number, 
 
 ### Passo 1: Resolver destino
 
-`WHATSAPP_ALIASES`. Se `to` já termina em `@c.us`/`@g.us`, use. Senão dígitos → `@c.us`. Nunca logar JID como stream field.
+`WHATSAPP_ALIASES`. Se `to` já parece um id de chat (ex. sufixo conhecido), use. Senão dígitos viram destino de usuário. Nunca logar destino como stream field.
 
 ### Passo 2: POST
 
@@ -48,7 +47,7 @@ Body: `phone_number`, `content`, `quote_id: null`. **Proibido** `to`, `body`, `m
 
 ### Passo 4: Não observe entrega
 
-Sem polling no Redis, sem webhook de “delivered” no v1.
+Sem polling de fila externa, sem webhook de “delivered” neste serviço.
 
 ---
 
@@ -56,7 +55,7 @@ Sem polling no Redis, sem webhook de “delivered” no v1.
 
 ```python
 payload = {
-    "phone_number": normalize_whatsapp_phone(jid),
+    "phone_number": normalize_whatsapp_phone(dest),
     "content": content,
     "quote_id": None,
 }
@@ -78,7 +77,7 @@ response.raise_for_status()
 
 ## 7. Checklist
 
-- [ ] Campos canônicos da skill `whatsapp`
+- [ ] Campos `phone_number` / `content` / `x-api-key`
 - [ ] 202 = sucesso sem poll
 - [ ] Testes com mock, sem rede real
-- [ ] Logs NDJSON sem JID como dimensão de stream
+- [ ] Logs NDJSON sem destino como dimensão de stream

@@ -22,7 +22,7 @@ O aviso no tempo **não** é um cron daemon. É a coluna `next_run_at` (UTC) + u
 
 ## 3. Ferramentas
 
-- pytest com relógio injetável (`now` fake) e httpx do gatekeeper mockado.
+- pytest com relógio injetável (`now` fake) e httpx do gateway mockado.
 - Sem APScheduler, Celery, threads de timer extra.
 
 ---

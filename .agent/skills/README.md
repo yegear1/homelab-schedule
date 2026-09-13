@@ -11,10 +11,10 @@ Procedimentos passo a passo. Regras ficam no `AGENTS.md`; decisões no `NOTES.md
 | **`mcp-tool`** | [`mcp-tool/SKILL.md`](./mcp-tool/SKILL.md) | Tools do MCP stdio (superfície fechada) |
 | **`anotar-agenda`** | [`anotar-agenda/SKILL.md`](./anotar-agenda/SKILL.md) | Anotar / listar / cancelar via MCP (pedido humano) |
 | **`agenda-job`** | [`agenda-job/SKILL.md`](./agenda-job/SKILL.md) | Contrato de campos do job (when/to/content) |
-| **`whatsapp-dispatch`** | [`whatsapp-dispatch/SKILL.md`](./whatsapp-dispatch/SKILL.md) | POST gatekeeper `/send`; 202 = sucesso |
+| **`whatsapp-dispatch`** | [`whatsapp-dispatch/SKILL.md`](./whatsapp-dispatch/SKILL.md) | POST `{WHATSAPP_API_URL}/send`; 202 = sucesso |
 | **`due-tick`** | [`due-tick/SKILL.md`](./due-tick/SKILL.md) | Loop `next_run_at` + Event |
 
-Skills globais (não copiar para cá): `whatsapp`, `victorialogs-integration`, `victorialogs-troubleshooting`, `github-bug-issue`.
+Skills globais (não copiar para cá): `victorialogs-integration`, `victorialogs-troubleshooting`, `github-bug-issue`.
 
 ## Nova skill
 

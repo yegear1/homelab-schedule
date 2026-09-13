@@ -2,7 +2,7 @@
 
 Você é o engenheiro sênior responsável pelo desenvolvimento deste projeto: **homelab-schedule**.
 
-Agenda leve em um container: jobs pontuais e recorrentes que disparam `POST /send` no **gatekeeper** da WhatsApp API. Canetas (MCP, HTTP, YAML de rotinas; contrato de comando WhatsApp) escrevem no mesmo caderno. Repo: `yegear/homelab-schedule`.
+Agenda leve em um container: jobs pontuais e recorrentes que disparam `POST /send` num gateway HTTP configurável. Canetas neste repo: MCP, HTTP, YAML. Repo: `yegear1/homelab-schedule`.
 
 ---
 
@@ -22,7 +22,7 @@ Formato `[Épico].[Sequencial]` com épico de **dois dígitos**. Subtarefas: `[X
 | Prefixo | Fase | Foco |
 | :---: | :--- | :--- |
 | **`00.x`** | Bootstrap & Setup | `pyproject`, linters, layout `src/`, Compose |
-| **`01.x`** | Fundação | Job store SQLite, HTTP, tick `next_run_at`, cliente WhatsApp |
+| **`01.x`** | Fundação | Job store SQLite, HTTP, tick `next_run_at`, cliente HTTP `/send` |
 | **`02.x`** | Canetas | YAML de rotinas, MCP stdio, skill de anotação |
 | **`90.x`** | Refatoração | Performance e dívida técnica |
 | **`99.x`** | Hardening & Release | Auditoria e tag — só com permissão humana |
@@ -49,8 +49,8 @@ Não está preso à fase `99.x`. Ao publicar `vX.Y.Z`:
 - **Frameworks:** FastAPI, Pydantic v2, Pydantic-Settings, httpx. Logs NDJSON com `logging` stdlib (skill `victorialogs-integration`, Padrão 2 Opção B — sem Loguru).
 - **Schema SQLite:** `CREATE TABLE IF NOT EXISTS` no connect. Sem Alembic. Sem APScheduler.
 - **Linter / tipos / testes:** Ruff, mypy (estrito), pytest.
-- **Persistência:** SQLite 3 WAL em volume (`DATABASE_PATH`). Sem Redis neste repo — a fila anti-ban vive no `whatsapp-api`.
-- **Integração WhatsApp:** HTTP `POST {WHATSAPP_API_URL}/send` com header `x-api-key` (skill global `whatsapp`). `202 Accepted` = sucesso; não polling, não reenvio imediato.
+- **Persistência:** SQLite 3 WAL em volume (`DATABASE_PATH`). Sem Redis neste repo — fila de envio, se houver, vive no gateway.
+- **Gateway de envio:** HTTP `POST {WHATSAPP_API_URL}/send` com header `x-api-key`. `202 Accepted` = sucesso; não polling, não reenvio imediato. Nomes `WHATSAPP_*` são históricos.
 - **Importações:** explícitas, sem `__init__.py` barrel. Schemas globais em `src/schemas/`. Helpers internos de feature prefixo `_`.
 
 ---
@@ -88,7 +88,6 @@ Skills globais obrigatórias quando couber:
 
 - `victorialogs-integration` — logs, compose, stdout; neste repo é stdlib NDJSON (não Loguru).
 - `victorialogs-troubleshooting` — investigar erros via MCP VictoriaLogs.
-- `whatsapp` — payload `phone_number` / `content` / `x-api-key`.
 - `github-bug-issue` — anotar bug para depois (issue no GitHub; não usar `TASK.md` como fila).
 
 | Skill do repo | Quando |
@@ -98,7 +97,7 @@ Skills globais obrigatórias quando couber:
 | `mcp-tool` | Tools MCP stdio (schema, tokens, sem CRUD genérico) |
 | `anotar-agenda` | Humano pede para anotar/lembrar/listar/cancelar (MCP, não `/send`) |
 | `agenda-job` | Contrato de campos do job (when/to/content) |
-| `whatsapp-dispatch` | Cliente do gatekeeper; 202 = sucesso |
+| `whatsapp-dispatch` | Cliente HTTP `POST /send`; 202 = sucesso |
 | `due-tick` | Loop `next_run_at` + Event; catch-up once/cron |
 
 ---
@@ -122,19 +121,19 @@ Na raiz do repo:
 
 - **NUNCA** tipagem frouxa (`Any`).
 - **NUNCA** instale dependência ou use `pip` sem permissão.
-- **NUNCA** quebre contratos de payload (`.agent/NOTES.md`, `.agent/ENDPOINTS.md`, skill `whatsapp`).
-- **NUNCA** use campos `to`, `body`, `message`, `Authorization: Bearer` no gatekeeper — só `phone_number`, `content`, `x-api-key`.
+- **NUNCA** quebre contratos de payload (`.agent/NOTES.md`, `.agent/ENDPOINTS.md`, skill `whatsapp-dispatch`).
+- **NUNCA** use campos `to`, `body`, `message`, `Authorization: Bearer` no `POST /send` — só `phone_number`, `content`, `x-api-key`.
 - **NUNCA** trate `202` do `/send` como falha nem reenvie na hora.
-- **NUNCA** coloque JID, texto da mensagem ou `request_id` como stream field de log.
+- **NUNCA** coloque destino (`phone_number`/JID), texto da mensagem ou `request_id` como stream field de log.
 - **NUNCA** entregue mock, syntax error ou `TODO` como tarefa concluída.
 - **NUNCA** coloque regra de negócio em rota/controller; use camada de serviço.
 - **NUNCA** apague arquivos ou refatore fora do escopo.
 - **NUNCA** mute schema SQLite via MCP; altere o SQL versionado no connect (`database-migration`).
 - **NUNCA** adicione APScheduler/Alembic/Loguru sem o humano pedir.
-- **NUNCA** invente parâmetro/endpoint sem docs deste repo ou skill `whatsapp`.
+- **NUNCA** invente parâmetro/endpoint sem docs deste repo ou skill `whatsapp-dispatch`.
 - **NUNCA** ignore a skill do domínio da tarefa.
 - **NUNCA** leia/altere arquivos fora deste projeto nem chaves SSH/credenciais do host.
-- **NUNCA** implemente comando `!lembra` neste repo — o contrato está em `.agent/CHANNELS.md`; o código mora em `whatsapp-api`.
+- **NUNCA** implemente bot ou comandos de chat neste repo — callers usam a HTTP `/jobs`; este serviço só agenda e dispara.
 
 ---
 

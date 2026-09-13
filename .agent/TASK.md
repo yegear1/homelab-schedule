@@ -32,7 +32,6 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 - [ ] **[99.1]** Preparar Release (Tag Git) e Sanitizar Contexto (Apenas executar com permissão explícita do usuário)
 - [ ] Contatos YAML + modelos nomeados + variáveis no disparo
-- [ ] Comando WhatsApp no repo `whatsapp-api` (contrato: `.agent/CHANNELS.md` §4 — escopo por remetente; `!agenda all` admin)
 - [ ] Expressões de intervalo amigáveis no MCP (`when`)
 
 

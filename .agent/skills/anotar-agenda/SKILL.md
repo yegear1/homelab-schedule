@@ -2,7 +2,7 @@
 name: anotar-agenda
 description: >
   Use when the human asks to annotate, remind, schedule, list, cancel, or
-  reschedule a homelab WhatsApp reminder (anota, me lembra, agenda, o que tem marcado,
+  reschedule a reminder (anota, me lembra, agenda, o que tem marcado,
   cancela, adia, remarca). Call MCP homelab-schedule tools; never POST /send or invent crontab.
 ---
 
@@ -10,7 +10,7 @@ description: >
 
 ## 1. Contexto e Objetivo
 
-O humano fala em português. O caderno é estruturado. Esta skill é a **caneta do agente no Cursor**: gravar, listar, cancelar e remarcar pelo MCP `homelab-schedule`, sem curl ad-hoc e sem o gatekeeper.
+O humano fala em português. O caderno é estruturado. Esta skill é a **caneta do agente no Cursor**: gravar, listar, cancelar e remarcar pelo MCP `homelab-schedule`, sem curl ad-hoc e sem `POST /send`.
 
 Contrato de campos: skill [`agenda-job`](../agenda-job/SKILL.md). Canais: [CHANNELS.md](../CHANNELS.md). Tools: [ADR-005](../adr/005-mcp-superficie-fechada.md).
 
@@ -25,7 +25,7 @@ Ative sempre que o humano (ou a tarefa) pedir para:
 - cancela o lembrete, desmarca, não precisa mais
 - adia o recado, remarca, muda o horário para mais tarde
 
-**Não** use para: implementar o servidor MCP (`mcp-tool`); alterar schema SQLite; enviar WhatsApp na hora (`whatsapp-dispatch` / skill global `whatsapp`); bug de outro app (`github-bug-issue`); rotina permanente do homelab (aí é YAML).
+**Não** use para: implementar o servidor MCP (`mcp-tool`); alterar schema SQLite; enviar a mensagem na hora (`whatsapp-dispatch`); bug de outro app (`github-bug-issue`); rotina permanente (aí é YAML).
 
 ---
 
@@ -47,14 +47,13 @@ Mutação em produção via MCP só com consentimento do humano (`AGENTS.md`).
 | :--- | :--- |
 | Recado pontual ou cron ad-hoc (“amanhã 14h”, “toda segunda 9h”) | MCP `schedule` |
 | Adiar ou remarcar recado pontual (“adia em 2h”, “remarca para amanhã 10h”) | MCP `reschedule` |
-| Política permanente do homelab (backup, status semanal no git) | Editar `routines.yaml` (id estável); não SQLite |
-| Celular `!lembra` / `!agenda` / `!cancela` (lista do remetente; `!agenda all` só admin) | Fora deste repo ([CHANNELS.md](../CHANNELS.md) §4) |
+| Política permanente (backup, status semanal no git) | Editar `routines.yaml` (id estável); não SQLite |
 
 ### Passo 2: Extrair quatro campos
 
 1. **when** — ISO-8601 com offset (fuso default `America/Sao_Paulo`) ou cron de **cinco** campos. Se estiver ambíguo, **uma** pergunta; não grave.
-2. **content** — texto que vai no WhatsApp.
-3. **to** — default `eu`; alias conhecido ou número normalizado. Não peça JID se o alias existir.
+2. **content** — texto da mensagem.
+3. **to** — default `eu`; alias conhecido ou destino normalizado. Não peça id cru se o alias existir.
 4. **title** — uma linha; se faltar, o servidor deriva do content.
 
 ### Passo 3: Chamar a tool e confirmar
@@ -100,7 +99,7 @@ Resposta ao humano: gravado `<id>`, dispara sábado 12/09 14:00 BRT (17:00 UTC),
 
 ## 7. Checklist de Conclusão da Skill
 
-- [ ] Caneta certa (MCP sqlite vs `routines.yaml` vs outro repo)
+- [ ] Caneta certa (MCP sqlite vs `routines.yaml`)
 - [ ] `when` / `to` / `content` resolvidos (ou uma pergunta)
 - [ ] Confirmação: id + próximo disparo BRT e UTC + destino + texto
-- [ ] Sem gatekeeper e sem token nos logs
+- [ ] Sem `POST /send` e sem token nos logs

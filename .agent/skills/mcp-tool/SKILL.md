@@ -75,7 +75,7 @@ Atualize `.agent/CHANNELS.md` e a skill `agenda-job` se a semântica mudar.
 
 ## 6. Armadilhas
 
-- ⚠️ Não encaminhar o body do gatekeeper (`phone_number`) no MCP.
+- ⚠️ Não encaminhar o body do `/send` (`phone_number`) no MCP.
 - ⚠️ Não versionar `.cursor/mcp.json`.
 - 💡 Confirme `next_run_at` no retorno do `schedule`.
 

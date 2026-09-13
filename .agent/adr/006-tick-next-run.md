@@ -8,7 +8,7 @@
 
 ## 1. Contexto do Problema
 
-Sem APScheduler não há trigger in-memory. Precisamos disparar WhatsApp na hora certa com um processo ocioso, SQLite como relógio, e acordar se o humano anotar um recado daqui a dois minutos enquanto o loop “dormia” até segunda.
+Sem APScheduler não há trigger in-memory. Precisamos disparar o gateway na hora certa com um processo ocioso, SQLite como relógio, e acordar se o humano anotar um recado daqui a dois minutos enquanto o loop “dormia” até a próxima rotina.
 
 ## 2. Decisão Tomada
 
@@ -36,9 +36,9 @@ loop:
 - `once` vencido e ainda `scheduled` → dispara **uma** vez no próximo tick (o aviso atrasado ainda vale).
 - `cron` com N períodos perdidos → dispara **uma** vez (coalesce), depois pula para a próxima futura. Não manda 12 “segunda 9h” atrasadas.
 
-**Run now:** POST gatekeeper imediato; **não** altera `next_run_at` do `once` futuro.
+**Run now:** POST `/send` no gateway imediato; **não** altera `next_run_at` do `once` futuro.
 
-**Precisão:** da ordem de centenas de ms após o sleep acordar — suficiente para lembrete humano. O delay 10–35s do gateway WhatsApp domina a percepção de “chegou”.
+**Precisão:** da ordem de centenas de ms após o sleep acordar — suficiente para lembrete humano. Latência extra do gateway de envio não é observada aqui.
 
 Não usar `SELECT` a cada 30s fixos como desenho principal (jitter inútil). Poll fixo só se o Event falhar nos testes — aí documentar.
 
