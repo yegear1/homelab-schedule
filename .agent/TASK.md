@@ -20,7 +20,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
-| [00.1] | Contatos no SQLite + HTTP (nome, telefone, resolução de `to`) | (este commit) | 2026-09-12 |
+| [00.1] | Contatos no SQLite + HTTP (nome, telefone, resolução de `to`) | [`0336dce`] | 2026-09-12 |
 
 ---
 
