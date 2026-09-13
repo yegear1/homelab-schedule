@@ -37,7 +37,7 @@ Sem `PATCH`, sem `delete` genérico, sem CRUD de contato/template no MCP. `list_
 
 ### Negativas / Riscos Assumidos
 
-- Catálogo de contatos/modelos (épico 03.x) **não** vira tool MCP genérica; no máximo parâmetros em `schedule`.
+- Catálogo de contatos/modelos (ciclo `[00.x]`) **não** vira tool MCP genérica; no máximo parâmetros em `schedule`.
 - MCP inútil se a API não estiver no ar; falha com mensagem clara (URL, nunca a chave).
 
 ## 5. Referências e Links

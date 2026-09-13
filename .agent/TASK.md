@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[03.1]`
+- **ID:** `[00.1]`
 - **Título:** Contatos no SQLite + HTTP (nome, telefone, resolução de `to`)
 - **Status:** `EM PLANEJAMENTO`
-- **Contexto:** Preparar o backend para uma UI simples (contatos, ficha por telefone, depois templates). Sem HTML nesta tarefa. ADR-003 “sem UI” fica em vigor até `[03.4]`; aqui só a API/store que a ficha precisa.
+- **Contexto:** Novo ciclo após `v0.2.0` (numeração zerada). Backend para UI simples. Sem HTML. ADR-003 “sem UI” vale até `[00.4]`.
 
 ### Plano (aguardando aprovação para `EM EXECUÇÃO`)
 
@@ -26,15 +26,15 @@
 
 Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`. Higiene pós-`v0.2.0` (NOTES/ADRs/backlog) em 2026-09-12.
 
-(Vazio — ciclo `03.x` ainda sem item concluído.)
+(Vazio — ciclo após `v0.2.0`, numeração em `[00.x]`.)
 
 ---
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[03.2]** `created_by` no job + `GET /jobs?phone=` (união destino **ou** criador)
-- [ ] **[03.3]** Catálogo de templates SQLite + `{{name}}` e relógio no disparo
-- [ ] **[03.4]** Contrato de UI (`.agent/INTERFACE.md`, locale `pt-BR`) — só depois da API existir
+- [ ] **[00.2]** `created_by` no job + `GET /jobs?phone=` (união destino **ou** criador)
+- [ ] **[00.3]** Catálogo de templates SQLite + `{{name}}` e relógio no disparo
+- [ ] **[00.4]** Contrato de UI (`.agent/INTERFACE.md`, locale `pt-BR`) — só depois da API existir
 - [ ] Expressões de intervalo amigáveis no MCP (`when`)
 
 ---
@@ -42,7 +42,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`. Higiene pós-`v0.2.0` (NO
 ## Backlog Futuro / Ideias (não priorizadas)
 
 - [ ] **[99.1]** Preparar Release (Tag Git) e Sanitizar Contexto (Apenas executar com permissão explícita do usuário)
-- [ ] UI no mesmo container (proto/port **depois** de `[03.4]` aprovado)
+- [ ] UI no mesmo container (proto/port **depois** de `[00.4]` aprovado)
 
 ---
 

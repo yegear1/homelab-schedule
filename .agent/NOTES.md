@@ -8,13 +8,13 @@
 ## Visão
 
 ```text
-caneta MCP / HTTP / YAML (+ UI no mesmo container, épico 03.x)
+caneta MCP / HTTP / YAML (+ UI no mesmo container, ciclo `[00.x]` pós-v0.2.0)
         → caderno (SQLite + routines.yaml)
             → tick: next_run_at UTC + asyncio.Event
                 → POST {WHATSAPP_API_URL}/send  →  202 queued
 ```
 
-Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro neste repo. UI web não entra no v0.2.0; backend para o front é o ciclo `03.x`.
+Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro neste repo. UI web não entra no v0.2.0; backend para o front é o ciclo `[00.x]` (numeração reiniciada após a tag).
 
 ---
 
@@ -36,7 +36,7 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 ### [2026-09-12] Higiene pós-`v0.2.0`
 
 - **Contexto:** Tag + GitHub Release + README/env já existiam; `NOTES.md` ainda era dump de todo o ciclo e o backlog não tinha sido promovido.
-- **Decisão:** Enxugar NOTES (o detalhe vive no `git log` e nos ADRs). Corrigir ADR-002 (watch YAML) e ADR-005 (`reschedule`). Promover `[03.1]` como próxima.
+- **Decisão:** Enxugar NOTES (o detalhe vive no `git log` e nos ADRs). Corrigir ADR-002 (watch YAML) e ADR-005 (`reschedule`). Reiniciar numeração; próxima tarefa `[00.1]`.
 
 ### [2026-09-12] Release `v0.2.0` (não reusar `v0.1.0`)
 
@@ -77,7 +77,7 @@ Alteração de contrato = schemas dos lados na mesma tarefa.
 - **Logs:** destino e `content` nunca são stream field.
 - **SQLite:** um writer. Esquecer o `Event` após escrita atrasa até o cap de 5 min.
 - **YAML vs SQLite:** merge por `id` estável; cancel YAML → `409`.
-- **`GET /jobs?to=`:** intervalo de data, não destino. Filtro de telefone ainda não existe (épico 03.x).
+- **`GET /jobs?to=`:** intervalo de data, não destino. Filtro de telefone ainda não existe (`[00.2]`).
 
 ---
 
@@ -85,8 +85,8 @@ Alteração de contrato = schemas dos lados na mesma tarefa.
 
 | Débito | Motivo | Quando revisitar |
 |---|---|---|
-| Sem UI web no v0.2.0 | ADR-003 | Épico `03.x` (humano pediu) |
-| Sem `created_by` / filtro por telefone | Job só tem destino | `[03.2]` |
-| Contatos só em `WHATSAPP_ALIASES` | Env, não CRUD | `[03.1]` |
-| Templates só data/hora | Sem catálogo nem `{{name}}` | `[03.3]` |
+| Sem UI web no v0.2.0 | ADR-003 | Ciclo `[00.x]` (humano pediu) |
+| Sem `created_by` / filtro por telefone | Job só tem destino | `[00.2]` |
+| Contatos só em `WHATSAPP_ALIASES` | Env, não CRUD | `[00.1]` |
+| Templates só data/hora | Sem catálogo nem `{{name}}` | `[00.3]` |
 | Sem HA / multi-réplica | Um SQLite + um tick | Se houver segundo host |
