@@ -227,7 +227,6 @@
       toast.error('Erro 409: Jobs de routines.yaml não podem ser cancelados via API.');
       return;
     }
-    if (!confirm(`Deseja cancelar o recado [${jobItem.id}]?`)) return;
 
     try {
       await api.cancelJob(jobItem.id);
@@ -815,15 +814,15 @@
 
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-space-sm text-label-code font-mono bg-surface-container-lowest p-space-md rounded">
               <div>
-                <span class="text-outline block text-label-code-sm">KIND</span>
-                <span class="text-on-surface" id="detail-kind">{selectedJob.kind}</span>
+                <span class="text-outline block text-label-code-sm">TIPO</span>
+                <span class="text-on-surface" id="detail-kind">{selectedJob.kind === 'once' ? 'Único' : 'Recorrente (Cron)'}</span>
               </div>
               <div>
-                <span class="text-outline block text-label-code-sm">LAST STATUS</span>
-                <span class="text-primary font-semibold" id="detail-status">{selectedJob.status.toUpperCase()}</span>
+                <span class="text-outline block text-label-code-sm">STATUS RECENTE</span>
+                <span class="text-primary font-semibold" id="detail-status">{selectedJob.status === 'scheduled' ? 'AGENDADO' : selectedJob.status === 'done' ? 'CONCLUÍDO' : selectedJob.status === 'paused' ? 'PAUSADO' : 'ERRO'}</span>
               </div>
               <div>
-                <span class="text-outline block text-label-code-sm">RETRY COUNT</span>
+                <span class="text-outline block text-label-code-sm">TENTATIVAS</span>
                 <span class="text-on-surface" id="detail-retries">{selectedJob.retry_count} / 3</span>
               </div>
               <div>
@@ -839,8 +838,8 @@
                 </span>
               </div>
               <div>
-                <span class="text-outline block text-label-code-sm">ORIGEM / SOURCE</span>
-                <span class="text-on-surface font-mono" id="detail-source">{selectedJob.source}</span>
+                <span class="text-outline block text-label-code-sm">ORIGEM</span>
+                <span class="text-on-surface font-mono" id="detail-source">{selectedJob.source === 'yaml' ? 'routines.yaml' : 'SQLite'}</span>
               </div>
             </div>
 

@@ -34,6 +34,13 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-13] Remediações do QA Audit da UI (BUG-001 a BUG-013)
+
+- **Tema Claro / Dark Mode:** Implementação de variáveis CSS para paleta completa em `web/src/app.css` (`:root` e `:root.dark, [data-theme="dark"]`) com helper `withOpacity()` no `web/tailwind.config.js` para suportar modificadores alpha (`bg-tertiary/10`, etc.).
+- **Content-Type & Client Resiliency:** `web/src/lib/api.ts` agora envia explicitamente `Accept: application/json` e valida o `Content-Type` de resposta antes de parsear JSON, emitindo `ApiClientError` estruturado caso o servidor devolva HTML/502/404.
+- **SPA Fallback no Backend:** `_is_html_request` em `main.py` retorna `False` se `Accept: application/json` estiver presente, garantindo 401/404 JSON nas requisições de API, e `True` em navegações normais de navegador (`Accept: text/html`).
+- **Interações & UX:** Remoção de `window.confirm` síncrono bloqueante no cancelamento de jobs; suporte a tecla `Escape` e botão Fechar nos modais/drawers; rolagem horizontal (`min-w-[660px]`/`min-w-[560px]` com `overflow-x-auto`) nas tabelas de Jobs e Contatos para suportar telas menores (~700px); tradução e localização pt-BR de rótulos e chips de status.
+
 ### [2026-09-13] Grupos de Envio (Múltiplos Destinatários, group_id no SQLite v7)
 
 - **Contexto:** Necessidade de criar um mesmo agendamento (título, conteúdo/modelo, horário, criador) para múltiplos contatos e gerenciar o envio coletivo ou individual.

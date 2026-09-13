@@ -188,10 +188,10 @@
     <div class="md:col-span-4 bg-surface-container-low p-space-lg rounded-xl flex flex-col justify-between shadow-sm border border-outline-variant/10">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-space-xs">
-          <span class="material-symbols-outlined text-primary text-[20px]">database</span>
-          <span class="font-label-ui text-label-ui uppercase text-on-surface tracking-wider font-semibold">Payload Store</span>
+          <span class="material-symbols-outlined text-primary text-[18px]">terminal</span>
+          <span class="font-label-ui text-label-ui uppercase text-on-surface tracking-wider font-semibold">Catálogo de Textos</span>
         </div>
-        <span class="px-space-sm py-0.5 rounded bg-tertiary/10 text-tertiary font-label-code-sm text-label-code-sm font-semibold">HEALTHY</span>
+        <span class="px-space-sm py-0.5 rounded bg-tertiary/10 text-tertiary font-label-code-sm text-label-code-sm font-semibold">ATIVO</span>
       </div>
       <div class="my-space-md">
         <div class="text-on-surface-variant font-label-code-sm text-label-code-sm mb-space-xs flex justify-between font-mono">
@@ -349,7 +349,7 @@
           </button>
         </div>
 
-        <form class="flex flex-col gap-space-md" id="template-editor-form" onsubmit={handleSubmit}>
+        <form class="flex flex-col gap-space-md" id="template-editor-form" onsubmit={handleSubmit} novalidate>
           <!-- Field: Name -->
           <div class="flex flex-col gap-space-xs">
             <div class="flex items-center justify-between">

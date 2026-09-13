@@ -64,6 +64,7 @@ class ApiService {
     const apiKey = this.getApiKey();
 
     const headers: Record<string, string> = {
+      'Accept': 'application/json',
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string> || {}),
     };
@@ -110,7 +111,20 @@ class ApiService {
       return undefined as T;
     }
 
-    return (await response.json()) as T;
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const text = await response.text();
+      throw new ApiClientError(
+        response.status,
+        `Resposta inesperada do servidor (HTTP ${response.status}): ${text.slice(0, 100)}`
+      );
+    }
+
+    try {
+      return (await response.json()) as T;
+    } catch {
+      throw new ApiClientError(response.status, `Falha ao interpretar resposta JSON (HTTP ${response.status})`);
+    }
   }
 
   // --- Contacts ---

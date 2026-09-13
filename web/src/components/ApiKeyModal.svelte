@@ -16,6 +16,12 @@
     if (open) {
       keyInput = api.getApiKey();
       urlInput = localStorage.getItem('homelab_api_base_url') || '';
+
+      const handleKeydown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') onclose();
+      };
+      window.addEventListener('keydown', handleKeydown);
+      return () => window.removeEventListener('keydown', handleKeydown);
     }
   });
 
@@ -29,8 +35,12 @@
 </script>
 
 {#if open}
-  <div class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-space-md">
-    <div class="bg-surface-container-low max-w-md w-full rounded p-space-lg shadow-xl flex flex-col gap-space-md border border-outline-variant/30">
+  <div
+    class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-space-md cursor-pointer"
+    onclick={(e) => { if (e.target === e.currentTarget) onclose(); }}
+    role="presentation"
+  >
+    <div class="bg-surface-container-low max-w-md w-full rounded p-space-lg shadow-xl flex flex-col gap-space-md border border-outline-variant/30 cursor-default" role="dialog" aria-modal="true" tabindex="-1">
       <div class="flex items-center justify-between pb-space-xs">
         <div class="flex items-center gap-space-xs">
           <span class="material-symbols-outlined text-primary text-[20px]">key</span>

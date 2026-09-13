@@ -159,7 +159,6 @@
   }
 
   async function handleCancelGroup(groupId: string) {
-    if (!confirm(`Confirma cancelamento de todos os recados ativos deste grupo?`)) return;
     try {
       const res = await api.cancelGroup(groupId);
       toast.success(`Grupo ${groupId}: ${res.affected} recados cancelados.`);
@@ -203,17 +202,53 @@
       toast.error('HTTP 409 Conflict: Recados originados de routines.yaml não podem ser cancelados via API.');
       return;
     }
-    if (!confirm(`Confirma cancelamento do recado [${jobItem.id}]?`)) return;
 
     try {
       await api.cancelJob(jobItem.id);
       toast.success(`Recado ${jobItem.id} cancelado.`);
       await loadJobs();
+      if (selectedJob?.id === jobItem.id) {
+        selectedJob = await api.getJob(jobItem.id);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao cancelar';
       toast.error(msg);
     }
   }
+
+  $effect(() => {
+    function handleKeydown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (createModalOpen) {
+          createModalOpen = false;
+        } else if (rescheduleModalOpen) {
+          rescheduleModalOpen = false;
+        } else if (contactPickerOpen) {
+          contactPickerOpen = false;
+        } else if (selectedJob) {
+          selectedJob = null;
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  });
+
+  function formatStatus(status: string): string {
+    switch (status) {
+      case 'scheduled':
+        return 'Agendado';
+      case 'done':
+        return 'Concluído';
+      case 'paused':
+        return 'Pausado';
+      case 'error':
+        return 'Erro';
+      default:
+        return status;
+    }
+  }
+
 
   function openReschedule(jobId: string, source: string) {
     if (source === 'yaml') {
@@ -436,11 +471,11 @@
           name="status"
           bind:value={filterStatus}
         >
-          <option value="upcoming">upcoming (Agendados)</option>
-          <option value="all">all (Todos)</option>
-          <option value="done">done (Concluídos)</option>
-          <option value="paused">paused (Pausados)</option>
-          <option value="error">error (Falhas)</option>
+          <option value="upcoming">Agendados</option>
+          <option value="all">Todos</option>
+          <option value="done">Concluídos</option>
+          <option value="paused">Pausados</option>
+          <option value="error">Com Erro</option>
         </select>
       </div>
 
@@ -546,14 +581,14 @@
 
       <!-- Tabela Estruturada de Recados -->
       <div class="overflow-x-auto w-full">
-        <table class="w-full text-left font-body-sm text-body-sm text-on-surface">
+        <table class="w-full min-w-[660px] text-left font-body-sm text-body-sm text-on-surface">
           <thead>
             <tr class="bg-surface-container-lowest text-on-surface-variant font-label-ui text-label-ui uppercase tracking-wider border-b border-outline-variant/10">
               <th class="py-2.5 px-space-sm">Status</th>
               <th class="py-2.5 px-space-sm">Título &amp; Destino</th>
               <th class="py-2.5 px-space-sm">Tipo / Próx. Execução</th>
               <th class="py-2.5 px-space-sm">Origem</th>
-              <th class="py-2.5 px-space-sm text-right">Ações</th>
+              <th class="py-2.5 px-space-sm text-right min-w-[155px]">Ações</th>
             </tr>
           </thead>
           <tbody class="font-label-code-sm text-label-code-sm divide-y divide-surface-container-high/20" id="job-table-body">
@@ -577,7 +612,7 @@
                   <td class="py-2.5 px-space-sm">
                     <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono {job.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : job.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
                       <span class="h-1.5 w-1.5 rounded-full {job.status === 'scheduled' ? 'bg-tertiary' : job.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
-                      {job.status}
+                      {formatStatus(job.status)}
                     </span>
                   </td>
 
@@ -625,7 +660,7 @@
 
                   <td class="py-2.5 px-space-sm font-mono">
                     <div class="inline-block px-1.5 py-0.5 rounded bg-surface-container-lowest text-secondary font-label-code-sm text-label-code-sm">
-                      {job.kind === 'cron' ? `cron: ${job.cron_expr}` : 'once'}
+                      {job.kind === 'cron' ? `cron: ${job.cron_expr}` : 'Único'}
                     </div>
                     <div class="text-on-surface-variant font-label-code-sm text-label-code-sm mt-0.5">
                       {job.next_run_at ? new Date(job.next_run_at).toLocaleString('pt-BR') : job.run_at ? new Date(job.run_at).toLocaleString('pt-BR') : '—'}
@@ -636,15 +671,15 @@
                     <div class="flex flex-col items-start gap-1">
                       <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-label-ui text-label-ui uppercase tracking-wider {job.source === 'yaml' ? 'bg-surface-container-highest text-primary-fixed' : 'bg-surface-container-high text-tertiary'}">
                         <span class="material-symbols-outlined text-[12px]">{job.source === 'yaml' ? 'code_blocks' : 'database'}</span>
-                        {job.source}
+                        {job.source === 'yaml' ? 'YAML' : 'SQLite'}
                       </span>
                       {#if job.source === 'yaml'}
-                        <span class="font-label-code-sm text-[10px] text-outline font-mono">HTTP 409 locked</span>
+                        <span class="font-label-code-sm text-[10px] text-outline font-mono">Imutável (409)</span>
                       {/if}
                     </div>
                   </td>
 
-                  <td class="py-2.5 px-space-sm text-right" onclick={(e) => e.stopPropagation()}>
+                  <td class="py-2.5 px-space-sm text-right min-w-[155px]" onclick={(e) => e.stopPropagation()}>
                     <div class="flex items-center justify-end gap-1">
                       <button
                         class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all"
@@ -705,11 +740,20 @@
               <span class="font-label-code-sm text-label-code-sm text-outline font-mono" id="detail-job-id">ID: {selectedJob.id}</span>
             </div>
           </div>
-          <div id="detail-source-badge">
+          <div class="flex items-center gap-space-sm" id="detail-source-badge">
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-ui text-label-ui uppercase tracking-wider {selectedJob.source === 'yaml' ? 'bg-surface-container-highest text-primary-fixed' : 'bg-surface-container-high text-tertiary'}">
               <span class="material-symbols-outlined text-[13px]">{selectedJob.source === 'yaml' ? 'code_blocks' : 'database'}</span>
               {selectedJob.source === 'yaml' ? 'YAML (Imutável)' : 'SQLite'}
             </span>
+            <button
+              class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+              onclick={() => (selectedJob = null)}
+              title="Fechar inspeção (Esc)"
+              type="button"
+              aria-label="Fechar inspeção"
+            >
+              <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
           </div>
         </div>
 
@@ -732,7 +776,7 @@
             <span class="font-label-ui text-label-ui uppercase text-outline block">Status de Fila</span>
             <span class="inline-flex items-center gap-1 font-label-code-sm text-label-code-sm font-mono {selectedJob.status === 'scheduled' ? 'text-tertiary' : selectedJob.status === 'done' ? 'text-primary' : 'text-error'}" id="detail-status">
               <span class="h-1.5 w-1.5 rounded-full {selectedJob.status === 'scheduled' ? 'bg-tertiary' : selectedJob.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
-              {selectedJob.status}
+              {formatStatus(selectedJob.status)}
             </span>
           </div>
           <div class="col-span-2 sm:col-span-1">
@@ -814,9 +858,9 @@
             <span class="text-on-surface">{selectedJob.retry_count} / 3</span>
           </div>
           {#if selectedJob.last_error}
-            <div class="flex items-start justify-between text-outline pt-1">
-              <span>Último Erro (last_error):</span>
-              <span class="text-error font-label-code-sm text-label-code-sm max-w-[200px] text-right truncate">{selectedJob.last_error}</span>
+            <div class="flex flex-col gap-1 text-outline pt-1 border-t border-outline-variant/10">
+              <span class="text-error font-semibold">Último Erro (last_error):</span>
+              <span class="text-error font-label-code-sm text-label-code-sm break-words whitespace-pre-wrap leading-relaxed bg-error-container/10 p-space-xs rounded font-mono" id="detail-last-error">{selectedJob.last_error}</span>
             </div>
           {/if}
         </div>
@@ -834,12 +878,15 @@
 
         {#if selectedJob.group_id}
           <div class="bg-surface-container p-space-sm rounded flex flex-col gap-space-xs border border-secondary/20" id="detail-group-card">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between flex-wrap gap-1">
               <div class="flex items-center gap-1.5 text-secondary font-semibold font-body-sm">
                 <span class="material-symbols-outlined text-[18px]">group</span>
                 <span>Grupo de Envio ({groupMembers.length} destinatários)</span>
               </div>
-              <span class="font-label-code-sm text-[11px] text-outline font-mono">{selectedJob.group_id}</span>
+              <div class="flex items-center gap-1">
+                <span class="font-label-ui text-label-ui uppercase text-outline text-[11px]">group_id:</span>
+                <span class="font-label-code-sm text-label-code-sm bg-surface-container-lowest text-secondary px-1.5 py-0.5 rounded font-mono font-semibold" id="detail-group-id">{selectedJob.group_id}</span>
+              </div>
             </div>
 
             <p class="font-body-sm text-body-sm text-on-surface-variant">
@@ -969,7 +1016,7 @@
           </button>
         </div>
 
-        <form class="flex flex-col gap-space-md" id="form-job-create" onsubmit={handleCreateJob}>
+        <form class="flex flex-col gap-space-md" id="form-job-create" onsubmit={handleCreateJob} novalidate>
           <!-- Título -->
           <div class="flex flex-col gap-1">
             <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="create-title">
@@ -996,8 +1043,8 @@
                 name="kind"
                 bind:value={createKind}
               >
-                <option value="once">once (Data/Hora fixa única)</option>
-                <option value="cron">cron (Recorrência programada)</option>
+                <option value="once">Único (Data/Hora fixa)</option>
+                <option value="cron">Recorrente (Cron 5 campos)</option>
               </select>
             </div>
 

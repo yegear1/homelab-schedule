@@ -167,11 +167,12 @@ def create_app(
 
 
 def _is_html_request(request: Request, dist_index: Path) -> bool:
-    return (
-        request.method in ("GET", "HEAD")
-        and dist_index.is_file()
-        and "text/html" in request.headers.get("accept", "")
-    )
+    if request.method not in ("GET", "HEAD") or not dist_index.is_file():
+        return False
+    accept = request.headers.get("accept", "")
+    if "application/json" in accept:
+        return False
+    return "text/html" in accept
 
 
 def _register_error_handlers(app: FastAPI, dist_index: Path) -> None:

@@ -185,15 +185,16 @@
       </div>
 
       <!-- Tabela / Cartões de Contatos -->
-      <div class="bg-surface-container-lowest rounded shadow-md overflow-hidden flex flex-col border border-outline-variant/10">
-        <div class="px-space-lg py-space-sm bg-surface-container-low/50 flex items-center justify-between text-outline font-label-ui text-label-ui uppercase tracking-wider">
-          <div class="w-24">ID Node</div>
-          <div class="flex-1 px-space-md">Contato &amp; Rotas Vinculadas</div>
-          <div class="w-48 text-left">Número E.164</div>
-          <div class="w-28 text-right">Ação</div>
-        </div>
+      <div class="bg-surface-container-lowest rounded shadow-md overflow-x-auto flex flex-col border border-outline-variant/10">
+        <div class="min-w-[560px] flex flex-col">
+          <div class="px-space-lg py-space-sm bg-surface-container-low/50 flex items-center justify-between text-outline font-label-ui text-label-ui uppercase tracking-wider">
+            <div class="w-24">ID Node</div>
+            <div class="flex-1 px-space-md">Contato &amp; Rotas Vinculadas</div>
+            <div class="w-48 text-left">Número E.164</div>
+            <div class="w-28 text-right">Ação</div>
+          </div>
 
-        <div class="flex flex-col divide-y divide-surface-container-high/30" id="contact-rows-container">
+          <div class="flex flex-col divide-y divide-surface-container-high/30" id="contact-rows-container">
           {#if loading}
             <div class="p-space-xl text-center flex flex-col items-center justify-center gap-space-xs text-outline font-label-code-sm">
               <span class="material-symbols-outlined text-primary text-[28px] animate-spin">sync</span>
@@ -265,6 +266,7 @@
           {/if}
         </div>
       </div>
+    </div>
 
       <!-- Rodapé do Widget List -->
       <div class="p-space-md rounded bg-surface-container-low flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-sm border border-outline-variant/10">
@@ -293,7 +295,7 @@
           Adiciona um destinatário à tabela SQLite local para uso imediato em templates e cron jobs.
         </p>
 
-        <form class="flex flex-col gap-space-md mt-space-xs" id="form-create-contact" onsubmit={handleCreateContact}>
+        <form class="flex flex-col gap-space-md mt-space-xs" id="form-create-contact" onsubmit={handleCreateContact} novalidate>
           <div class="flex flex-col gap-space-xs">
             <div class="flex justify-between items-center">
               <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="contact-name">
