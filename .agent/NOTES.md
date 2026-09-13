@@ -33,11 +33,15 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-12] UI: operador agora, contas depois
+
+Contrato [INTERFACE.md](INTERFACE.md) **aprovado** com quatro telas e `x-api-key`. Cadastro/login/OTP/senha e “admin vs usuário” **adiados** até validar essa superfície. MCP/scripts continuam na chave; não misturar sessão de pessoa nesta versão.
+
 ### [2026-09-12] Catálogo de templates
 
 HTTP `/templates` no SQLite (`user_version` 6). Sem tool MCP. Job: `template_id` **ou** `content`. Snapshot do `body` no create; no disparo o `body` atual do catálogo vence se o id ainda existir. `{{name}}` vem do contato com `phone = target_number`; senão a tag fica literal. Sem Jinja.
 
----
+### [2026-09-12] Higiene pós-`v0.2.0`
 
 - **Contexto:** Tag + GitHub Release + README/env já existiam; `NOTES.md` ainda era dump de todo o ciclo e o backlog não tinha sido promovido.
 - **Decisão:** Enxugar NOTES (o detalhe vive no `git log` e nos ADRs). Corrigir ADR-002 (watch YAML) e ADR-005 (`reschedule`). Reiniciar numeração; próxima tarefa `[00.1]`.
@@ -91,7 +95,8 @@ Alteração de contrato = schemas dos lados na mesma tarefa.
 
 | Débito | Motivo | Quando revisitar |
 |---|---|---|
-| Sem UI web no v0.2.0 | ADR-003 | Ciclo `[00.x]` (humano pediu) |
+| Sem UI web no v0.2.0 | ADR-003 | Contrato aprovado `[00.4]`; proto/port a seguir |
+| Contas / OTP / senha na UI | Validar operador + chave primeiro | Depois da UI atual |
 | Sem `created_by` / filtro por telefone | Job só tem destino | Fechado em `[00.2]` (`?phone=`) |
 | Contatos só em `WHATSAPP_ALIASES` | Env, não CRUD | Fechado em `[00.1]` (`/contacts`) |
 | Templates só data/hora | Sem catálogo nem `{{name}}` | Fechado em `[00.3]` (`/templates`) |

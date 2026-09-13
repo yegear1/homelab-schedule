@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[00.4]`
-- **Título:** Contrato de UI (`.agent/INTERFACE.md`, locale `pt-BR`)
+- **ID:** `[00.5]`
+- **Título:** Protótipo HTML das quatro telas (`ui-prototype`)
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Contatos, ficha `?phone=` e catálogo `/templates` existem. UI no mesmo container só depois deste contrato aprovado.
+- **Contexto:** `.agent/INTERFACE.md` aprovado (operador + `x-api-key`, locale `pt-BR`). Sem contas/OTP. Só proto estático depois de pedido explícito; porte no mesmo container depois do proto aprovado.
 
 ---
 
@@ -20,6 +20,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [00.4] | Contrato de UI (INTERFACE.md, `pt-BR`) | | 2026-09-12 |
 | [00.3] | Catálogo de templates SQLite + `{{name}}` no disparo | [`ba09917`] | 2026-09-12 |
 | [00.2] | `created_by` no job + `GET /jobs?phone=` | [`8d3485c`] | 2026-09-12 |
 | [00.1] | Contatos no SQLite + HTTP (nome, telefone, resolução de `to`) | [`0336dce`] | 2026-09-12 |
@@ -28,14 +29,15 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
+- [ ] UI no mesmo container (`ui-port`, depois do proto aprovado)
 - [ ] Expressões de intervalo amigáveis no MCP (`when`)
+- [ ] Contas: OTP + senha + sessão (adiado)
 
 ---
 
 ## Backlog Futuro / Ideias (não priorizadas)
 
 - [ ] **[99.1]** Preparar Release (Tag Git) e Sanitizar Contexto (Apenas executar com permissão explícita do usuário)
-- [ ] UI no mesmo container (proto/port **depois** de `[00.4]` aprovado)
 
 ---
 
