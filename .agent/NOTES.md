@@ -34,6 +34,12 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-15] Agrupamento Visual de Mensagens do Mesmo Lote (wdg-job-list)
+
+- **Contexto:** Registros de jobs criados via `POST /jobs/batch` compartilham `group_id`, mas apareciam como linhas dispersas e repetitivas na tabela de Agendas Registradas (`JobsPage.svelte`).
+- **Decisão:** Agrupamento reativo derivado (`jobTableRows`) em Svelte 5. Jobs com `group_id` são consolidados sob uma linha mestra de grupo (`GroupedJobRow`) com resumo de status, prévia de contatos/aliases, ações em lote (`POST /jobs/group/{group_id}/run` e `/cancel`) e alternador expansível.
+- **Linhas Filhas:** Exibidas logo abaixo com guia visual (`border-l-4 border-l-secondary/60` e `subdirectory_arrow_right`), mantendo seleção individual, perfil do contato e ações atômicas (`Disparar`, `Editar`, `Cancelar`). Grupos iniciam abertos por padrão e são mantidos expandidos sempre que um de seus membros estiver selecionado no painel de inspeção.
+
 ### [2026-09-13] Tema sempre branco (tokens RGB + alpha)
 
 Canais em `app.css` são `R G B` (espaço). Tailwind 3 injeta `--tw-*-opacity` e, com `rgba(var(--token), a)`, o browser descarta a cor (`rgba(255 255 255, 1)` é inválido). Usar `rgb(var(--token) / a)`. Script inline em `index.html` aplica `class="dark"` / `data-theme` antes do paint.

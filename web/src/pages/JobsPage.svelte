@@ -27,6 +27,106 @@
   // Group & Batch State
   let groupMembers = $state<JobListItem[]>([]);
   let loadingGroupMembers = $state(false);
+  let collapsedGroups = $state<Set<string>>(new Set());
+
+  interface GroupedJobRow {
+    type: 'group';
+    groupId: string;
+    title: string;
+    kind: JobKind;
+    cron_expr?: string | null;
+    next_run_at: string | null;
+    run_at?: string | null;
+    source: 'sqlite' | 'yaml';
+    items: JobListItem[];
+    statusSummary: {
+      scheduled: number;
+      done: number;
+      error: number;
+      paused: number;
+      total: number;
+    };
+  }
+
+  interface SingleJobRow {
+    type: 'single';
+    job: JobListItem;
+  }
+
+  type JobTableRow = GroupedJobRow | SingleJobRow;
+
+  let jobTableRows = $derived.by<JobTableRow[]>(() => {
+    const result: JobTableRow[] = [];
+    const groupsById = new Map<string, GroupedJobRow>();
+
+    for (const job of jobs) {
+      if (job.group_id) {
+        let group = groupsById.get(job.group_id);
+        if (!group) {
+          const newGroup: GroupedJobRow = {
+            type: 'group',
+            groupId: job.group_id,
+            title: job.title,
+            kind: job.kind,
+            cron_expr: job.cron_expr,
+            next_run_at: job.next_run_at,
+            run_at: job.run_at,
+            source: job.source,
+            items: [],
+            statusSummary: {
+              scheduled: 0,
+              done: 0,
+              error: 0,
+              paused: 0,
+              total: 0,
+            },
+          };
+          groupsById.set(job.group_id, newGroup);
+          result.push(newGroup);
+          group = newGroup;
+        }
+        group.items.push(job);
+        group.statusSummary.total += 1;
+        if (job.status === 'scheduled') group.statusSummary.scheduled += 1;
+        else if (job.status === 'done') group.statusSummary.done += 1;
+        else if (job.status === 'error') group.statusSummary.error += 1;
+        else if (job.status === 'paused') group.statusSummary.paused += 1;
+
+        if (job.next_run_at && (!group.next_run_at || job.next_run_at < group.next_run_at)) {
+          group.next_run_at = job.next_run_at;
+        }
+      } else {
+        result.push({ type: 'single', job });
+      }
+    }
+
+    return result;
+  });
+
+  let groupCount = $derived(
+    jobTableRows.filter((r) => r.type === 'group').length
+  );
+
+  function toggleGroupCollapse(groupId: string) {
+    const next = new Set(collapsedGroups);
+    if (next.has(groupId)) {
+      next.delete(groupId);
+    } else {
+      next.add(groupId);
+    }
+    collapsedGroups = next;
+  }
+
+  function toggleAllGroups() {
+    const allGroupIds = jobTableRows
+      .filter((r): r is GroupedJobRow => r.type === 'group')
+      .map((r) => r.groupId);
+    if (collapsedGroups.size > 0) {
+      collapsedGroups = new Set();
+    } else {
+      collapsedGroups = new Set(allGroupIds);
+    }
+  }
 
   // Create Job Modal State (wdg-job-create)
   let createModalOpen = $state(false);
@@ -574,9 +674,19 @@
             JobListItem[]
           </span>
         </div>
-        <div class="flex items-center gap-space-xs font-label-code-sm text-label-code-sm text-on-surface-variant font-mono">
+        <div class="flex items-center gap-space-xs font-label-code-sm text-label-code-sm text-on-surface-variant font-mono flex-wrap">
           <span>Total:</span>
           <span class="font-semibold text-primary" id="list-count-badge">{jobs.length} itens</span>
+          {#if groupCount > 0}
+            <span class="text-outline">({groupCount} {groupCount === 1 ? 'grupo' : 'grupos'})</span>
+            <button
+              type="button"
+              class="text-[11px] text-secondary hover:underline cursor-pointer ml-1 font-sans"
+              onclick={toggleAllGroups}
+            >
+              {collapsedGroups.size > 0 ? 'Expandir todos' : 'Recolher todos'}
+            </button>
+          {/if}
         </div>
       </div>
 
@@ -602,126 +712,357 @@
                 <td colspan="5" class="py-space-xl text-center text-outline">Nenhum job encontrado para os filtros selecionados.</td>
               </tr>
             {:else}
-              {#each jobs as job (job.id)}
-                {@const isSelected = selectedJob?.id === job.id}
-                {@const recipient = resolveRecipient(job)}
-                <tr
-                  class="transition-colors cursor-pointer group {isSelected ? 'bg-surface-container-high' : 'bg-surface-container hover:bg-surface-container-high/60'}"
-                  data-job-id={job.id}
-                  onclick={() => inspectJob(job.id)}
-                >
-                  <td class="py-2.5 px-space-sm">
-                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono {job.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : job.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
-                      <span class="h-1.5 w-1.5 rounded-full {job.status === 'scheduled' ? 'bg-tertiary' : job.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
-                      {formatStatus(job.status)}
-                    </span>
-                  </td>
-
-                  <td class="py-2.5 px-space-sm">
-                    <div class="flex items-center gap-2">
-                      <span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors">
-                        {job.title}
+              {#each jobTableRows as row (row.type === 'group' ? `grp-${row.groupId}` : `job-${row.job.id}`)}
+                {#if row.type === 'single'}
+                  {@const job = row.job}
+                  {@const isSelected = selectedJob?.id === job.id}
+                  {@const recipient = resolveRecipient(job)}
+                  <tr
+                    class="transition-colors cursor-pointer group {isSelected ? 'bg-surface-container-high' : 'bg-surface-container hover:bg-surface-container-high/60'}"
+                    data-job-id={job.id}
+                    onclick={() => inspectJob(job.id)}
+                  >
+                    <td class="py-2.5 px-space-sm">
+                      <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono {job.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : job.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
+                        <span class="h-1.5 w-1.5 rounded-full {job.status === 'scheduled' ? 'bg-tertiary' : job.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
+                        {formatStatus(job.status)}
                       </span>
-                      {#if job.group_id}
-                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary/15 text-secondary font-label-code-sm text-label-code-sm font-semibold" title="Grupo: {job.group_id}">
-                          <span class="material-symbols-outlined text-[12px]">group</span>
-                          <span>Grupo</span>
+                    </td>
+
+                    <td class="py-2.5 px-space-sm">
+                      <div class="flex items-center gap-2">
+                        <span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors">
+                          {job.title}
                         </span>
-                      {/if}
-                    </div>
-                    <div class="text-outline flex items-center gap-1.5 flex-wrap font-mono mt-0.5">
-                      <span class="material-symbols-outlined text-[13px]">call_made</span>
-                      {#if recipient.primaryName}
-                        {#if recipient.contact}
+                      </div>
+                      <div class="text-outline flex items-center gap-1.5 flex-wrap font-mono mt-0.5">
+                        <span class="material-symbols-outlined text-[13px]">call_made</span>
+                        {#if recipient.primaryName}
+                          {#if recipient.contact}
+                            <button
+                              type="button"
+                              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary font-label-code-sm text-label-code-sm font-semibold hover:bg-primary/20 transition-colors cursor-pointer"
+                              title="Ver perfil de {recipient.primaryName}"
+                              onclick={(e) => {
+                                e.stopPropagation();
+                                router.navigate(`/contacts/${recipient.contact!.id}`);
+                              }}
+                            >
+                              <span class="material-symbols-outlined text-[12px]">person</span>
+                              <span>{recipient.primaryName}</span>
+                            </button>
+                          {:else}
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-highest text-tertiary font-label-code-sm text-label-code-sm font-semibold">
+                              <span class="material-symbols-outlined text-[12px]">bookmark</span>
+                              <span>{recipient.primaryName}</span>
+                            </span>
+                          {/if}
+                        {/if}
+                        <span class="text-label-code-sm">{recipient.targetNumber}</span>
+                        {#if job.template_id}
+                          <span class="text-outline-variant font-label-code-sm text-label-code-sm">• tpl: {job.template_id}</span>
+                        {/if}
+                      </div>
+                    </td>
+
+                    <td class="py-2.5 px-space-sm font-mono">
+                      <div class="inline-block px-1.5 py-0.5 rounded bg-surface-container-lowest text-secondary font-label-code-sm text-label-code-sm">
+                        {job.kind === 'cron' ? `cron: ${job.cron_expr}` : 'Único'}
+                      </div>
+                      <div class="text-on-surface-variant font-label-code-sm text-label-code-sm mt-0.5">
+                        {job.next_run_at ? new Date(job.next_run_at).toLocaleString('pt-BR') : job.run_at ? new Date(job.run_at).toLocaleString('pt-BR') : '—'}
+                      </div>
+                    </td>
+
+                    <td class="py-2.5 px-space-sm">
+                      <div class="flex flex-col items-start gap-1">
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-label-ui text-label-ui uppercase tracking-wider {job.source === 'yaml' ? 'bg-surface-container-highest text-primary-fixed' : 'bg-surface-container-high text-tertiary'}">
+                          <span class="material-symbols-outlined text-[12px]">{job.source === 'yaml' ? 'code_blocks' : 'database'}</span>
+                          {job.source === 'yaml' ? 'YAML' : 'SQLite'}
+                        </span>
+                        {#if job.source === 'yaml'}
+                          <span class="font-label-code-sm text-[10px] text-outline font-mono">Imutável (409)</span>
+                        {/if}
+                      </div>
+                    </td>
+
+                    <td class="py-2.5 px-space-sm text-right min-w-[195px]" onclick={(e) => e.stopPropagation()}>
+                      <div class="flex items-center justify-end gap-1.5 flex-nowrap">
+                        <button
+                          class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
+                          onclick={() => handleRun(job.id)}
+                          title="POST /jobs/{job.id}/run"
+                          type="button"
+                        >
+                          Disparar
+                        </button>
+
+                        {#if job.source !== 'yaml'}
                           <button
+                            class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
+                            onclick={() => openReschedule(job.id, job.source)}
+                            title="Reagendar"
                             type="button"
-                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary font-label-code-sm text-label-code-sm font-semibold hover:bg-primary/20 transition-colors cursor-pointer"
-                            title="Ver perfil de {recipient.primaryName}"
-                            onclick={(e) => {
-                              e.stopPropagation();
-                              router.navigate(`/contacts/${recipient.contact!.id}`);
-                            }}
                           >
-                            <span class="material-symbols-outlined text-[12px]">person</span>
-                            <span>{recipient.primaryName}</span>
+                            Editar
+                          </button>
+                          <button
+                            class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all"
+                            onclick={() => handleCancel(job)}
+                            title="Cancelar Recado"
+                            aria-label="Cancelar Recado"
+                            type="button"
+                          >
+                            <span class="material-symbols-outlined text-[16px]">cancel</span>
                           </button>
                         {:else}
-                          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-highest text-tertiary font-label-code-sm text-label-code-sm font-semibold">
-                            <span class="material-symbols-outlined text-[12px]">bookmark</span>
-                            <span>{recipient.primaryName}</span>
-                          </span>
+                          <button
+                            class="px-2 py-1 rounded bg-surface-container-lowest text-outline-variant opacity-50 font-label-ui text-label-ui uppercase tracking-wider cursor-not-allowed font-semibold"
+                            disabled
+                            title="Recados YAML são imutáveis via API (409)"
+                            type="button"
+                          >
+                            Imutável
+                          </button>
                         {/if}
-                      {/if}
-                      <span class="text-label-code-sm">{recipient.targetNumber}</span>
-                      {#if job.template_id}
-                        <span class="text-outline-variant font-label-code-sm text-label-code-sm">• tpl: {job.template_id}</span>
-                      {/if}
-                    </div>
-                  </td>
+                      </div>
+                    </td>
+                  </tr>
+                {:else}
+                  <!-- LINHA MESTRA DO GRUPO -->
+                  {@const isExpanded = !collapsedGroups.has(row.groupId) || (selectedJob?.group_id === row.groupId)}
+                  {@const isAnySelected = row.items.some((item) => item.id === selectedJob?.id)}
+                  <tr
+                    class="transition-colors cursor-pointer border-t border-secondary/30 {isAnySelected ? 'bg-secondary/15' : 'bg-surface-container-high/60 hover:bg-surface-container-high/90'}"
+                    data-group-id={row.groupId}
+                    onclick={() => {
+                      toggleGroupCollapse(row.groupId);
+                      if (!isAnySelected && row.items.length > 0) {
+                        inspectJob(row.items[0].id);
+                      }
+                    }}
+                  >
+                    <!-- Status Resumido do Grupo -->
+                    <td class="py-2.5 px-space-sm">
+                      <div class="flex flex-col gap-1">
+                        {#if row.statusSummary.scheduled === row.items.length}
+                          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono bg-tertiary/10 text-tertiary font-semibold">
+                            <span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span>
+                            {row.items.length} {row.items.length === 1 ? 'agendado' : 'agendados'}
+                          </span>
+                        {:else if row.statusSummary.done === row.items.length}
+                          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono bg-primary/10 text-primary font-semibold">
+                            <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
+                            {row.items.length} {row.items.length === 1 ? 'enviado' : 'enviados'}
+                          </span>
+                        {:else}
+                          <div class="flex items-center gap-1 flex-wrap">
+                            {#if row.statusSummary.scheduled > 0}
+                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono bg-tertiary/10 text-tertiary" title="{row.statusSummary.scheduled} agendados">
+                                <span class="h-1 w-1 rounded-full bg-tertiary"></span>
+                                {row.statusSummary.scheduled} agend.
+                              </span>
+                            {/if}
+                            {#if row.statusSummary.done > 0}
+                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono bg-primary/10 text-primary" title="{row.statusSummary.done} enviados">
+                                <span class="h-1 w-1 rounded-full bg-primary"></span>
+                                {row.statusSummary.done} env.
+                              </span>
+                            {/if}
+                            {#if row.statusSummary.error > 0}
+                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono bg-error/10 text-error" title="{row.statusSummary.error} erros">
+                                <span class="h-1 w-1 rounded-full bg-error"></span>
+                                {row.statusSummary.error} erro
+                              </span>
+                            {/if}
+                          </div>
+                        {/if}
+                      </div>
+                    </td>
 
-                  <td class="py-2.5 px-space-sm font-mono">
-                    <div class="inline-block px-1.5 py-0.5 rounded bg-surface-container-lowest text-secondary font-label-code-sm text-label-code-sm">
-                      {job.kind === 'cron' ? `cron: ${job.cron_expr}` : 'Único'}
-                    </div>
-                    <div class="text-on-surface-variant font-label-code-sm text-label-code-sm mt-0.5">
-                      {job.next_run_at ? new Date(job.next_run_at).toLocaleString('pt-BR') : job.run_at ? new Date(job.run_at).toLocaleString('pt-BR') : '—'}
-                    </div>
-                  </td>
+                    <!-- Título & Resumo de Destinatários do Grupo -->
+                    <td class="py-2.5 px-space-sm">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[16px] text-secondary transition-transform {isExpanded ? 'rotate-180' : ''}">
+                          expand_more
+                        </span>
+                        <span class="font-body-md text-body-md font-semibold text-on-surface">
+                          {row.title}
+                        </span>
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary/15 text-secondary font-label-code-sm text-label-code-sm font-semibold" title="Grupo: {row.groupId}">
+                          <span class="material-symbols-outlined text-[12px]">group</span>
+                          <span>Grupo ({row.items.length} destinatários)</span>
+                        </span>
+                      </div>
+                      <div class="text-outline flex items-center gap-1.5 flex-wrap font-mono mt-0.5 pl-6">
+                        <span class="material-symbols-outlined text-[13px] text-secondary">groups</span>
+                        <span class="text-label-code-sm text-on-surface-variant font-medium">
+                          {row.items.slice(0, 3).map((it) => resolveRecipient(it).primaryName || resolveRecipient(it).targetNumber).join(', ')}{#if row.items.length > 3}, +{row.items.length - 3} outros{/if}
+                        </span>
+                      </div>
+                    </td>
 
-                  <td class="py-2.5 px-space-sm">
-                    <div class="flex flex-col items-start gap-1">
-                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-label-ui text-label-ui uppercase tracking-wider {job.source === 'yaml' ? 'bg-surface-container-highest text-primary-fixed' : 'bg-surface-container-high text-tertiary'}">
-                        <span class="material-symbols-outlined text-[12px]">{job.source === 'yaml' ? 'code_blocks' : 'database'}</span>
-                        {job.source === 'yaml' ? 'YAML' : 'SQLite'}
-                      </span>
-                      {#if job.source === 'yaml'}
-                        <span class="font-label-code-sm text-[10px] text-outline font-mono">Imutável (409)</span>
-                      {/if}
-                    </div>
-                  </td>
+                    <!-- Tipo / Próxima Execução -->
+                    <td class="py-2.5 px-space-sm font-mono">
+                      <div class="inline-block px-1.5 py-0.5 rounded bg-surface-container-lowest text-secondary font-label-code-sm text-label-code-sm font-semibold">
+                        {row.kind === 'cron' ? `cron: ${row.cron_expr}` : 'Único (Lote)'}
+                      </div>
+                      <div class="text-on-surface-variant font-label-code-sm text-label-code-sm mt-0.5">
+                        {row.next_run_at ? new Date(row.next_run_at).toLocaleString('pt-BR') : row.run_at ? new Date(row.run_at).toLocaleString('pt-BR') : '—'}
+                      </div>
+                    </td>
 
-                  <td class="py-2.5 px-space-sm text-right min-w-[195px]" onclick={(e) => e.stopPropagation()}>
-                    <div class="flex items-center justify-end gap-1.5 flex-nowrap">
-                      <button
-                        class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
-                        onclick={() => handleRun(job.id)}
-                        title="POST /jobs/{job.id}/run"
-                        type="button"
+                    <!-- Origem -->
+                    <td class="py-2.5 px-space-sm">
+                      <div class="flex flex-col items-start gap-1">
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-label-ui text-label-ui uppercase tracking-wider {row.source === 'yaml' ? 'bg-surface-container-highest text-primary-fixed' : 'bg-secondary/15 text-secondary font-semibold'}">
+                          <span class="material-symbols-outlined text-[12px]">{row.source === 'yaml' ? 'code_blocks' : 'view_agenda'}</span>
+                          {row.source === 'yaml' ? 'YAML' : 'SQLite (Grupo)'}
+                        </span>
+                      </div>
+                    </td>
+
+                    <!-- Ações em Lote do Grupo -->
+                    <td class="py-2.5 px-space-sm text-right min-w-[195px]" onclick={(e) => e.stopPropagation()}>
+                      <div class="flex items-center justify-end gap-1.5 flex-nowrap">
+                        <button
+                          class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary text-secondary hover:text-on-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1"
+                          onclick={() => handleRunGroup(row.groupId)}
+                          title="Disparar todos os recados deste grupo"
+                          type="button"
+                        >
+                          <span class="material-symbols-outlined text-[13px]">send</span>
+                          <span>Todos</span>
+                        </button>
+
+                        {#if row.source !== 'yaml'}
+                          <button
+                            class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all flex items-center gap-1 font-label-ui text-label-ui uppercase tracking-wider"
+                            onclick={() => handleCancelGroup(row.groupId)}
+                            title="Cancelar todos os recados deste grupo"
+                            aria-label="Cancelar Grupo"
+                            type="button"
+                          >
+                            <span class="material-symbols-outlined text-[16px]">cancel</span>
+                          </button>
+                        {/if}
+
+                        <button
+                          class="p-1 rounded bg-surface-container-lowest hover:bg-surface-container-highest text-on-surface-variant transition-all cursor-pointer"
+                          onclick={() => toggleGroupCollapse(row.groupId)}
+                          title={isExpanded ? 'Recolher mensagens do grupo' : 'Expandir mensagens do grupo'}
+                          aria-label={isExpanded ? 'Recolher mensagens do grupo' : 'Expandir mensagens do grupo'}
+                          type="button"
+                        >
+                          <span class="material-symbols-outlined text-[18px]">
+                            {isExpanded ? 'unfold_less' : 'unfold_more'}
+                          </span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- LINHAS FILHAS (MEMBROS DO GRUPO) -->
+                  {#if isExpanded}
+                    {#each row.items as memberJob, memberIdx (memberJob.id)}
+                      {@const isMemberSelected = selectedJob?.id === memberJob.id}
+                      {@const memberRecipient = resolveRecipient(memberJob)}
+                      <tr
+                        class="transition-colors cursor-pointer group/child {isMemberSelected ? 'bg-secondary/20 font-semibold' : 'bg-surface-container-lowest hover:bg-surface-container-high/40'} border-l-4 border-l-secondary/60"
+                        data-job-id={memberJob.id}
+                        onclick={() => inspectJob(memberJob.id)}
                       >
-                        Disparar
-                      </button>
+                        <!-- Sub-status -->
+                        <td class="py-2 px-space-sm pl-4">
+                          <div class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[14px] text-secondary/70">
+                              subdirectory_arrow_right
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono {memberJob.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : memberJob.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
+                              <span class="h-1.5 w-1.5 rounded-full {memberJob.status === 'scheduled' ? 'bg-tertiary' : memberJob.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
+                              {formatStatus(memberJob.status)}
+                            </span>
+                          </div>
+                        </td>
 
-                      {#if job.source !== 'yaml'}
-                        <button
-                          class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
-                          onclick={() => openReschedule(job.id, job.source)}
-                          title="Reagendar"
-                          type="button"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all"
-                          onclick={() => handleCancel(job)}
-                          title="Cancelar Recado"
-                          aria-label="Cancelar Recado"
-                          type="button"
-                        >
-                          <span class="material-symbols-outlined text-[16px]">cancel</span>
-                        </button>
-                      {:else}
-                        <button
-                          class="px-2 py-1 rounded bg-surface-container-lowest text-outline-variant opacity-50 font-label-ui text-label-ui uppercase tracking-wider cursor-not-allowed font-semibold"
-                          disabled
-                          title="Recados YAML são imutáveis via API (409)"
-                          type="button"
-                        >
-                          Imutável
-                        </button>
-                      {/if}
-                    </div>
-                  </td>
-                </tr>
+                        <!-- Sub-destinatário -->
+                        <td class="py-2 px-space-sm">
+                          <div class="flex items-center gap-1.5 flex-wrap font-mono">
+                            {#if memberRecipient.primaryName}
+                              {#if memberRecipient.contact}
+                                <button
+                                  type="button"
+                                  class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary font-label-code-sm text-label-code-sm font-semibold hover:bg-primary/20 transition-colors cursor-pointer"
+                                  title="Ver perfil de {memberRecipient.primaryName}"
+                                  onclick={(e) => {
+                                    e.stopPropagation();
+                                    router.navigate(`/contacts/${memberRecipient.contact!.id}`);
+                                  }}
+                                >
+                                  <span class="material-symbols-outlined text-[12px]">person</span>
+                                  <span>{memberRecipient.primaryName}</span>
+                                </button>
+                              {:else}
+                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-highest text-tertiary font-label-code-sm text-label-code-sm font-semibold">
+                                  <span class="material-symbols-outlined text-[12px]">bookmark</span>
+                                  <span>{memberRecipient.primaryName}</span>
+                                </span>
+                              {/if}
+                            {/if}
+                            <span class="text-label-code-sm text-outline">{memberRecipient.targetNumber}</span>
+                            {#if memberJob.template_id}
+                              <span class="text-outline-variant font-label-code-sm text-label-code-sm">• tpl: {memberJob.template_id}</span>
+                            {/if}
+                          </div>
+                        </td>
+
+                        <!-- Sub-horário -->
+                        <td class="py-2 px-space-sm font-mono text-outline text-label-code-sm">
+                          {memberJob.next_run_at ? new Date(memberJob.next_run_at).toLocaleTimeString('pt-BR') : memberJob.run_at ? new Date(memberJob.run_at).toLocaleTimeString('pt-BR') : '—'}
+                        </td>
+
+                        <!-- Sub-origem -->
+                        <td class="py-2 px-space-sm">
+                          <span class="text-outline text-[11px] font-mono">membro</span>
+                        </td>
+
+                        <!-- Sub-ações individuais -->
+                        <td class="py-2 px-space-sm text-right min-w-[195px]" onclick={(e) => e.stopPropagation()}>
+                          <div class="flex items-center justify-end gap-1 flex-nowrap">
+                            <button
+                              class="px-2 py-0.5 rounded bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold text-[11px]"
+                              onclick={() => handleRun(memberJob.id)}
+                              title="Disparar apenas este destinatário"
+                              type="button"
+                            >
+                              Disparar
+                            </button>
+
+                            {#if memberJob.source !== 'yaml'}
+                              <button
+                                class="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold text-[11px]"
+                                onclick={() => openReschedule(memberJob.id, memberJob.source)}
+                                title="Reagendar este destinatário"
+                                type="button"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                class="px-1 py-0.5 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all"
+                                onclick={() => handleCancel(memberJob)}
+                                title="Cancelar apenas este destinatário"
+                                aria-label="Cancelar Recado"
+                                type="button"
+                              >
+                                <span class="material-symbols-outlined text-[14px]">cancel</span>
+                              </button>
+                            {/if}
+                          </div>
+                        </td>
+                      </tr>
+                    {/each}
+                  {/if}
+                {/if}
               {/each}
             {/if}
           </tbody>
