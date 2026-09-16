@@ -692,13 +692,13 @@
 
       <!-- Tabela Estruturada de Recados -->
       <div class="overflow-x-auto w-full">
-        <table class="w-full min-w-[660px] text-left font-body-sm text-body-sm text-on-surface">
+        <table class="w-full min-w-[660px] table-fixed text-left font-body-sm text-body-sm text-on-surface">
           <colgroup>
-            <col class="w-[145px]" />
+            <col style="width: 145px;" class="w-[145px]" />
             <col />
-            <col class="w-[180px]" />
-            <col class="w-[110px]" />
-            <col class="w-[210px]" />
+            <col style="width: 180px;" class="w-[180px]" />
+            <col style="width: 110px;" class="w-[110px]" />
+            <col style="width: 210px;" class="w-[210px]" />
           </colgroup>
           <thead>
             <tr class="bg-surface-container-lowest text-on-surface-variant font-label-ui text-label-ui uppercase tracking-wider border-b border-outline-variant/10">
@@ -994,7 +994,7 @@
 
                         <!-- Sub-destinatário -->
                         <td class="py-2.5 px-space-sm">
-                          <div class="flex items-center gap-1.5 flex-wrap font-mono">
+                          <div class="flex items-center gap-1.5 flex-wrap font-mono pl-6">
                             {#if memberRecipient.primaryName}
                               {#if memberRecipient.contact}
                                 <button
