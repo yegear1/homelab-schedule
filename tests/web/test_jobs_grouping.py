@@ -21,4 +21,5 @@ def test_jobs_page_implements_group_clustering_contract() -> None:
     assert "handleRunGroup(row.groupId)" in content
     assert "handleCancelGroup(row.groupId)" in content
     assert "subdirectory_arrow_right" in content
-    assert "border-l-4 border-l-secondary/60" in content
+    assert "<colgroup>" in content
+    assert "whitespace-nowrap" in content

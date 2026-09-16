@@ -693,13 +693,20 @@
       <!-- Tabela Estruturada de Recados -->
       <div class="overflow-x-auto w-full">
         <table class="w-full min-w-[660px] text-left font-body-sm text-body-sm text-on-surface">
+          <colgroup>
+            <col class="w-[145px]" />
+            <col />
+            <col class="w-[180px]" />
+            <col class="w-[110px]" />
+            <col class="w-[210px]" />
+          </colgroup>
           <thead>
             <tr class="bg-surface-container-lowest text-on-surface-variant font-label-ui text-label-ui uppercase tracking-wider border-b border-outline-variant/10">
-              <th class="py-2.5 px-space-sm">Status</th>
+              <th class="py-2.5 px-space-sm w-[145px] whitespace-nowrap">Status</th>
               <th class="py-2.5 px-space-sm">Título &amp; Destino</th>
-              <th class="py-2.5 px-space-sm">Tipo / Próx. Execução</th>
-              <th class="py-2.5 px-space-sm">Origem</th>
-              <th class="py-2.5 px-space-sm text-right min-w-[195px]">Ações</th>
+              <th class="py-2.5 px-space-sm w-[180px] whitespace-nowrap">Tipo / Próx. Execução</th>
+              <th class="py-2.5 px-space-sm w-[110px] whitespace-nowrap">Origem</th>
+              <th class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap">Ações</th>
             </tr>
           </thead>
           <tbody class="font-label-code-sm text-label-code-sm divide-y divide-surface-container-high/20" id="job-table-body">
@@ -722,10 +729,10 @@
                     data-job-id={job.id}
                     onclick={() => inspectJob(job.id)}
                   >
-                    <td class="py-2.5 px-space-sm">
-                      <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono {job.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : job.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
-                        <span class="h-1.5 w-1.5 rounded-full {job.status === 'scheduled' ? 'bg-tertiary' : job.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
-                        {formatStatus(job.status)}
+                    <td class="py-2.5 px-space-sm whitespace-nowrap w-[145px]">
+                      <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono whitespace-nowrap {job.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : job.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
+                        <span class="h-1.5 w-1.5 rounded-full shrink-0 {job.status === 'scheduled' ? 'bg-tertiary' : job.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
+                        <span>{formatStatus(job.status)}</span>
                       </span>
                     </td>
 
@@ -765,7 +772,7 @@
                       </div>
                     </td>
 
-                    <td class="py-2.5 px-space-sm font-mono">
+                    <td class="py-2.5 px-space-sm font-mono whitespace-nowrap w-[180px]">
                       <div class="inline-block px-1.5 py-0.5 rounded bg-surface-container-lowest text-secondary font-label-code-sm text-label-code-sm">
                         {job.kind === 'cron' ? `cron: ${job.cron_expr}` : 'Único'}
                       </div>
@@ -774,7 +781,7 @@
                       </div>
                     </td>
 
-                    <td class="py-2.5 px-space-sm">
+                    <td class="py-2.5 px-space-sm whitespace-nowrap w-[110px]">
                       <div class="flex flex-col items-start gap-1">
                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-label-ui text-label-ui uppercase tracking-wider {job.source === 'yaml' ? 'bg-surface-container-highest text-primary-fixed' : 'bg-surface-container-high text-tertiary'}">
                           <span class="material-symbols-outlined text-[12px]">{job.source === 'yaml' ? 'code_blocks' : 'database'}</span>
@@ -786,7 +793,7 @@
                       </div>
                     </td>
 
-                    <td class="py-2.5 px-space-sm text-right min-w-[195px]" onclick={(e) => e.stopPropagation()}>
+                    <td class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
                       <div class="flex items-center justify-end gap-1.5 flex-nowrap">
                         <button
                           class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
@@ -842,37 +849,37 @@
                       }
                     }}
                   >
-                    <!-- Status Resumido do Grupo -->
-                    <td class="py-2.5 px-space-sm">
-                      <div class="flex flex-col gap-1">
+                    <!-- Status Resumido do Grupo (Sem quebra de linha) -->
+                    <td class="py-2.5 px-space-sm whitespace-nowrap w-[145px]">
+                      <div class="flex items-center gap-1.5 whitespace-nowrap">
                         {#if row.statusSummary.scheduled === row.items.length}
-                          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono bg-tertiary/10 text-tertiary font-semibold">
-                            <span class="h-1.5 w-1.5 rounded-full bg-tertiary"></span>
-                            {row.items.length} {row.items.length === 1 ? 'agendado' : 'agendados'}
+                          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono bg-tertiary/10 text-tertiary font-semibold whitespace-nowrap">
+                            <span class="h-1.5 w-1.5 rounded-full bg-tertiary shrink-0"></span>
+                            <span>{row.items.length} {row.items.length === 1 ? 'agendado' : 'agendados'}</span>
                           </span>
                         {:else if row.statusSummary.done === row.items.length}
-                          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono bg-primary/10 text-primary font-semibold">
-                            <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
-                            {row.items.length} {row.items.length === 1 ? 'enviado' : 'enviados'}
+                          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono bg-primary/10 text-primary font-semibold whitespace-nowrap">
+                            <span class="h-1.5 w-1.5 rounded-full bg-primary shrink-0"></span>
+                            <span>{row.items.length} {row.items.length === 1 ? 'enviado' : 'enviados'}</span>
                           </span>
                         {:else}
-                          <div class="flex items-center gap-1 flex-wrap">
+                          <div class="flex items-center gap-1 whitespace-nowrap">
                             {#if row.statusSummary.scheduled > 0}
-                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono bg-tertiary/10 text-tertiary" title="{row.statusSummary.scheduled} agendados">
-                                <span class="h-1 w-1 rounded-full bg-tertiary"></span>
-                                {row.statusSummary.scheduled} agend.
+                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono bg-tertiary/10 text-tertiary whitespace-nowrap" title="{row.statusSummary.scheduled} agendados">
+                                <span class="h-1 w-1 rounded-full bg-tertiary shrink-0"></span>
+                                <span>{row.statusSummary.scheduled} agend.</span>
                               </span>
                             {/if}
                             {#if row.statusSummary.done > 0}
-                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono bg-primary/10 text-primary" title="{row.statusSummary.done} enviados">
-                                <span class="h-1 w-1 rounded-full bg-primary"></span>
-                                {row.statusSummary.done} env.
+                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono bg-primary/10 text-primary whitespace-nowrap" title="{row.statusSummary.done} enviados">
+                                <span class="h-1 w-1 rounded-full bg-primary shrink-0"></span>
+                                <span>{row.statusSummary.done} env.</span>
                               </span>
                             {/if}
                             {#if row.statusSummary.error > 0}
-                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono bg-error/10 text-error" title="{row.statusSummary.error} erros">
-                                <span class="h-1 w-1 rounded-full bg-error"></span>
-                                {row.statusSummary.error} erro
+                              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono bg-error/10 text-error whitespace-nowrap" title="{row.statusSummary.error} erros">
+                                <span class="h-1 w-1 rounded-full bg-error shrink-0"></span>
+                                <span>{row.statusSummary.error} erro</span>
                               </span>
                             {/if}
                           </div>
@@ -903,7 +910,7 @@
                     </td>
 
                     <!-- Tipo / Próxima Execução -->
-                    <td class="py-2.5 px-space-sm font-mono">
+                    <td class="py-2.5 px-space-sm font-mono whitespace-nowrap w-[180px]">
                       <div class="inline-block px-1.5 py-0.5 rounded bg-surface-container-lowest text-secondary font-label-code-sm text-label-code-sm font-semibold">
                         {row.kind === 'cron' ? `cron: ${row.cron_expr}` : 'Único (Lote)'}
                       </div>
@@ -913,7 +920,7 @@
                     </td>
 
                     <!-- Origem -->
-                    <td class="py-2.5 px-space-sm">
+                    <td class="py-2.5 px-space-sm whitespace-nowrap w-[110px]">
                       <div class="flex flex-col items-start gap-1">
                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-label-ui text-label-ui uppercase tracking-wider {row.source === 'yaml' ? 'bg-surface-container-highest text-primary-fixed' : 'bg-secondary/15 text-secondary font-semibold'}">
                           <span class="material-symbols-outlined text-[12px]">{row.source === 'yaml' ? 'code_blocks' : 'view_agenda'}</span>
@@ -923,7 +930,7 @@
                     </td>
 
                     <!-- Ações em Lote do Grupo -->
-                    <td class="py-2.5 px-space-sm text-right min-w-[195px]" onclick={(e) => e.stopPropagation()}>
+                    <td class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
                       <div class="flex items-center justify-end gap-1.5 flex-nowrap">
                         <button
                           class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary text-secondary hover:text-on-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1"
@@ -968,25 +975,25 @@
                       {@const isMemberSelected = selectedJob?.id === memberJob.id}
                       {@const memberRecipient = resolveRecipient(memberJob)}
                       <tr
-                        class="transition-colors cursor-pointer group/child {isMemberSelected ? 'bg-secondary/20 font-semibold' : 'bg-surface-container-lowest hover:bg-surface-container-high/40'} border-l-4 border-l-secondary/60"
+                        class="transition-colors cursor-pointer group/child {isMemberSelected ? 'bg-secondary/20 font-semibold' : 'bg-surface-container-lowest hover:bg-surface-container-high/40'}"
                         data-job-id={memberJob.id}
                         onclick={() => inspectJob(memberJob.id)}
                       >
-                        <!-- Sub-status -->
-                        <td class="py-2 px-space-sm pl-4">
-                          <div class="flex items-center gap-1.5">
-                            <span class="material-symbols-outlined text-[14px] text-secondary/70">
+                        <!-- Sub-status (Alinhado com master row, sem quebra de linha) -->
+                        <td class="py-2.5 px-space-sm whitespace-nowrap w-[145px]">
+                          <div class="flex items-center gap-1.5 whitespace-nowrap pl-1">
+                            <span class="material-symbols-outlined text-[14px] text-secondary/70 shrink-0">
                               subdirectory_arrow_right
                             </span>
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono {memberJob.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : memberJob.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
-                              <span class="h-1.5 w-1.5 rounded-full {memberJob.status === 'scheduled' ? 'bg-tertiary' : memberJob.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
-                              {formatStatus(memberJob.status)}
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono whitespace-nowrap {memberJob.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : memberJob.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
+                              <span class="h-1.5 w-1.5 rounded-full shrink-0 {memberJob.status === 'scheduled' ? 'bg-tertiary' : memberJob.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
+                              <span>{formatStatus(memberJob.status)}</span>
                             </span>
                           </div>
                         </td>
 
                         <!-- Sub-destinatário -->
-                        <td class="py-2 px-space-sm">
+                        <td class="py-2.5 px-space-sm">
                           <div class="flex items-center gap-1.5 flex-wrap font-mono">
                             {#if memberRecipient.primaryName}
                               {#if memberRecipient.contact}
@@ -1016,21 +1023,24 @@
                           </div>
                         </td>
 
-                        <!-- Sub-horário -->
-                        <td class="py-2 px-space-sm font-mono text-outline text-label-code-sm">
-                          {memberJob.next_run_at ? new Date(memberJob.next_run_at).toLocaleTimeString('pt-BR') : memberJob.run_at ? new Date(memberJob.run_at).toLocaleTimeString('pt-BR') : '—'}
+                        <!-- Sub-horário (Formato idêntico para manter largura e alinhamento) -->
+                        <td class="py-2.5 px-space-sm font-mono text-outline text-label-code-sm whitespace-nowrap w-[180px]">
+                          {memberJob.next_run_at ? new Date(memberJob.next_run_at).toLocaleString('pt-BR') : memberJob.run_at ? new Date(memberJob.run_at).toLocaleString('pt-BR') : '—'}
                         </td>
 
                         <!-- Sub-origem -->
-                        <td class="py-2 px-space-sm">
-                          <span class="text-outline text-[11px] font-mono">membro</span>
+                        <td class="py-2.5 px-space-sm whitespace-nowrap w-[110px]">
+                          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-label-ui text-label-ui uppercase tracking-wider bg-surface-container-highest text-outline">
+                            <span class="material-symbols-outlined text-[12px]">link</span>
+                            <span>Membro</span>
+                          </span>
                         </td>
 
-                        <!-- Sub-ações individuais -->
-                        <td class="py-2 px-space-sm text-right min-w-[195px]" onclick={(e) => e.stopPropagation()}>
-                          <div class="flex items-center justify-end gap-1 flex-nowrap">
+                        <!-- Sub-ações individuais (Alinhamento e altura idênticos) -->
+                        <td class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
+                          <div class="flex items-center justify-end gap-1.5 flex-nowrap">
                             <button
-                              class="px-2 py-0.5 rounded bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold text-[11px]"
+                              class="px-2 py-1 rounded bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
                               onclick={() => handleRun(memberJob.id)}
                               title="Disparar apenas este destinatário"
                               type="button"
@@ -1040,7 +1050,7 @@
 
                             {#if memberJob.source !== 'yaml'}
                               <button
-                                class="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold text-[11px]"
+                                class="px-2 py-1 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
                                 onclick={() => openReschedule(memberJob.id, memberJob.source)}
                                 title="Reagendar este destinatário"
                                 type="button"
@@ -1048,13 +1058,13 @@
                                 Editar
                               </button>
                               <button
-                                class="px-1 py-0.5 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all"
+                                class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all"
                                 onclick={() => handleCancel(memberJob)}
                                 title="Cancelar apenas este destinatário"
                                 aria-label="Cancelar Recado"
                                 type="button"
                               >
-                                <span class="material-symbols-outlined text-[14px]">cancel</span>
+                                <span class="material-symbols-outlined text-[16px]">cancel</span>
                               </button>
                             {/if}
                           </div>
