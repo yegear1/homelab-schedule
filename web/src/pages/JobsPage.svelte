@@ -830,7 +830,7 @@
                   </tr>
                 {:else}
                   <!-- LINHA MESTRA DO GRUPO -->
-                  {@const isExpanded = !collapsedGroups.has(row.groupId) || (selectedJob?.group_id === row.groupId)}
+                  {@const isExpanded = !collapsedGroups.has(row.groupId)}
                   {@const isAnySelected = row.items.some((item) => item.id === selectedJob?.id)}
                   <tr
                     class="transition-colors cursor-pointer border-t border-secondary/30 {isAnySelected ? 'bg-secondary/15' : 'bg-surface-container-high/60 hover:bg-surface-container-high/90'}"
