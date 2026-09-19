@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `Nenhum`
-- **Título:** Aguardando priorização do backlog
-- **Status:** `IDLE`
-- **Contexto:** Todas as tarefas planejadas da release foram concluídas. O backlog restante está adiado (Contas: OTP + senha + sessão). Próximo passo: aguardar direcionamento humano ou autorização para [99.1] Preparar Release (Tag Git).
+- **ID:** `[99.1]`
+- **Título:** Preparar Release v0.3.0 (Tag Git) e Sanitizar Contexto
+- **Status:** `EM EXECUÇÃO`
+- **Contexto:** Publicar a release v0.3.0 usando a skill `github-releases` e executar o protocolo de higiene pós-release de `AGENTS.md` (atualização de `CHANGELOG.md`, `pyproject.toml`, `README.md`, criação de tag anotada `v0.3.0`, publicação no GitHub via `gh` e arquivamento no `ARCHIVE.md`).
 
 ---
 

@@ -1,6 +1,6 @@
 [project]
 name = "homelab-schedule"
-version = "0.2.0"
+version = "0.3.0"
 description = "Lightweight agenda: one-off and recurring jobs that POST to a configurable HTTP send gateway."
 readme = "README.md"
 requires-python = ">=3.13"

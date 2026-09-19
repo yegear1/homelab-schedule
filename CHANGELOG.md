@@ -7,10 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-19
+
 ### Added
-- Contacts notebook (`GET/POST /contacts`, `GET/PATCH/DELETE /contacts/{id}`). Job `to` resolves contact id/name before env aliases.
-- Job `created_by` and `GET /jobs?phone=` (union of destination or creator).
-- Message template catalog (`GET/POST /templates`, `GET/PATCH/DELETE /templates/{id}`). Jobs may reference `template_id`; dispatch merges `{{name}}` from the destination contact with clock placeholders.
+- **Svelte 5 Operator Web UI (`web/`):** SPA operator interface served directly by FastAPI via `StaticFiles` with SPA fallback, built via multi-stage Docker (`node:22-alpine` -> `python:3.13-slim`).
+- **Grouped Batch Messages:** Collapsible visual clustering of batch jobs sharing `group_id` with batch run and cancel actions on the master row.
+- **Batch Jobs & Dispatch Groups:** `POST /jobs/batch` for multi-recipient jobs with indexed `group_id` in SQLite schema v7, and group management endpoints (`POST /jobs/group/{group_id}/run` and `cancel`).
+- **Contacts Notebook:** SQLite contacts CRUD (`GET/POST /contacts`, `GET/PATCH/DELETE /contacts/{id}`) with resolution of job `to` field before environment aliases.
+- **Message Template Catalog:** Catalog CRUD (`GET/POST /templates`, `GET/PATCH/DELETE /templates/{id}`) and dynamic `{{name}}` interpolation merged with temporal clock tags.
+- **Creator Tracking:** `created_by` field on jobs and `GET /jobs?phone=` querying jobs by either destination or creator.
+- **Friendly MCP Expressions (`when`):** Natural language calendar formats (`amanhã 14h`, `hoje 18:00`, `segunda 9h`) and relative intervals (`+15m`, `2h`, `em 10 minutos`, `1h30m`) in `parse_when` for MCP `schedule` and `reschedule`.
+- **Accessibility & Quality Fixes:** Focus trapping in modals/drawers (`focusTrap.ts`), RFC 7234 heuristic cache prevention headers, strict RGB slash alpha theme styling (light/system/dark), and responsive table layouts.
+
 ## [0.2.0] - 2026-09-12
 
 ### Added

@@ -1,6 +1,6 @@
 # homelab-schedule
 
-Agenda leve em um container: jobs **pontuais** e **recorrentes** que, no horário, fazem `POST /send` em um gateway HTTP que você configura. Versão **0.2.0** (`homelab-schedule-mcp`). Notas: [CHANGELOG](./CHANGELOG.md) · [GitHub Release](https://github.com/yegear1/homelab-schedule/releases/tag/v0.2.0).
+Agenda leve em um container: jobs **pontuais** e **recorrentes** que, no horário, fazem `POST /send` em um gateway HTTP que você configura. Versão **0.3.0** (`homelab-schedule-mcp`). Notas: [CHANGELOG](./CHANGELOG.md) · [GitHub Release](https://github.com/yegear1/homelab-schedule/releases/tag/v0.3.0).
 
 Este repositório **não** inclui cliente de WhatsApp, bot nem fila anti-ban. Só agenda e dispara. Qualquer serviço que aceite o payload abaixo serve (`202` = aceito na fila). Este serviço não faz polling e não reenvia na hora. Falha transitória (rede, 5xx) reagenda até 3 vezes com backoff; 401/422 marcam o job como `error` na hora.
 
@@ -8,11 +8,12 @@ Este repositório **não** inclui cliente de WhatsApp, bot nem fila anti-ban. S�
 
 | Canal | Quem usa | Neste repo |
 | :--- | :--- | :--- |
+| **Web UI** (`/`, `/contacts`, `/templates`, `/jobs`) | Operador no navegador (Svelte 5) | Sim |
 | **MCP** (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`) | Agente no Cursor | Sim |
 | **HTTP** (`/jobs`, `/contacts`, `/templates`, `/health`, `/routines/reload`, `/housekeeping/purge`) | Scripts, MCP e callers | Sim |
 | **YAML** (`routines.yaml`) | Rotinas permanentes (reload por mtime ou `POST /routines/reload`) | Sim |
 
-Você anota em linguagem natural (*“amanhã 14h, pagar condomínio”*). Destinos: contato (nome ou id), alias `WHATSAPP_ALIASES`, ou número. No create, o servidor grava `target_number` e o tick envia para esse valor.
+Você anota em linguagem natural (*“amanhã 14h, pagar condomínio”* ou *“+15m”*). Destinos: contato (nome ou id), alias `WHATSAPP_ALIASES`, ou número. No create, o servidor grava `target_number` e o tick envia para esse valor.
 
 ## Stack
 
@@ -98,8 +99,9 @@ No disparo, placeholders de data/hora no `content` são interpolados no `TZ` (pa
 | `{{day_name}}` | `sexta-feira` | Dia da semana por extenso |
 | `{{month_name}}` | `setembro` | Mês por extenso |
 | `{{year}}` | `2026` | Ano com 4 dígitos |
+| `{{name}}` | `Maria` | Nome do contato de destino cadastrado na agenda |
 
-Não há catálogo nomeado de modelos nem variáveis de contato nesta versão — só relógio no texto do job.
+Jobs podem referenciar `template_id` do catálogo persistido (`/templates`) ou conter mensagem direta. No disparo, `{{name}}` é mesclado com os placeholders temporais.
 
 ## Repositório
 
