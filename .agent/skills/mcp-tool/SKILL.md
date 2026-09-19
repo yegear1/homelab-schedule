@@ -57,7 +57,7 @@ Atualize `.agent/CHANNELS.md` e a skill `agenda-job` se a semântica mudar.
 ```json
 {
   "name": "schedule",
-  "description": "Cria um job na agenda. when é ISO-8601 ou cron de 5 campos. to é alias (default eu).",
+  "description": "Cria um job na agenda. when é ISO-8601, cron de 5 campos, intervalo relativo (+15m, 2h, em 10 minutos) ou data amigável (amanhã 14h, hoje 18:00, segunda 9h). to é alias (default eu).",
   "inputSchema": {
     "type": "object",
     "properties": {

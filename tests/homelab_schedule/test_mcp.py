@@ -1,7 +1,9 @@
 import json
 from collections.abc import Callable
+from datetime import datetime
 
 import httpx
+import pytest
 
 from homelab_schedule.mcp_http import AgendaApi
 from homelab_schedule.mcp_tools import (
@@ -11,6 +13,7 @@ from homelab_schedule.mcp_tools import (
     handle_schedule,
 )
 from homelab_schedule.mcp_when import parse_when
+from homelab_schedule.store import APP_TZ
 from schemas.job import JobKind
 
 
@@ -147,3 +150,148 @@ def test_reschedule_yaml_returns_edit_file_error() -> None:
     text = handle_reschedule(_api(handler), "yaml-routine", "2026-09-13T10:00:00-03:00")
     payload = json.loads(text)
     assert payload["error"] == "edite routines.yaml"
+
+
+def test_parse_when_iso_without_tz_uses_app_tz() -> None:
+    kind, run_at, cron = parse_when("2026-09-12 14:00:00")
+    assert kind is JobKind.ONCE
+    assert run_at is not None
+    assert run_at.tzinfo == APP_TZ
+    assert cron is None
+
+
+def test_parse_when_rejects_non_cron_five_words() -> None:
+    with pytest.raises(ValueError, match="Não foi possível interpretar 'when'"):
+        parse_when("cinco palavras que nao cron")
+
+
+def test_parse_when_relative_intervals() -> None:
+    ref = datetime(2026, 9, 19, 10, 0, 0, tzinfo=APP_TZ)
+
+    # Notação curta
+    _, dt_15m, _ = parse_when("+15m", now=ref)
+    assert dt_15m == datetime(2026, 9, 19, 10, 15, 0, tzinfo=APP_TZ)
+
+    _, dt_2h, _ = parse_when("2h", now=ref)
+    assert dt_2h == datetime(2026, 9, 19, 12, 0, 0, tzinfo=APP_TZ)
+
+    _, dt_1d, _ = parse_when("+1d", now=ref)
+    assert dt_1d == datetime(2026, 9, 20, 10, 0, 0, tzinfo=APP_TZ)
+
+    _, dt_30s, _ = parse_when("30s", now=ref)
+    assert dt_30s == datetime(2026, 9, 19, 10, 0, 30, tzinfo=APP_TZ)
+
+    _, dt_1w, _ = parse_when("1w", now=ref)
+    assert dt_1w == datetime(2026, 9, 26, 10, 0, 0, tzinfo=APP_TZ)
+
+    # Notação composta
+    _, dt_comp, _ = parse_when("1h30m", now=ref)
+    assert dt_comp == datetime(2026, 9, 19, 11, 30, 0, tzinfo=APP_TZ)
+
+    # Frases em português
+    _, dt_pt1, _ = parse_when("em 10 minutos", now=ref)
+    assert dt_pt1 == datetime(2026, 9, 19, 10, 10, 0, tzinfo=APP_TZ)
+
+    _, dt_pt2, _ = parse_when("daqui a 2 horas", now=ref)
+    assert dt_pt2 == datetime(2026, 9, 19, 12, 0, 0, tzinfo=APP_TZ)
+
+    _, dt_pt3, _ = parse_when("daqui a 1 hora e 30 minutos", now=ref)
+    assert dt_pt3 == datetime(2026, 9, 19, 11, 30, 0, tzinfo=APP_TZ)
+
+    _, dt_pt4, _ = parse_when("em 1 dia", now=ref)
+    assert dt_pt4 == datetime(2026, 9, 20, 10, 0, 0, tzinfo=APP_TZ)
+
+
+def test_parse_when_friendly_calendar() -> None:
+    # Sábado, 19 de Setembro de 2026, 10:00 BRT
+    ref = datetime(2026, 9, 19, 10, 0, 0, tzinfo=APP_TZ)
+
+    _, dt_am1, _ = parse_when("amanhã 14h", now=ref)
+    assert dt_am1 == datetime(2026, 9, 20, 14, 0, 0, tzinfo=APP_TZ)
+
+    _, dt_am2, _ = parse_when("amanha às 15:30", now=ref)
+    assert dt_am2 == datetime(2026, 9, 20, 15, 30, 0, tzinfo=APP_TZ)
+
+    _, dt_hoje, _ = parse_when("hoje 18:00", now=ref)
+    assert dt_hoje == datetime(2026, 9, 19, 18, 0, 0, tzinfo=APP_TZ)
+
+    _, dt_depois, _ = parse_when("depois de amanhã 09:00", now=ref)
+    assert dt_depois == datetime(2026, 9, 21, 9, 0, 0, tzinfo=APP_TZ)
+
+    # Próxima segunda (19/09 é sábado -> segunda é 21/09)
+    _, dt_seg, _ = parse_when("segunda 9h", now=ref)
+    assert dt_seg == datetime(2026, 9, 21, 9, 0, 0, tzinfo=APP_TZ)
+
+    # Próxima sexta (25/09)
+    _, dt_sex, _ = parse_when("próxima sexta às 18h", now=ref)
+    assert dt_sex == datetime(2026, 9, 25, 18, 0, 0, tzinfo=APP_TZ)
+
+    # Apenas horário posterior no mesmo dia
+    _, dt_hora_hoje, _ = parse_when("14:00", now=ref)
+    assert dt_hora_hoje == datetime(2026, 9, 19, 14, 0, 0, tzinfo=APP_TZ)
+
+    # Apenas horário anterior no mesmo dia (agenda para amanhã)
+    _, dt_hora_amanha, _ = parse_when("09:00", now=ref)
+    assert dt_hora_amanha == datetime(2026, 9, 20, 9, 0, 0, tzinfo=APP_TZ)
+
+    # Horário de relógio acima de 12 sem prefixo (18h -> hoje às 18:00)
+    _, dt_18h, _ = parse_when("18h", now=ref)
+    assert dt_18h == datetime(2026, 9, 19, 18, 0, 0, tzinfo=APP_TZ)
+
+
+def test_parse_when_invalid_inputs_raise_value_error() -> None:
+    with pytest.raises(ValueError):
+        parse_when("")
+
+    with pytest.raises(ValueError):
+        parse_when("abracadabra")
+
+    with pytest.raises(ValueError):
+        parse_when("25:00")
+
+    with pytest.raises(ValueError):
+        parse_when("+0m")
+
+
+def test_schedule_posts_with_relative_when() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(
+            201,
+            json={
+                "id": "rel-1",
+                "title": "teste",
+                "content": "Aviso em 15m.",
+                "to": "eu",
+                "next_run_at": "2026-09-19T13:15:00+00:00",
+            },
+        )
+
+    api = _api(handler)
+    text = handle_schedule(api, when="+15m", content="Aviso em 15m.")
+    payload = json.loads(text)
+    assert payload["id"] == "rel-1"
+    assert "error" not in payload
+    assert len(seen) == 1
+    body = json.loads(seen[0].content)
+    assert body["kind"] == "once"
+    assert "run_at" in body
+
+
+def test_schedule_with_invalid_when_returns_json_error() -> None:
+    api = _api(lambda req: httpx.Response(200))
+    text = handle_schedule(api, when="quando der na telha", content="Aviso.")
+    payload = json.loads(text)
+    assert "error" in payload
+    assert "Não foi possível interpretar 'when'" in payload["error"]
+
+
+def test_reschedule_with_invalid_when_returns_json_error() -> None:
+    api = _api(lambda req: httpx.Response(200))
+    text = handle_reschedule(api, "j-123", when="quando der na telha")
+    payload = json.loads(text)
+    assert "error" in payload
+    assert "Não foi possível interpretar 'when'" in payload["error"]
+

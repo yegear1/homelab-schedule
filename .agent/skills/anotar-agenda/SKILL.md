@@ -51,7 +51,7 @@ Mutação em produção via MCP só com consentimento do humano (`AGENTS.md`).
 
 ### Passo 2: Extrair quatro campos
 
-1. **when** — ISO-8601 com offset (fuso default `America/Sao_Paulo`) ou cron de **cinco** campos. Se estiver ambíguo, **uma** pergunta; não grave.
+1. **when** — ISO-8601 (fuso default `America/Sao_Paulo`), cron de **cinco** campos, intervalo relativo (`+15m`, `2h`, `em 10 minutos`) ou data/horário amigável (`amanhã 14h`, `hoje 18:00`, `segunda 9h`). Se estiver ambíguo, **uma** pergunta; não grave.
 2. **content** — texto da mensagem.
 3. **to** — default `eu`; alias conhecido ou destino normalizado. Não peça id cru se o alias existir.
 4. **title** — uma linha; se faltar, o servidor deriva do content.

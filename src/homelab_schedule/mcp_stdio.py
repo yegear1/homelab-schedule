@@ -24,7 +24,10 @@ def build_mcp(api: AgendaApi) -> MCPServer:
 
     @mcp.tool()
     def schedule(when: str, content: str, to: str = "eu", title: str | None = None) -> str:
-        """Create an agenda job. when is ISO-8601 or cron. to is a phone or alias."""
+        """Create an agenda job. when is ISO-8601, 5-field cron, relative interval
+        (+15m, 2h, em 10 minutos), or friendly date/time (amanhã 14h, hoje 18:00, segunda 9h).
+        to is a phone or alias.
+        """
         return handle_schedule(api, when, content, to, title)
 
     @mcp.tool()
@@ -44,7 +47,9 @@ def build_mcp(api: AgendaApi) -> MCPServer:
 
     @mcp.tool()
     def reschedule(job_id: str, when: str) -> str:
-        """Reschedule/snooze an existing job to a new time (ISO-8601 or cron)."""
+        """Reschedule/snooze an existing job to a new time (ISO-8601, cron, relative
+        interval +2h, or friendly time amanhã 10h).
+        """
         return handle_reschedule(api, job_id, when)
 
     return mcp

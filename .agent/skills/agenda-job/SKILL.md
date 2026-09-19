@@ -32,7 +32,7 @@ Não usar: disparar `/send` na hora sem job (isso não é agenda). Bug de outro 
 
 ### Passo 1: Extrair quatro campos
 
-1. **when** — pontual (data/hora) ou recorrente (cron / “toda segunda 9h”). Fuso `America/Sao_Paulo` se o humano não disser outro.
+1. **when** — pontual (ISO-8601, intervalo relativo `+15m`/`2h`/`em 10 minutos` ou amigável `amanhã 14h`/`hoje 18:00`) ou recorrente (cron de 5 campos). Fuso `America/Sao_Paulo` se o humano não disser outro.
 2. **content** — texto da mensagem (a anotação).
 3. **to** — default `eu`; senão alias conhecido. Não pedir id cru se o alias existir.
 4. **title** — uma linha; se faltar, derive do content (curto).

@@ -31,7 +31,10 @@ class AgendaApi:
         to: str,
         title: str | None,
     ) -> dict[str, object]:
-        kind, run_at, cron_expr = parse_when(when)
+        try:
+            kind, run_at, cron_expr = parse_when(when)
+        except ValueError as exc:
+            raise AgendaToolError(str(exc)) from exc
         payload: dict[str, object] = {
             "title": title if title else default_title(content),
             "content": content,
@@ -77,7 +80,10 @@ class AgendaApi:
         return {"cancelled": job_id}
 
     def reschedule_job(self, *, job_id: str, when: str) -> dict[str, object]:
-        kind, run_at, cron_expr = parse_when(when)
+        try:
+            kind, run_at, cron_expr = parse_when(when)
+        except ValueError as exc:
+            raise AgendaToolError(str(exc)) from exc
         payload: dict[str, object] = {}
         if kind is JobKind.ONCE and run_at is not None:
             payload["run_at"] = run_at.isoformat()
