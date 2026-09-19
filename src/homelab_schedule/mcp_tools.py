@@ -27,9 +27,20 @@ def handle_list_agenda(
     api: AgendaApi,
     status: str = "upcoming",
     limit: int = 20,
+    to: str | None = None,
+    query: str | None = None,
+    period: str | None = None,
 ) -> str:
     try:
-        return compact_json(api.list_agenda(status=status, limit=limit))
+        return compact_json(
+            api.list_agenda(
+                status=status,
+                limit=limit,
+                to=to,
+                query=query,
+                period=period,
+            )
+        )
     except AgendaToolError as exc:
         return compact_json({"error": exc.message})
 

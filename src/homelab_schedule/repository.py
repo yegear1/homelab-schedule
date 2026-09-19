@@ -43,11 +43,13 @@ class JobRepository:
     def list_jobs(
         self,
         status_filter: JobListFilter,
-        range_from: datetime | None,
-        range_to: datetime | None,
+        range_from: datetime | None = None,
+        range_to: datetime | None = None,
         limit: int | None = None,
         phone: str | None = None,
+        raw_to: str | None = None,
         group_id: str | None = None,
+        query: str | None = None,
     ) -> list[Job]:
         clauses: list[str] = []
         params: list[str | int] = []
@@ -62,13 +64,27 @@ class JobRepository:
             if encoded is not None:
                 clauses.append("next_run_at <= ?")
                 params.append(encoded)
+        phone_conditions: list[str] = []
         if phone:
-            clauses.append("(target_number = ? OR created_by = ?)")
+            phone_conditions.extend(["target_number = ?", "created_by = ?"])
+            params.extend([phone, phone])
+        if raw_to and raw_to != phone:
+            phone_conditions.append('"to" = ?')
+            params.append(raw_to)
+        elif phone:
+            phone_conditions.append('"to" = ?')
             params.append(phone)
-            params.append(phone)
+        if phone_conditions:
+            clauses.append(f"({' OR '.join(phone_conditions)})")
         if group_id:
             clauses.append("group_id = ?")
             params.append(group_id)
+        if query and query.strip():
+            clauses.append(
+                "(LOWER(title) LIKE LOWER(?) OR LOWER(COALESCE(content, '')) LIKE LOWER(?))"
+            )
+            q = f"%{query.strip()}%"
+            params.extend([q, q])
         sql = "SELECT * FROM jobs"
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)

@@ -129,6 +129,165 @@ def default_title(content: str) -> str:
     return line[:120]
 
 
+def parse_period(
+    period: str,
+    now: datetime | None = None,
+    tz: ZoneInfo = APP_TZ,
+) -> tuple[datetime, datetime]:
+    stripped = period.strip()
+    if not stripped:
+        raise ValueError("Expressão de período não pode ser vazia.")
+
+    ref_now = (now if now is not None else datetime.now(tz)).astimezone(tz)
+    norm = stripped.lower().strip()
+
+    # 1. Âncoras do dia
+    if norm in ("hoje", "today"):
+        d = ref_now.date()
+        return (
+            datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=tz),
+            datetime(d.year, d.month, d.day, 23, 59, 59, 999999, tzinfo=tz),
+        )
+    if norm in ("amanhã", "amanha", "tomorrow"):
+        tom = ref_now.date() + timedelta(days=1)
+        return (
+            datetime(tom.year, tom.month, tom.day, 0, 0, 0, tzinfo=tz),
+            datetime(tom.year, tom.month, tom.day, 23, 59, 59, 999999, tzinfo=tz),
+        )
+    if norm in ("depois de amanhã", "depois de amanha"):
+        dda = ref_now.date() + timedelta(days=2)
+        return (
+            datetime(dda.year, dda.month, dda.day, 0, 0, 0, tzinfo=tz),
+            datetime(dda.year, dda.month, dda.day, 23, 59, 59, 999999, tzinfo=tz),
+        )
+    if norm in ("ontem", "yesterday"):
+        yest = ref_now.date() - timedelta(days=1)
+        return (
+            datetime(yest.year, yest.month, yest.day, 0, 0, 0, tzinfo=tz),
+            datetime(yest.year, yest.month, yest.day, 23, 59, 59, 999999, tzinfo=tz),
+        )
+
+    # 2. Âncoras de semana
+    if norm in ("esta semana", "essa semana", "this week"):
+        mon = ref_now.date() - timedelta(days=ref_now.weekday())
+        sun = mon + timedelta(days=6)
+        return (
+            datetime(mon.year, mon.month, mon.day, 0, 0, 0, tzinfo=tz),
+            datetime(sun.year, sun.month, sun.day, 23, 59, 59, 999999, tzinfo=tz),
+        )
+    if norm in ("próxima semana", "proxima semana", "next week"):
+        next_mon = ref_now.date() - timedelta(days=ref_now.weekday()) + timedelta(days=7)
+        next_sun = next_mon + timedelta(days=6)
+        return (
+            datetime(next_mon.year, next_mon.month, next_mon.day, 0, 0, 0, tzinfo=tz),
+            datetime(next_sun.year, next_sun.month, next_sun.day, 23, 59, 59, 999999, tzinfo=tz),
+        )
+    if norm in ("semana passada", "last week"):
+        past_mon = ref_now.date() - timedelta(days=ref_now.weekday()) - timedelta(days=7)
+        past_sun = past_mon + timedelta(days=6)
+        return (
+            datetime(past_mon.year, past_mon.month, past_mon.day, 0, 0, 0, tzinfo=tz),
+            datetime(past_sun.year, past_sun.month, past_sun.day, 23, 59, 59, 999999, tzinfo=tz),
+        )
+
+    # 3. Âncoras de mês
+    if norm in ("este mês", "este mes", "this month"):
+        start = datetime(ref_now.year, ref_now.month, 1, 0, 0, 0, tzinfo=tz)
+        next_y = ref_now.year if ref_now.month < 12 else ref_now.year + 1
+        next_m = ref_now.month + 1 if ref_now.month < 12 else 1
+        end = datetime(next_y, next_m, 1, 0, 0, 0, tzinfo=tz) - timedelta(microseconds=1)
+        return (start, end)
+    if norm in ("próximo mês", "proximo mes", "next month"):
+        start_y = ref_now.year if ref_now.month < 12 else ref_now.year + 1
+        start_m = ref_now.month + 1 if ref_now.month < 12 else 1
+        start = datetime(start_y, start_m, 1, 0, 0, 0, tzinfo=tz)
+        next_y = start_y if start_m < 12 else start_y + 1
+        next_m = start_m + 1 if start_m < 12 else 1
+        end = datetime(next_y, next_m, 1, 0, 0, 0, tzinfo=tz) - timedelta(microseconds=1)
+        return (start, end)
+    if norm in ("mês passado", "mes passado", "last month"):
+        prev_y = ref_now.year if ref_now.month > 1 else ref_now.year - 1
+        prev_m = ref_now.month - 1 if ref_now.month > 1 else 12
+        start = datetime(prev_y, prev_m, 1, 0, 0, 0, tzinfo=tz)
+        month_start = datetime(ref_now.year, ref_now.month, 1, 0, 0, 0, tzinfo=tz)
+        end = month_start - timedelta(microseconds=1)
+        return (start, end)
+
+    # 4. Dias da semana (ex: "segunda", "próxima sexta", "terça-feira")
+    clean_wd = re.sub(r"^(?:na|no|em|próxima|proxima|next)\s+", "", norm).strip()
+    if clean_wd in _WEEKDAYS:
+        target_wd = _WEEKDAYS[clean_wd]
+        diff = (target_wd - ref_now.weekday()) % 7
+        target_date = ref_now.date() + timedelta(days=diff)
+        return (
+            datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0, tzinfo=tz),
+            datetime(
+                target_date.year, target_date.month, target_date.day, 23, 59, 59, 999999, tzinfo=tz
+            ),
+        )
+
+    # 5. Formatos ISO de data: YYYY-MM-DD ou YYYY-MM
+    iso_date_match = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", norm)
+    if iso_date_match:
+        iso_year = int(iso_date_match.group(1))
+        iso_month = int(iso_date_match.group(2))
+        iso_day = int(iso_date_match.group(3))
+        try:
+            return (
+                datetime(iso_year, iso_month, iso_day, 0, 0, 0, tzinfo=tz),
+                datetime(iso_year, iso_month, iso_day, 23, 59, 59, 999999, tzinfo=tz),
+            )
+        except ValueError as exc:
+            raise ValueError(f"Data ISO inválida: '{period}'.") from exc
+
+    iso_month_match = re.fullmatch(r"(\d{4})-(\d{2})", norm)
+    if iso_month_match:
+        y, m = int(iso_month_match.group(1)), int(iso_month_match.group(2))
+        try:
+            start = datetime(y, m, 1, 0, 0, 0, tzinfo=tz)
+            next_y = y if m < 12 else y + 1
+            next_m = m + 1 if m < 12 else 1
+            end = datetime(next_y, next_m, 1, 0, 0, 0, tzinfo=tz) - timedelta(microseconds=1)
+            return (start, end)
+        except ValueError as exc:
+            raise ValueError(f"Mês ISO inválido: '{period}'.") from exc
+
+    # 6. Duração relativa passada ou futura
+    is_past = False
+    dur_text = norm
+    past_prefix_pattern = r"^(?:últimos|ultimos|últimas|ultimas|past|last)\s+"
+    if dur_text.startswith("-"):
+        dur_text = dur_text[1:].strip()
+        is_past = True
+    elif re.match(past_prefix_pattern, dur_text):
+        dur_text = re.sub(past_prefix_pattern, "", dur_text).strip()
+        is_past = True
+    elif dur_text.startswith("+"):
+        dur_text = dur_text[1:].strip()
+    elif re.match(r"^(?:próximos|proximos|próximas|proximas|next)\s+", dur_text):
+        dur_text = re.sub(r"^(?:próximos|proximos|próximas|proximas|next)\s+", "", dur_text).strip()
+
+    matches = list(re.finditer(r"(\d+(?:\.\d+)?)\s*([a-z]+)", dur_text))
+    if matches:
+        all_units_valid = all(m.group(2) in _UNIT_MULTIPLIERS for m in matches)
+        remainder = re.sub(r"(\d+(?:\.\d+)?)\s*([a-z]+)", "", dur_text)
+        remainder = re.sub(r"[\s,+]|(?:\b(?:e|and)\b)", "", remainder)
+        if all_units_valid and not remainder:
+            total_seconds = sum(float(m.group(1)) * _UNIT_MULTIPLIERS[m.group(2)] for m in matches)
+            if total_seconds <= 0:
+                raise ValueError("Intervalo deve ser maior que zero.")
+            delta = timedelta(seconds=total_seconds)
+            if is_past:
+                return (ref_now - delta, ref_now)
+            return (ref_now, ref_now + delta)
+
+    raise ValueError(
+        f"Não foi possível interpretar o período: '{period}'. "
+        "Use expressões como 'hoje', 'amanhã', 'esta semana', 'próxima semana', 'este mês', "
+        "'7d', 'próximos 7 dias', 'últimos 7 dias', ou data 'YYYY-MM-DD'."
+    )
+
+
 def _try_parse_cron(stripped: str) -> str | None:
     fields = stripped.split()
     if len(fields) != 5:

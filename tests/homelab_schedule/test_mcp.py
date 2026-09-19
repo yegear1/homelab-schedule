@@ -12,7 +12,7 @@ from homelab_schedule.mcp_tools import (
     handle_reschedule,
     handle_schedule,
 )
-from homelab_schedule.mcp_when import parse_when
+from homelab_schedule.mcp_when import parse_period, parse_when
 from homelab_schedule.store import APP_TZ
 from schemas.job import JobKind
 
@@ -294,4 +294,113 @@ def test_reschedule_with_invalid_when_returns_json_error() -> None:
     payload = json.loads(text)
     assert "error" in payload
     assert "Não foi possível interpretar 'when'" in payload["error"]
+
+
+def test_parse_period_anchors() -> None:
+    fixed_now = datetime(2026, 9, 19, 10, 30, 0, tzinfo=APP_TZ)  # Saturday
+
+    # hoje
+    start, end = parse_period("hoje", now=fixed_now)
+    assert start == datetime(2026, 9, 19, 0, 0, 0, tzinfo=APP_TZ)
+    assert end == datetime(2026, 9, 19, 23, 59, 59, 999999, tzinfo=APP_TZ)
+
+    # amanhã
+    start, end = parse_period("amanhã", now=fixed_now)
+    assert start == datetime(2026, 9, 20, 0, 0, 0, tzinfo=APP_TZ)
+    assert end == datetime(2026, 9, 20, 23, 59, 59, 999999, tzinfo=APP_TZ)
+
+    # ontem
+    start, end = parse_period("ontem", now=fixed_now)
+    assert start == datetime(2026, 9, 18, 0, 0, 0, tzinfo=APP_TZ)
+    assert end == datetime(2026, 9, 18, 23, 59, 59, 999999, tzinfo=APP_TZ)
+
+    # esta semana (Monday to Sunday)
+    start, end = parse_period("esta semana", now=fixed_now)
+    assert start == datetime(2026, 9, 14, 0, 0, 0, tzinfo=APP_TZ)
+    assert end == datetime(2026, 9, 20, 23, 59, 59, 999999, tzinfo=APP_TZ)
+
+    # próxima semana
+    start, end = parse_period("próxima semana", now=fixed_now)
+    assert start == datetime(2026, 9, 21, 0, 0, 0, tzinfo=APP_TZ)
+    assert end == datetime(2026, 9, 27, 23, 59, 59, 999999, tzinfo=APP_TZ)
+
+    # este mês
+    start, end = parse_period("este mês", now=fixed_now)
+    assert start == datetime(2026, 9, 1, 0, 0, 0, tzinfo=APP_TZ)
+    assert end == datetime(2026, 9, 30, 23, 59, 59, 999999, tzinfo=APP_TZ)
+
+    # próximo mês
+    start, end = parse_period("próximo mês", now=fixed_now)
+    assert start == datetime(2026, 10, 1, 0, 0, 0, tzinfo=APP_TZ)
+    assert end == datetime(2026, 10, 31, 23, 59, 59, 999999, tzinfo=APP_TZ)
+
+
+def test_parse_period_durations_and_iso() -> None:
+    fixed_now = datetime(2026, 9, 19, 10, 0, 0, tzinfo=APP_TZ)
+
+    # +7d / 7d / próximos 7 dias
+    start, end = parse_period("7d", now=fixed_now)
+    assert start == fixed_now
+    assert end == datetime(2026, 9, 26, 10, 0, 0, tzinfo=APP_TZ)
+
+    start_p, end_p = parse_period("próximos 3 dias", now=fixed_now)
+    assert start_p == fixed_now
+    assert end_p == datetime(2026, 9, 22, 10, 0, 0, tzinfo=APP_TZ)
+
+    # -24h / últimos 7 dias
+    start_past, end_past = parse_period("-24h", now=fixed_now)
+    assert start_past == datetime(2026, 9, 18, 10, 0, 0, tzinfo=APP_TZ)
+    assert end_past == fixed_now
+
+    # ISO YYYY-MM-DD
+    start_iso, end_iso = parse_period("2026-10-15", now=fixed_now)
+    assert start_iso == datetime(2026, 10, 15, 0, 0, 0, tzinfo=APP_TZ)
+    assert end_iso == datetime(2026, 10, 15, 23, 59, 59, 999999, tzinfo=APP_TZ)
+
+
+def test_parse_period_invalid_raises_value_error() -> None:
+    with pytest.raises(ValueError):
+        parse_period("")
+
+    with pytest.raises(ValueError):
+        parse_period("período qualquer sem sentido")
+
+    with pytest.raises(ValueError):
+        parse_period("2026-99-99")
+
+
+def test_list_agenda_forwards_advanced_filters() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"jobs": []})
+
+    api = _api(handler)
+    text = handle_list_agenda(
+        api,
+        status="all",
+        limit=10,
+        to="mae",
+        query="remédio",
+        period="hoje",
+    )
+    payload = json.loads(text)
+    assert payload == {"jobs": []}
+    assert len(seen) == 1
+    params = seen[0].url.params
+    assert params["status"] == "all"
+    assert params["limit"] == "10"
+    assert params["phone"] == "mae"
+    assert params["query"] == "remédio"
+    assert "from" in params
+    assert "to" in params
+
+
+def test_list_agenda_with_invalid_period_returns_json_error() -> None:
+    api = _api(lambda req: httpx.Response(200))
+    text = handle_list_agenda(api, period="ano retrasado que passou")
+    payload = json.loads(text)
+    assert "error" in payload
+    assert "Não foi possível interpretar o período" in payload["error"]
 

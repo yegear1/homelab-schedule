@@ -30,11 +30,11 @@ O MCP é caneta do agente, não um segundo OpenAPI. Superfície fechada: [ADR-00
 
 ### Passo 1: Precisa de tool nova?
 
-Default: **não**. Quatro tools (`schedule`, `list_agenda`, `get_item`, `cancel`). `reschedule` só se o backlog futuro for promovido. `PATCH` é proibido.
+Default: **não**. Cinco tools (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`). `PATCH` é proibido.
 
 ### Passo 2: Schema mínimo
 
-- Input: campos que o humano já usa (`when`, `content`, `to`, `title`, `id`).
+- Input: campos que o humano já usa (`when`, `content`, `to`, `title`, `id`, e na listagem: `status`, `limit`, `to`, `query`, `period`).
 - Output de lista: sem `content` longo.
 - Erro: string curta (401, yaml imutável, API fora).
 

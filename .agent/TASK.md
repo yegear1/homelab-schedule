@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `Nenhum`
-- **Título:** Aguardando priorização do backlog
-- **Status:** `IDLE`
-- **Contexto:** Ciclo `v0.3.0` concluído e arquivado em `ARCHIVE.md`. O item restante do backlog (`Contas: OTP + senha + sessão`) permanece adiado aguardando definição humana.
+- **ID:** `[02.2]`
+- **Título:** Tool de Preview / Dry-Run de Agendamento (renderização de variáveis e cálculo de next_run_at)
+- **Status:** `PRONTO PARA PLANEJAMENTO`
+- **Contexto:** Permitir testar e visualizar previamente a resolução de destinatário, cálculo de next_run_at e prévia de mensagem antes da persistência.
 
 ---
 
@@ -18,12 +18,17 @@
 
 Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
-*(Nenhuma tarefa concluída no novo ciclo ainda)*
+- [02.1] Filtros Avançados e Busca na Caneta MCP (contato, texto, período relativo)
 
 ---
 
 ## Backlog (Próximas, em ordem)
 
+- [ ] Saudações e Variáveis Dinâmicas Seguras em Templates ({{greeting}}, {{time}}, {{date}})
+- [ ] Dead-Letter e Ação Rápida de Re-enfileiramento (Retry Manual na UI e API)
+- [ ] Histórico de Execuções (job_runs / auditoria de disparos)
+- [ ] Visão em Calendário / Linha do Tempo na UI
+- [ ] Importação / Exportação e Backup do SQLite
 - [ ] Contas: OTP + senha + sessão (adiado)
 
 ---

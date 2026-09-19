@@ -31,9 +31,28 @@ def build_mcp(api: AgendaApi) -> MCPServer:
         return handle_schedule(api, when, content, to, title)
 
     @mcp.tool()
-    def list_agenda(status: str = "upcoming", limit: int = 20) -> str:
-        """List jobs with optional status filter (upcoming, done, error, paused, all) and limit."""
-        return handle_list_agenda(api, status=status, limit=limit)
+    def list_agenda(
+        status: str = "upcoming",
+        limit: int = 20,
+        to: str | None = None,
+        query: str | None = None,
+        period: str | None = None,
+    ) -> str:
+        """List jobs with optional filters:
+        - status: upcoming, done, error, paused, all (default upcoming)
+        - limit: max items to return (default 20, max 50)
+        - to: filter by contact alias, phone number, or recipient (e.g. 'eu', 'mae')
+        - query: text search in job title or content (e.g. 'remédio', 'reunião')
+        - period: relative window ('hoje', 'amanhã', 'esta semana', '7d', '24h', etc.)
+        """
+        return handle_list_agenda(
+            api,
+            status=status,
+            limit=limit,
+            to=to,
+            query=query,
+            period=period,
+        )
 
     @mcp.tool()
     def get_item(job_id: str) -> str:

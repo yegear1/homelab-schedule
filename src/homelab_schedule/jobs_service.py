@@ -118,6 +118,7 @@ class JobService:
         limit: int | None = None,
         phone: str | None = None,
         group_id: str | None = None,
+        query: str | None = None,
     ) -> list[JobListItem]:
         resolved_phone = self._resolve_to(phone) if phone else None
         jobs = self._repo.list_jobs(
@@ -126,7 +127,9 @@ class JobService:
             range_to,
             limit=limit,
             phone=resolved_phone,
+            raw_to=phone,
             group_id=group_id,
+            query=query,
         )
         return [JobListItem.model_validate(job.model_dump()) for job in jobs]
 

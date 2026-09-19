@@ -40,9 +40,9 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 
 ### `GET /jobs`
 
-Query: `status` (`upcoming` \| `done` \| `paused` \| `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino), `phone` (destino **ou** criador, normalizado; aceita nome/id de contato), `group_id` (filtro por grupo de envio), `limit`. Lista **curta**: sem `content` completo.
+Query: `status` (`upcoming` \| `done` \| `paused` \| `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino), `phone` (destino **ou** criador, normalizado; aceita nome/id de contato), `group_id` (filtro por grupo de envio), `query` (busca textual em título ou conteúdo), `limit`. Lista **curta**: sem `content` completo.
 
-Query `to` é **fim de intervalo de data**. Filtro de pessoa: `?phone=`. Filtro de grupo: `?group_id=`.
+Query `to` é **fim de intervalo de data**. Filtro de pessoa: `?phone=`. Filtro de grupo: `?group_id=`. Busca textual: `?query=`.
 
 `200` → `{ "jobs": [ JobListItem ] }` (inclui `created_by`, `template_id`, `group_id`, sem `content`)
 

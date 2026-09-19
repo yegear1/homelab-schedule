@@ -13,7 +13,7 @@ Implementação neste repo: `uv run homelab-schedule-mcp` (stdio). Chama a HTTP 
 | Tool | Papel |
 | :--- | :--- |
 | `schedule` | Cria. `when` (ISO-8601, cron de 5 campos, intervalo relativo `+15m`/`2h`/`em 10 minutos` ou amigável `amanhã 14h`/`hoje 18:00`), `content`, `to` (default `eu`), `title` opcional |
-| `list_agenda` | Lista curta: id, when, to, title, status (filtros opcionais `status`: upcoming/done/error/paused/all, e `limit`) |
+| `list_agenda` | Lista curta: id, when, to, title, status (filtros opcionais `status`, `limit`, `to`, `query` textual e `period` relativo como 'hoje', 'amanhã', 'esta semana', '7d') |
 | `get_item` | Um id, com `content` |
 | `cancel` | Um id (sqlite). YAML → erro explícito “edite routines.yaml” |
 | `reschedule` | Reativa/adia recado (`when` novo: ISO, cron, intervalo relativo `+2h` ou amigável `amanhã 10h`) com mesmo id |

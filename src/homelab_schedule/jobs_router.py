@@ -37,9 +37,16 @@ def list_jobs(
     limit: Annotated[int | None, Query(ge=1, le=100)] = None,
     phone: Annotated[str | None, Query()] = None,
     group_id: Annotated[str | None, Query()] = None,
+    query: Annotated[str | None, Query(description="Busca textual em título ou conteúdo")] = None,
 ) -> JobListResponse:
     jobs = _service(request).list_jobs(
-        status_filter, range_from, range_to, limit=limit, phone=phone, group_id=group_id
+        status_filter,
+        range_from,
+        range_to,
+        limit=limit,
+        phone=phone,
+        group_id=group_id,
+        query=query,
     )
     return JobListResponse(jobs=jobs)
 

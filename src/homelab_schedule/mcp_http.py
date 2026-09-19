@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 from typing import cast
+from zoneinfo import ZoneInfo
 
 import httpx
 
-from homelab_schedule.mcp_when import default_title, parse_when
+from homelab_schedule.mcp_when import default_title, parse_period, parse_when
 from schemas.job import JobKind
 
 _LIST_LIMIT = 50
@@ -48,12 +49,35 @@ class AgendaApi:
         response = self._request("POST", "/jobs", json=payload)
         return _json_object(response)
 
-    def list_agenda(self, status: str = "upcoming", limit: int = 20) -> dict[str, object]:
+    def list_agenda(
+        self,
+        status: str = "upcoming",
+        limit: int = 20,
+        to: str | None = None,
+        query: str | None = None,
+        period: str | None = None,
+    ) -> dict[str, object]:
         effective_limit = max(1, min(limit, _LIST_LIMIT))
+        params: dict[str, str] = {
+            "status": status,
+            "limit": str(effective_limit),
+        }
+        if to and to.strip():
+            params["phone"] = to.strip()
+        if query and query.strip():
+            params["query"] = query.strip()
+        if period and period.strip():
+            try:
+                range_from, range_to = parse_period(period)
+            except ValueError as exc:
+                raise AgendaToolError(str(exc)) from exc
+            params["from"] = range_from.astimezone(ZoneInfo("UTC")).isoformat()
+            params["to"] = range_to.astimezone(ZoneInfo("UTC")).isoformat()
+
         response = self._request(
             "GET",
             "/jobs",
-            params={"status": status, "limit": str(effective_limit)},
+            params=params,
         )
         body = _json_object(response)
         jobs = _json_list(body.get("jobs"))

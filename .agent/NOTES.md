@@ -34,6 +34,15 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-19] Filtros Avançados e Busca na Caneta MCP (list_agenda) e HTTP
+
+- **Contexto:** Agentes operando no MCP e chamadores da API precisavam filtrar jobs por destinatário/alias específico, realizar busca textual (por exemplo "remédio", "condomínio") e consultar janelas temporais relativas ("hoje", "amanhã", "esta semana", "7d", etc.) sem receber listas excessivas.
+- **Decisão:**
+  - **Tool `list_agenda` Enriquecida:** Novos parâmetros opcionais `to` (alias/telefone), `query` (busca em título/conteúdo) e `period` (janela temporal relativa), preservando a superfície fechada (ADR-005) sem adicionar tools CRUD espúrias.
+  - **Resolução de Período Relativo (`parse_period` em `mcp_when.py`):** Suporte determinístico a âncoras de calendário (`hoje`, `amanhã`, `ontem`, `esta semana`, `próxima semana`, `este mês`, dias da semana `segunda`, etc.), durações relativas (`7d`, `+7d`, `próximos 3 dias`, `-24h`, `últimos 7 dias`) e datas ISO (`YYYY-MM-DD`, `YYYY-MM`), convertidas para ISO UTC `from` e `to`.
+  - **Busca Textual no Backend:** Parâmetro `query` em `GET /jobs` traduzido no repositório SQLite como `(LOWER(title) LIKE LOWER(?) OR LOWER(COALESCE(content, '')) LIKE LOWER(?))` para busca case-insensitive eficiente.
+  - **União de Destinatário/Alias:** Filtro de contato no repositório verifica `target_number = ? OR created_by = ? OR "to" = ?`, garantindo localização do job tanto pelo número resolvido quanto pelo alias literal cadastrado.
+
 ### [2026-09-19] Expressões de Intervalo e Calendário Amigáveis no MCP (when)
 
 - **Contexto:** Chamadas de agendamento e reagendamento via MCP (`schedule` e `reschedule`) exigiam instantes estritos em ISO-8601 ou cron de 5 campos, tornando a anotação natural de lembretes pelo agente suscetível a erros de formatação.

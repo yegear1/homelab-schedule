@@ -463,3 +463,62 @@ def test_group_cancel_and_run(client: TestClient, api_key: str) -> None:
     for job_summary in cancel_batch["jobs"]:
         job_detail = client.get(f"/jobs/{job_summary['id']}", headers=_auth(api_key)).json()
         assert job_detail["status"] == "done"
+
+
+def test_list_jobs_query_text_search(client: TestClient, api_key: str) -> None:
+    j1 = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "Comprar remédio",
+            "content": "Pegar dorflex na farmácia",
+            "to": "eu",
+            "kind": "once",
+            "run_at": "2027-09-12T14:00:00-03:00",
+        },
+    ).json()
+
+    j2 = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "Reunião de condomínio",
+            "content": "Apresentar prestação de contas",
+            "to": "sindico",
+            "kind": "once",
+            "run_at": "2027-09-12T15:00:00-03:00",
+        },
+    ).json()
+
+    j3 = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "Aluguel",
+            "content": "Pagar boleto e levar o remédio",
+            "to": "proprietario",
+            "kind": "once",
+            "run_at": "2027-09-12T16:00:00-03:00",
+        },
+    ).json()
+
+    # 1. Search in title and content
+    res_remedio = client.get("/jobs?query=remédio", headers=_auth(api_key))
+    assert res_remedio.status_code == 200
+    ids_remedio = {item["id"] for item in res_remedio.json()["jobs"]}
+    assert j1["id"] in ids_remedio
+    assert j3["id"] in ids_remedio
+    assert j2["id"] not in ids_remedio
+
+    # 2. Case-insensitive search in content
+    res_dorflex = client.get("/jobs?query=DORFLEX", headers=_auth(api_key))
+    assert res_dorflex.status_code == 200
+    ids_dorflex = {item["id"] for item in res_dorflex.json()["jobs"]}
+    assert ids_dorflex == {j1["id"]}
+
+    # 3. Combined query + phone filter
+    res_combined = client.get("/jobs?query=remédio&phone=eu", headers=_auth(api_key))
+    assert res_combined.status_code == 200
+    ids_combined = {item["id"] for item in res_combined.json()["jobs"]}
+    assert ids_combined == {j1["id"]}
+
