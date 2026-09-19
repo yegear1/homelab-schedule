@@ -917,3 +917,94 @@ def test_job_list_item_includes_last_error_and_retry_count(
     assert matching[0]["retry_count"] == 3
 
 
+def test_get_job_runs_and_all_runs_endpoints(
+    client: TestClient, app: FastAPI, api_key: str
+) -> None:
+    # 401 without key
+    assert client.get("/jobs/runs").status_code == 401
+    assert client.get("/jobs/fake-id/runs").status_code == 401
+
+    # 404 for unknown job
+    assert client.get("/jobs/non-existent/runs", headers=_auth(api_key)).status_code == 404
+
+    # Create a job and run it
+    repo: JobRepository = app.state.repo
+    job = Job(
+        id="run-api-job-1",
+        title="Run API Job",
+        content="Test runs endpoint",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.ONCE,
+        run_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
+        source=JobSource.SQLITE,
+        status=JobStatus.SCHEDULED,
+    )
+    repo.insert(job)
+
+    # Initially 0 runs
+    res = client.get(f"/jobs/{job.id}/runs", headers=_auth(api_key))
+    assert res.status_code == 200
+    assert res.json() == {"runs": []}
+
+    # Trigger manual run
+    run_res = client.post(f"/jobs/{job.id}/run", headers=_auth(api_key))
+    assert run_res.status_code == 202
+
+    # Now 1 run exists
+    res = client.get(f"/jobs/{job.id}/runs", headers=_auth(api_key))
+    assert res.status_code == 200
+    runs = res.json()["runs"]
+    assert len(runs) == 1
+    assert runs[0]["job_id"] == job.id
+    assert runs[0]["trigger"] == "manual"
+    assert runs[0]["status"] == "success"
+    assert runs[0]["status_code"] == 202
+    assert "duration_ms" in runs[0]
+
+    # Global runs endpoint
+    all_runs_res = client.get("/jobs/runs", headers=_auth(api_key))
+    assert all_runs_res.status_code == 200
+    all_runs = all_runs_res.json()["runs"]
+    assert any(r["job_id"] == job.id for r in all_runs)
+
+    # Filtered by status
+    filtered = client.get("/jobs/runs?status=success", headers=_auth(api_key))
+    assert filtered.status_code == 200
+    assert any(r["job_id"] == job.id for r in filtered.json()["runs"])
+
+    filtered_err = client.get("/jobs/runs?status=error", headers=_auth(api_key))
+    assert filtered_err.status_code == 200
+    assert not any(r["job_id"] == job.id for r in filtered_err.json()["runs"])
+
+
+def test_manual_run_failure_records_error_job_run(
+    client: TestClient, app: FastAPI, api_key: str, dispatcher: RecordingDispatcher
+) -> None:
+    dispatcher.status_code = 500
+    repo: JobRepository = app.state.repo
+    job = Job(
+        id="run-fail-job-1",
+        title="Run Fail Job",
+        content="Fail me",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.ONCE,
+        run_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
+        source=JobSource.SQLITE,
+        status=JobStatus.SCHEDULED,
+    )
+    repo.insert(job)
+
+    run_res = client.post(f"/jobs/{job.id}/run", headers=_auth(api_key))
+    assert run_res.status_code == 502
+
+    runs_res = client.get(f"/jobs/{job.id}/runs", headers=_auth(api_key))
+    assert runs_res.status_code == 200
+    runs = runs_res.json()["runs"]
+    assert len(runs) == 1
+    assert runs[0]["trigger"] == "manual"
+    assert runs[0]["status"] == "error"
+    assert runs[0]["error_message"] is not None
+
+

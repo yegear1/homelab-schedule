@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -12,7 +13,7 @@ from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.repository import JobRepository
 from homelab_schedule.routines import merge_routines
 from homelab_schedule.templates import render_outbound_message
-from schemas.job import Job, JobKind, JobStatus
+from schemas.job import Job, JobKind, JobRun, JobRunStatus, JobRunTrigger, JobStatus
 
 _LOG = logging.getLogger("homelab_schedule.tick")
 _FAILURE_BACKOFF = 5.0
@@ -56,10 +57,15 @@ async def run_tick(
                 last_housekeeping = current_now
                 cutoff = current_now - timedelta(days=retention_days)
                 deleted = repo.purge_old_jobs(cutoff)
-                if deleted > 0:
+                deleted_runs = repo.purge_old_job_runs(cutoff)
+                if deleted > 0 or deleted_runs > 0:
                     _LOG.info(
                         "housekeeping_purged",
-                        extra={"deleted_count": deleted, "retention_days": retention_days},
+                        extra={
+                            "deleted_count": deleted,
+                            "deleted_runs_count": deleted_runs,
+                            "retention_days": retention_days,
+                        },
                     )
         failed = await fire_due(
             repo,
@@ -108,6 +114,17 @@ async def fire_due(
             catalog_body=catalog,
         )
         result = await dispatcher.send(phone_number=dest, content=content_to_send)
+        run_record = JobRun(
+            id=str(uuid.uuid4()),
+            job_id=job.id,
+            ran_at=now,
+            trigger=JobRunTrigger.SCHEDULE,
+            status=JobRunStatus.SUCCESS if result.ok else JobRunStatus.ERROR,
+            status_code=result.status_code,
+            duration_ms=result.duration_ms,
+            error_message=result.last_error,
+        )
+        repo.record_run(run_record)
         if result.ok:
             repo.update(_after_success(job, now))
             continue

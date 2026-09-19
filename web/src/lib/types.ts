@@ -2,6 +2,23 @@ export type JobKind = 'once' | 'cron';
 export type JobSource = 'sqlite' | 'yaml';
 export type JobStatus = 'scheduled' | 'done' | 'paused' | 'error';
 export type JobListFilter = 'upcoming' | 'done' | 'paused' | 'error' | 'all';
+export type JobRunTrigger = 'schedule' | 'manual';
+export type JobRunStatus = 'success' | 'error';
+
+export interface JobRun {
+  id: string;
+  job_id: string;
+  ran_at: string;
+  trigger: JobRunTrigger;
+  status: JobRunStatus;
+  status_code: number;
+  duration_ms: number;
+  error_message: string | null;
+}
+
+export interface JobRunListResponse {
+  runs: JobRun[];
+}
 
 export interface Job {
   id: string;

@@ -465,3 +465,154 @@ def test_cron_job_requires_five_fields() -> None:
             kind=JobKind.CRON,
             cron_expr="0 9 * *",
         )
+
+
+def test_migration_v7_to_v8_creates_job_runs(tmp_path: Path) -> None:
+    import sqlite3
+
+    db = tmp_path / "v7.sqlite"
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute(
+        """
+        CREATE TABLE jobs (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            "to" TEXT NOT NULL,
+            target_number TEXT NOT NULL DEFAULT '',
+            kind TEXT NOT NULL,
+            run_at TEXT,
+            cron_expr TEXT,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL,
+            next_run_at TEXT,
+            last_run_at TEXT,
+            last_status TEXT,
+            last_error TEXT,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT NOT NULL DEFAULT '',
+            template_id TEXT,
+            group_id TEXT
+        )
+        """
+    )
+    conn.execute(
+        "CREATE TABLE contacts (id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL)"
+    )
+    conn.execute(
+        "CREATE TABLE templates ("
+        "id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, body TEXT NOT NULL"
+        ")"
+    )
+    conn.execute("PRAGMA user_version=7")
+    conn.commit()
+    conn.close()
+
+    migrated = connect(str(db))
+    version = migrated.execute("PRAGMA user_version").fetchone()
+    assert version is not None and int(version[0]) == SCHEMA_VERSION
+    table = migrated.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='job_runs'"
+    ).fetchone()
+    assert table is not None
+    migrated.close()
+
+
+def test_job_runs_record_list_and_purge(tmp_path: Path) -> None:
+    from schemas.job import JobRun, JobRunStatus, JobRunTrigger
+
+    conn = connect(str(tmp_path / "runs.sqlite"))
+    repo = JobRepository(conn)
+
+    job = Job(
+        id="job-for-runs",
+        title="Job with runs",
+        content="Testing runs",
+        to="eu",
+        kind=JobKind.ONCE,
+        run_at=datetime(2026, 9, 19, 12, 0, tzinfo=UTC),
+    )
+    repo.insert(job)
+
+    t1 = datetime(2026, 9, 19, 12, 0, tzinfo=UTC)
+    run1 = JobRun(
+        id="run-1",
+        job_id=job.id,
+        ran_at=t1,
+        trigger=JobRunTrigger.SCHEDULE,
+        status=JobRunStatus.SUCCESS,
+        status_code=202,
+        duration_ms=45.2,
+        error_message=None,
+    )
+    repo.record_run(run1)
+
+    t2 = datetime(2026, 9, 19, 12, 5, tzinfo=UTC)
+    run2 = JobRun(
+        id="run-2",
+        job_id=job.id,
+        ran_at=t2,
+        trigger=JobRunTrigger.MANUAL,
+        status=JobRunStatus.ERROR,
+        status_code=422,
+        duration_ms=120.0,
+        error_message="invalid phone",
+    )
+    repo.record_run(run2)
+
+    runs = repo.list_runs_for_job(job.id)
+    assert len(runs) == 2
+    assert runs[0].id == "run-2"
+    assert runs[0].status == JobRunStatus.ERROR
+    assert runs[0].duration_ms == 120.0
+    assert runs[1].id == "run-1"
+    assert runs[1].status == JobRunStatus.SUCCESS
+
+    filtered_runs = repo.list_runs(status_filter="success")
+    assert len(filtered_runs) == 1
+    assert filtered_runs[0].id == "run-1"
+
+    cutoff = datetime(2026, 9, 19, 12, 2, tzinfo=UTC)
+    deleted = repo.purge_old_job_runs(cutoff)
+    assert deleted == 1
+    remaining = repo.list_runs_for_job(job.id)
+    assert len(remaining) == 1
+    assert remaining[0].id == "run-2"
+    conn.close()
+
+
+def test_job_runs_cascade_delete_on_job_deletion(tmp_path: Path) -> None:
+    from schemas.job import JobRun, JobRunStatus, JobRunTrigger
+
+    conn = connect(str(tmp_path / "cascade.sqlite"))
+    repo = JobRepository(conn)
+
+    job = Job(
+        id="job-to-delete",
+        title="Job to delete",
+        content="Bye",
+        to="eu",
+        kind=JobKind.ONCE,
+        run_at=datetime(2026, 9, 19, 10, 0, tzinfo=UTC),
+    )
+    repo.insert(job)
+
+    run = JobRun(
+        id="run-cascade-1",
+        job_id=job.id,
+        ran_at=datetime(2026, 9, 19, 10, 0, tzinfo=UTC),
+        trigger=JobRunTrigger.SCHEDULE,
+        status=JobRunStatus.SUCCESS,
+        status_code=202,
+        duration_ms=50.0,
+    )
+    repo.record_run(run)
+    assert repo.get_run("run-cascade-1") is not None
+
+    conn.execute("DELETE FROM jobs WHERE id = ?", (job.id,))
+    conn.commit()
+
+    assert repo.get_run("run-cascade-1") is None
+    conn.close()

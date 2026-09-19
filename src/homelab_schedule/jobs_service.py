@@ -27,7 +27,15 @@ from schemas.api import (
     RescheduleJobRequest,
     RunNowResponse,
 )
-from schemas.job import Job, JobKind, JobSource, JobStatus
+from schemas.job import (
+    Job,
+    JobKind,
+    JobRun,
+    JobRunStatus,
+    JobRunTrigger,
+    JobSource,
+    JobStatus,
+)
 
 
 class JobService:
@@ -279,6 +287,17 @@ class JobService:
         now_instant = self._now()
         content_to_send = self._render_outbound(job, dest, now_instant)
         result = await self._dispatcher.send(phone_number=dest, content=content_to_send)
+        run_record = JobRun(
+            id=str(uuid.uuid4()),
+            job_id=job.id,
+            ran_at=now_instant,
+            trigger=JobRunTrigger.MANUAL,
+            status=JobRunStatus.SUCCESS if result.ok else JobRunStatus.ERROR,
+            status_code=result.status_code,
+            duration_ms=result.duration_ms,
+            error_message=result.last_error,
+        )
+        self._repo.record_run(run_record)
         self._notebook_changed.set()
         if not result.ok:
             self._repo.update(job.model_copy(update={"last_error": result.last_error}))
@@ -295,6 +314,13 @@ class JobService:
             updates["next_run_at"] = None
         self._repo.update(job.model_copy(update=updates))
         return RunNowResponse(status="queued", job_id=job.id)
+
+    def list_job_runs(self, job_id: str, limit: int = 50) -> list[JobRun]:
+        self.get(job_id)
+        return self._repo.list_runs_for_job(job_id, limit=limit)
+
+    def list_all_runs(self, limit: int = 50, status: str | None = None) -> list[JobRun]:
+        return self._repo.list_runs(limit=limit, status_filter=status)
 
     def cancel_group(self, group_id: str) -> GroupActionResponse:
         jobs = self._repo.list_by_group(group_id)

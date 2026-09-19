@@ -21,6 +21,27 @@ class JobStatus(StrEnum):
     ERROR = "error"
 
 
+class JobRunTrigger(StrEnum):
+    SCHEDULE = "schedule"
+    MANUAL = "manual"
+
+
+class JobRunStatus(StrEnum):
+    SUCCESS = "success"
+    ERROR = "error"
+
+
+class JobRun(BaseModel):
+    id: str
+    job_id: str
+    ran_at: datetime
+    trigger: JobRunTrigger
+    status: JobRunStatus
+    status_code: int
+    duration_ms: float
+    error_message: str | None = None
+
+
 class Job(BaseModel):
     id: str
     title: str

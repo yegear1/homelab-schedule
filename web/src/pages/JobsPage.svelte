@@ -2,13 +2,15 @@
   import { api, ApiClientError } from '../lib/api';
   import { router } from '../lib/router.svelte';
   import { toast } from '../lib/toast.svelte';
-  import type { Contact, Job, JobListItem, JobListFilter, JobKind, MessageTemplate } from '../lib/types';
+  import type { Contact, Job, JobListItem, JobListFilter, JobKind, JobRun, MessageTemplate } from '../lib/types';
   import RescheduleModal from '../components/RescheduleModal.svelte';
   import ContactPickerModal from '../components/ContactPickerModal.svelte';
   import { focusTrap } from '../lib/focusTrap';
 
   let jobs = $state<JobListItem[]>([]);
   let selectedJob = $state<Job | null>(null);
+  let selectedJobRuns = $state<JobRun[]>([]);
+  let loadingJobRuns = $state(false);
   let templates = $state<MessageTemplate[]>([]);
   let contacts = $state<Contact[]>([]);
   let contactsByPhone = $derived(
@@ -228,9 +230,21 @@
     }
   }
 
+  async function loadJobRuns(jobId: string) {
+    loadingJobRuns = true;
+    try {
+      selectedJobRuns = await api.getJobRuns(jobId, 20);
+    } catch {
+      selectedJobRuns = [];
+    } finally {
+      loadingJobRuns = false;
+    }
+  }
+
   async function inspectJob(id: string) {
     try {
       selectedJob = await api.getJob(id);
+      await loadJobRuns(id);
       if (selectedJob?.group_id) {
         await loadGroupMembers(selectedJob.group_id);
       } else {
@@ -299,9 +313,16 @@
       const res = await api.runJob(jobId);
       toast.queued(`POST /jobs/${jobId}/run -> 202 Accepted (${res.status}). Enfileirado no despachante.`);
       await loadJobs();
+      if (selectedJob?.id === jobId) {
+        selectedJob = await api.getJob(jobId);
+        await loadJobRuns(jobId);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao disparar';
       toast.error(msg);
+      if (selectedJob?.id === jobId) {
+        await loadJobRuns(jobId);
+      }
     }
   }
 
@@ -336,6 +357,7 @@
       await loadJobs();
       if (selectedJob?.id === jobItem.id) {
         selectedJob = await api.getJob(jobItem.id);
+        await loadJobRuns(jobItem.id);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao re-enfileirar';
@@ -1367,6 +1389,65 @@
             <div class="flex flex-col gap-1 text-outline pt-1 border-t border-outline-variant/10">
               <span class="text-error font-semibold">Último Erro (last_error):</span>
               <span class="text-error font-label-code-sm text-label-code-sm break-words whitespace-pre-wrap leading-relaxed bg-error-container/10 p-space-xs rounded font-mono" id="detail-last-error">{selectedJob.last_error}</span>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Histórico de Execuções (Auditoria de Disparos) -->
+        <div class="flex flex-col gap-1.5" id="detail-runs-section">
+          <div class="flex items-center justify-between">
+            <span class="font-label-ui text-label-ui uppercase text-on-surface-variant flex items-center gap-1">
+              <span class="material-symbols-outlined text-[15px]">history</span>
+              <span>Histórico de Disparos ({selectedJobRuns.length})</span>
+            </span>
+            <button
+              type="button"
+              class="text-outline hover:text-on-surface font-label-code-sm text-label-code-sm font-mono flex items-center gap-0.5 cursor-pointer"
+              id="btn-refresh-runs"
+              onclick={() => loadJobRuns(selectedJob!.id)}
+              title="Atualizar histórico"
+            >
+              <span class="material-symbols-outlined text-[13px]">refresh</span>
+              <span>Atualizar</span>
+            </button>
+          </div>
+
+          {#if loadingJobRuns}
+            <div class="py-2 text-center text-outline font-label-code-sm font-mono text-xs" id="runs-loading">
+              Carregando histórico...
+            </div>
+          {:else if selectedJobRuns.length === 0}
+            <div class="p-space-sm rounded bg-surface-container text-outline font-label-code-sm text-xs text-center border border-outline-variant/10" id="runs-empty">
+              Nenhuma tentativa de disparo registrada ainda.
+            </div>
+          {:else}
+            <div class="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1" id="runs-list">
+              {#each selectedJobRuns as run (run.id)}
+                <div class="p-space-xs rounded bg-surface-container font-mono text-xs border border-outline-variant/10 flex flex-col gap-1" id="run-item-{run.id}">
+                  <div class="flex items-center justify-between">
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold {run.status === 'success' ? 'bg-primary/15 text-primary' : 'bg-error/15 text-error'}">
+                      <span class="material-symbols-outlined text-[12px]">{run.status === 'success' ? 'check_circle' : 'error'}</span>
+                      <span>{run.status_code || (run.status === 'success' ? '202' : 'ERRO')}</span>
+                    </span>
+                    <span class="inline-flex items-center gap-1 text-on-surface-variant text-[11px]">
+                      <span class="material-symbols-outlined text-[12px]">{run.trigger === 'manual' ? 'touch_app' : 'schedule'}</span>
+                      <span>{run.trigger === 'manual' ? 'Manual' : 'Agendado'}</span>
+                    </span>
+                    <span class="text-secondary text-[11px]">
+                      {run.duration_ms.toFixed(1)} ms
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between text-outline text-[11px]">
+                    <span>{new Date(run.ran_at).toLocaleString('pt-BR')}</span>
+                    <span class="font-mono text-[10px] text-outline/70">ID: {run.id.slice(0, 8)}</span>
+                  </div>
+                  {#if run.error_message}
+                    <div class="text-error text-[11px] bg-error-container/10 p-1 rounded break-words">
+                      {run.error_message}
+                    </div>
+                  {/if}
+                </div>
+              {/each}
             </div>
           {/if}
         </div>

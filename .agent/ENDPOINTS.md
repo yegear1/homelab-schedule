@@ -133,6 +133,18 @@ Disparo imediato (não altera `once` para `done` se também houver `run_at` futu
 
 Dispara imediatamente todos os recados ativos vinculados ao `group_id`. `202` → `{ "group_id": "...", "affected": N, "status": "queued" }`.
 
+### `GET /jobs/runs`
+
+Histórico global de execuções/disparos para auditoria. Query: `limit` (1-100, default 50), `status` (`success` | `error`). Ordenado por `ran_at DESC`.
+
+`200` → `{ "runs": [ { "id": "...", "job_id": "...", "ran_at": "...", "trigger": "schedule" | "manual", "status": "success" | "error", "status_code": 202, "duration_ms": 45.2, "error_message": null } ] }`. `401` chave inválida.
+
+### `GET /jobs/{id}/runs`
+
+Histórico de execuções/disparos de um agendamento específico. Query: `limit` (1-100, default 50). Ordenado por `ran_at DESC`.
+
+`200` → `{ "runs": [ JobRun, ... ] }`. `404` job não encontrado. `401` chave inválida.
+
 ### `POST /jobs/{id}/cancel`
 
 Sqlite: pontual → remove ou `status=done` cancelado; cron → `enabled=false` / `paused`. YAML: `409` com mensagem para editar o arquivo. `404`. `204` ou `200` com Job.

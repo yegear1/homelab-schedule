@@ -4,9 +4,9 @@ import sqlite3
 from datetime import UTC, datetime
 
 from homelab_schedule.cron import next_cron_utc
-from homelab_schedule.store import _dt_from_db, _dt_to_db, _row_to_job
+from homelab_schedule.store import _dt_from_db, _dt_to_db, _row_to_job, _row_to_job_run
 from schemas.api import JobListFilter
-from schemas.job import Job, JobKind, JobSource, JobStatus
+from schemas.job import Job, JobKind, JobRun, JobSource, JobStatus
 
 
 class JobRepository:
@@ -202,6 +202,79 @@ class JobRepository:
         if row is None:
             return 0
         return int(row["n"])
+
+    def record_run(self, run: JobRun) -> JobRun:
+        self._conn.execute(
+            """
+            INSERT INTO job_runs (
+                id, job_id, ran_at, trigger, status, status_code, duration_ms, error_message
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run.id,
+                run.job_id,
+                _dt_to_db(run.ran_at),
+                run.trigger.value,
+                run.status.value,
+                run.status_code,
+                run.duration_ms,
+                run.error_message,
+            ),
+        )
+        self._conn.commit()
+        return run
+
+    def get_run(self, run_id: str) -> JobRun | None:
+        row = self._conn.execute(
+            "SELECT * FROM job_runs WHERE id = ?",
+            (run_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return _row_to_job_run(row)
+
+    def list_runs_for_job(self, job_id: str, limit: int = 50) -> list[JobRun]:
+        rows = self._conn.execute(
+            """
+            SELECT * FROM job_runs
+            WHERE job_id = ?
+            ORDER BY ran_at DESC
+            LIMIT ?
+            """,
+            (job_id, limit),
+        ).fetchall()
+        return [_row_to_job_run(row) for row in rows]
+
+    def list_runs(
+        self,
+        limit: int = 50,
+        status_filter: str | None = None,
+        job_id: str | None = None,
+    ) -> list[JobRun]:
+        clauses: list[str] = []
+        params: list[str | int] = []
+        if status_filter:
+            clauses.append("status = ?")
+            params.append(status_filter)
+        if job_id:
+            clauses.append("job_id = ?")
+            params.append(job_id)
+        sql = "SELECT * FROM job_runs"
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " ORDER BY ran_at DESC LIMIT ?"
+        params.append(limit)
+        rows = self._conn.execute(sql, tuple(params)).fetchall()
+        return [_row_to_job_run(row) for row in rows]
+
+    def purge_old_job_runs(self, before: datetime) -> int:
+        encoded = _dt_to_db(before)
+        cursor = self._conn.execute(
+            "DELETE FROM job_runs WHERE ran_at < ?",
+            (encoded,),
+        )
+        self._conn.commit()
+        return cursor.rowcount
 
 
 def _apply_status_filter(

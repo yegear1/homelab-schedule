@@ -34,6 +34,17 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-19] Histórico de Execuções (job_runs / auditoria de disparos, SQLite v8)
+
+- **Contexto:** Necessidade de rastreabilidade ponta a ponta de cada tentativa de envio realizada pelo scheduler (loop `due-tick`) ou por disparos manuais (`run_now`), capturando instante exato, gatilho, latência do gateway HTTP, status code e erros ocorridos.
+- **Decisão:**
+  - **Schema SQLite v8:** Tabela `job_runs` com `id TEXT PRIMARY KEY`, `job_id TEXT NOT NULL`, `ran_at TEXT NOT NULL`, `trigger TEXT NOT NULL` (`schedule` | `manual`), `status TEXT NOT NULL` (`success` | `error`), `status_code INTEGER NOT NULL`, `duration_ms REAL NOT NULL`, `error_message TEXT`, com `FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE CASCADE` e índices `(job_id, ran_at DESC)` e `(ran_at DESC)`.
+  - **Medição de Latência:** `GatekeeperDispatcher` utiliza `time.perf_counter()` para medir tempo decorrido em milissegundos com 2 casas decimais, gravando em `DispatchResult.duration_ms`.
+  - **Gravação Atômica:** Tanto `fire_due` (gatilho `schedule`) quanto `run_now` (gatilho `manual`) persistem um registro `JobRun` antes de atualizar o estado do job ou lançar `GatekeeperError`.
+  - **Limpeza e Retenção:** No housekeeping diário (e em `POST /housekeeping/purge`), execuções anteriores a `JOB_RETENTION_DAYS` são expurgadas via `repo.purge_old_job_runs(cutoff)`.
+  - **Superfície REST:** `GET /jobs/{id}/runs` para inspeção de um job e `GET /jobs/runs` para auditoria geral de disparos (com filtros `status` e `limit`).
+  - **UI do Operador:** No drawer lateral de detalhes da agenda (`JobsPage.svelte`), nova seção "Histórico de Disparos" lista as tentativas recentes com badges de status, gatilho (Manual/Agendado), latência em ms e mensagens de erro formatadas.
+
 ### [2026-09-19] Dead-Letter e Ação Rápida de Re-enfileiramento (Retry Manual na UI e API)
 
 - **Contexto:** Jobs com erro definitivo (ex: 401/422 no gateway) ou com retentativas esgotadas entram em estado de Dead-Letter (`status: error`, `enabled: false`). Operadores e sistemas externos precisavam inspecionar a causa (`last_error`, `retry_count`) e re-enfileirar manualmente os jobs ou grupos sem precisar recriá-los do zero.

@@ -5,9 +5,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from schemas.job import Job, JobKind, JobSource, JobStatus
+from schemas.job import (
+    Job,
+    JobKind,
+    JobRun,
+    JobRunStatus,
+    JobRunTrigger,
+    JobSource,
+    JobStatus,
+)
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 APP_TZ = ZoneInfo("America/Sao_Paulo")
 
 _CREATE_JOBS = """
@@ -50,6 +58,20 @@ CREATE TABLE IF NOT EXISTS templates (
 )
 """
 
+_CREATE_JOB_RUNS = """
+CREATE TABLE IF NOT EXISTS job_runs (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    ran_at TEXT NOT NULL,
+    trigger TEXT NOT NULL,
+    status TEXT NOT NULL,
+    status_code INTEGER NOT NULL,
+    duration_ms REAL NOT NULL,
+    error_message TEXT,
+    FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE CASCADE
+)
+"""
+
 
 def connect(database_path: str) -> sqlite3.Connection:
     path = Path(database_path)
@@ -66,6 +88,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     conn.execute(_CREATE_JOBS)
     conn.execute(_CREATE_CONTACTS)
     conn.execute(_CREATE_TEMPLATES)
+    conn.execute(_CREATE_JOB_RUNS)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_jobs_due ON jobs (status, enabled, next_run_at)"
     )
@@ -75,6 +98,13 @@ def init_schema(conn: sqlite3.Connection) -> None:
     )
     conn.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_templates_name ON templates (name COLLATE NOCASE)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_job_runs_job_id_ran_at "
+        "ON job_runs (job_id, ran_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_job_runs_ran_at ON job_runs (ran_at DESC)"
     )
     row = conn.execute("PRAGMA user_version").fetchone()
     version = int(row[0]) if row is not None else 0
@@ -106,6 +136,16 @@ def init_schema(conn: sqlite3.Connection) -> None:
         if "group_id" not in cols:
             conn.execute("ALTER TABLE jobs ADD COLUMN group_id TEXT")
         conn.execute("PRAGMA user_version=7")
+    if version < 8:
+        conn.execute(_CREATE_JOB_RUNS)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_job_runs_job_id_ran_at "
+            "ON job_runs (job_id, ran_at DESC)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_job_runs_ran_at ON job_runs (ran_at DESC)"
+        )
+        conn.execute("PRAGMA user_version=8")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_jobs_phone ON jobs (target_number, created_by)"
     )
@@ -164,4 +204,20 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         group_id=str(row["group_id"])
         if "group_id" in row.keys() and row["group_id"] is not None
         else None,
+    )
+
+
+def _row_to_job_run(row: sqlite3.Row) -> JobRun:
+    ran_at = _dt_from_db(row["ran_at"])
+    if ran_at is None:
+        raise ValueError("job_runs.ran_at cannot be null")
+    return JobRun(
+        id=str(row["id"]),
+        job_id=str(row["job_id"]),
+        ran_at=ran_at,
+        trigger=JobRunTrigger(str(row["trigger"])),
+        status=JobRunStatus(str(row["status"])),
+        status_code=int(row["status_code"]),
+        duration_ms=float(row["duration_ms"]),
+        error_message=str(row["error_message"]) if row["error_message"] is not None else None,
     )

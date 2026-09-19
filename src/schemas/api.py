@@ -3,7 +3,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, model_validator
 
-from schemas.job import Job, JobKind, JobSource, JobStatus
+from schemas.job import Job, JobKind, JobRun, JobSource, JobStatus
 
 
 class JobListFilter(StrEnum):
@@ -69,6 +69,10 @@ class JobListItem(BaseModel):
 
 class JobListResponse(BaseModel):
     jobs: list[JobListItem]
+
+
+class JobRunListResponse(BaseModel):
+    runs: list[JobRun]
 
 
 class RunNowResponse(BaseModel):

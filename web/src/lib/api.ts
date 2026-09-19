@@ -13,7 +13,9 @@ import type {
   GroupActionResponse,
   RescheduleJobRequest,
   RunNowResponse,
-  JobListFilter
+  JobListFilter,
+  JobRun,
+  JobRunListResponse
 } from './types';
 
 export class ApiClientError extends Error {
@@ -299,6 +301,21 @@ class ApiService {
     return this.request<GroupActionResponse>(`/jobs/group/${encodeURIComponent(groupId)}/retry`, {
       method: 'POST',
     });
+  }
+
+  async getJobRuns(id: string, limit: number = 50): Promise<JobRun[]> {
+    const res = await this.request<JobRunListResponse>(
+      `/jobs/${encodeURIComponent(id)}/runs?limit=${limit}`
+    );
+    return res.runs;
+  }
+
+  async getAllJobRuns(limit: number = 50, status?: string): Promise<JobRun[]> {
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    if (status) params.set('status', status);
+    const res = await this.request<JobRunListResponse>(`/jobs/runs?${params.toString()}`);
+    return res.runs;
   }
 }
 

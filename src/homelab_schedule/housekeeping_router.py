@@ -23,4 +23,5 @@ def purge_jobs(
     now = clock_now() if callable(clock_now) else datetime.now(UTC)
     cutoff = now - timedelta(days=days)
     deleted = repo.purge_old_jobs(cutoff)
+    repo.purge_old_job_runs(cutoff)
     return PurgeJobsResponse(status="purged", deleted_count=deleted, retention_days=days)

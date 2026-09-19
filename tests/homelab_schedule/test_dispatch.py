@@ -48,3 +48,23 @@ async def _assert_canonical_payload() -> None:
     assert b'"to"' not in payload
     assert b'"body"' not in payload
     assert b'"message"' not in payload
+
+
+def test_gatekeeper_records_duration_ms() -> None:
+    async def _test() -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(202, json={"status": "queued"})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://gatekeeper.test"
+        ) as client:
+            dispatcher = GatekeeperDispatcher(client, "wa-secret")
+            result = await dispatcher.send(
+                phone_number="5511999998888@c.us",
+                content="Teste latencia",
+            )
+        assert result.ok
+        assert result.duration_ms >= 0.0
+
+    asyncio.run(_test())

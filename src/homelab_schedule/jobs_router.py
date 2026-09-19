@@ -12,6 +12,7 @@ from schemas.api import (
     GroupActionResponse,
     JobListFilter,
     JobListResponse,
+    JobRunListResponse,
     PreviewJobRequest,
     PreviewJobResponse,
     RescheduleJobRequest,
@@ -93,9 +94,34 @@ def retry_group(request: Request, _: Auth, group_id: str) -> GroupActionResponse
     return _service(request).retry_group(group_id)
 
 
+@router.get("/runs", response_model=JobRunListResponse)
+def list_all_runs(
+    request: Request,
+    _: Auth,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    status_filter: Annotated[
+        str | None,
+        Query(alias="status", description="Filtro de status (success ou error)"),
+    ] = None,
+) -> JobRunListResponse:
+    runs = _service(request).list_all_runs(limit=limit, status=status_filter)
+    return JobRunListResponse(runs=runs)
+
+
 @router.get("/{job_id}", response_model=Job)
 def get_job(request: Request, _: Auth, job_id: str) -> Job:
     return _service(request).get(job_id)
+
+
+@router.get("/{job_id}/runs", response_model=JobRunListResponse)
+def list_job_runs(
+    request: Request,
+    _: Auth,
+    job_id: str,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> JobRunListResponse:
+    runs = _service(request).list_job_runs(job_id, limit=limit)
+    return JobRunListResponse(runs=runs)
 
 
 @router.post("/{job_id}/cancel", status_code=status.HTTP_204_NO_CONTENT)

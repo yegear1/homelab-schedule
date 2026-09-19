@@ -314,3 +314,36 @@ async def test_fire_due_permanent_failure_no_retries(tmp_path: Path) -> None:
     assert job.enabled is False
     assert job.next_run_at is None
     conn.close()
+
+
+@pytest.mark.anyio
+async def test_fire_due_records_job_run_audit(tmp_path: Path) -> None:
+    from schemas.job import JobRunStatus, JobRunTrigger
+
+    conn = connect(str(tmp_path / "schedule.sqlite"))
+    repo = JobRepository(conn)
+    now = datetime(2026, 9, 11, 15, 0, tzinfo=UTC)
+    repo.insert(
+        Job(
+            id="audit-job",
+            title="audit test",
+            content="Audit content",
+            to="eu",
+            target_number="5511999998888@c.us",
+            kind=JobKind.ONCE,
+            run_at=now,
+            next_run_at=now,
+            status=JobStatus.SCHEDULED,
+        )
+    )
+    dispatcher = RecordingDispatcher(status_code=202)
+    failed = await fire_due(repo, dispatcher, {}, now)
+    assert failed is False
+
+    runs = repo.list_runs_for_job("audit-job")
+    assert len(runs) == 1
+    assert runs[0].job_id == "audit-job"
+    assert runs[0].trigger == JobRunTrigger.SCHEDULE
+    assert runs[0].status == JobRunStatus.SUCCESS
+    assert runs[0].status_code == 202
+    conn.close()
