@@ -145,3 +145,62 @@ export interface ApiError {
   status: number;
   detail: string;
 }
+
+export type ImportMode = 'merge' | 'replace';
+
+export interface ExportMetadata {
+  version: number;
+  schema_version: number;
+  exported_at: string;
+  counts: Record<string, number>;
+}
+
+export interface ExportDataResponse {
+  metadata: ExportMetadata;
+  contacts: Contact[];
+  templates: MessageTemplate[];
+  jobs: Job[];
+  job_runs: JobRun[];
+}
+
+export interface ImportCounts {
+  created: number;
+  updated: number;
+  skipped: number;
+}
+
+export interface ImportSummary {
+  contacts: ImportCounts;
+  templates: ImportCounts;
+  jobs: ImportCounts;
+  job_runs: ImportCounts;
+}
+
+export interface ImportDataRequest {
+  mode: ImportMode;
+  contacts?: Array<{ id?: string; name: string; phone: string }>;
+  templates?: Array<{ id?: string; name: string; body: string }>;
+  jobs?: Array<Partial<Job> & { title: string; content: string; to: string; kind: JobKind }>;
+  job_runs?: Array<Partial<JobRun> & { job_id: string; ran_at: string }>;
+}
+
+export interface ImportDataResponse {
+  status: string;
+  mode: ImportMode;
+  summary: ImportSummary;
+  warnings: string[];
+}
+
+export interface FkViolation {
+  table: string;
+  rowid: number;
+  parent: string;
+  fkid: number;
+}
+
+export interface IntegrityCheckResponse {
+  integrity_ok: boolean;
+  details: string[];
+  foreign_keys_ok: boolean;
+  fk_violations: FkViolation[];
+}

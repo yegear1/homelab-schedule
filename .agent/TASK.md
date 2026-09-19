@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[02.7]`
-- **Título:** Importação / Exportação e Backup do SQLite
+- **ID:** `[02.8]`
+- **Título:** Contas: OTP + Senha + Sessão na UI (Adiado / Avaliação)
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Mecanismo seguro de backup e exportação/importação dos dados SQLite (jobs, contatos, templates e histórico) com validação de integridade.
+- **Contexto:** Mecanismo opcional de autenticação e sessão local para acesso operador (avaliar necessidade frente ao modelo atual de x-api-key armazenada no cliente).
 
 ---
 
@@ -18,6 +18,7 @@
 
 Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
+- [02.7] Importação / Exportação e Backup do SQLite
 - [02.6] Visão em Calendário / Linha do Tempo na UI
 - [02.5] Histórico de Execuções (job_runs / auditoria de disparos)
 - [02.4] Dead-Letter e Ação Rápida de Re-enfileiramento (Retry Manual na UI e API)
@@ -29,7 +30,7 @@ Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] Contas: OTP + senha + sessão (adiado)
+(Vazio no momento - todas as tarefas planejadas para o ciclo foram concluídas ou promovidas)
 
 ---
 

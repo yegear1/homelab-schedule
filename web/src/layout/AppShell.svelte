@@ -5,6 +5,7 @@
   import { api } from '../lib/api';
   import Toast from '../components/Toast.svelte';
   import ApiKeyModal from '../components/ApiKeyModal.svelte';
+  import BackupModal from '../components/BackupModal.svelte';
 
   interface Props {
     children: Snippet;
@@ -13,6 +14,7 @@
   let { children }: Props = $props();
 
   let showApiKeyModal = $state(false);
+  let showBackupModal = $state(false);
   let hasApiKey = $derived(Boolean(api.getApiKey()));
 
   const navItems = [
@@ -64,6 +66,19 @@
 
   <div class="p-space-md bg-surface-container-lowest flex flex-col gap-space-sm border-t border-outline-variant/10">
     <button
+      id="btn-open-backup-modal-sidebar"
+      class="bg-surface-container-low p-space-sm rounded flex items-center justify-between text-left hover:bg-surface-container transition-colors cursor-pointer"
+      onclick={() => (showBackupModal = true)}
+      type="button"
+    >
+      <div class="flex items-center gap-space-xs">
+        <span class="material-symbols-outlined text-primary text-[18px]">database</span>
+        <span class="font-label-ui text-label-ui uppercase text-on-surface-variant">Backup & Dados</span>
+      </div>
+      <span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
+    </button>
+
+    <button
       class="bg-surface-container-low p-space-sm rounded flex flex-col gap-space-xs text-left hover:bg-surface-container transition-colors cursor-pointer"
       onclick={() => (showApiKeyModal = true)}
       type="button"
@@ -93,10 +108,17 @@
         <span class="material-symbols-outlined text-[16px]">bolt</span>
         <span class="font-label-code text-label-code font-semibold">DISPATCHER PRONTO</span>
       </div>
-      <div class="hidden lg:flex items-center gap-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm">
+      <button
+        type="button"
+        id="btn-open-backup-modal-header"
+        onclick={() => (showBackupModal = true)}
+        class="hidden lg:flex items-center gap-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm hover:text-primary transition-colors cursor-pointer py-1 px-2 rounded hover:bg-surface-container"
+        title="Backup e Dados SQLite"
+      >
         <span class="text-outline">DRIVER:</span>
         <span class="text-on-surface font-mono">SQLite WAL-mode</span>
-      </div>
+        <span class="material-symbols-outlined text-[16px] text-tertiary">database</span>
+      </button>
     </div>
 
     <div class="flex items-center gap-space-md">
@@ -157,3 +179,4 @@
 <!-- GLOBAL TOAST AND MODALS -->
 <Toast />
 <ApiKeyModal open={showApiKeyModal} onclose={() => (showApiKeyModal = false)} />
+<BackupModal open={showBackupModal} onclose={() => (showBackupModal = false)} />

@@ -14,6 +14,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from homelab_schedule.aliases import parse_aliases
+from homelab_schedule.backup_router import router as backup_router
+from homelab_schedule.backup_service import BackupService
 from homelab_schedule.clock import SystemClock
 from homelab_schedule.config import Settings
 from homelab_schedule.contacts_repository import ContactRepository
@@ -76,6 +78,14 @@ def create_app(
         contact_service = ContactService(contacts_repo, repo)
         templates_repo = TemplateRepository(conn)
         template_service = TemplateService(templates_repo, repo)
+        backup_service = BackupService(
+            conn=conn,
+            job_repo=repo,
+            contacts_repo=contacts_repo,
+            templates_repo=templates_repo,
+            notebook_changed=notebook_changed,
+            clock_now=clock_now,
+        )
         service = JobService(
             repo,
             notebook_changed,
@@ -90,6 +100,7 @@ def create_app(
         app.state.job_service = service
         app.state.contact_service = contact_service
         app.state.template_service = template_service
+        app.state.backup_service = backup_service
         app.state.notebook_changed = notebook_changed
         app.state.conn = conn
         app.state.dispatcher = active
@@ -138,6 +149,7 @@ def create_app(
     app.include_router(contacts_router)
     app.include_router(templates_router)
     app.include_router(housekeeping_router)
+    app.include_router(backup_router)
 
     if (resolved_dist / "assets").is_dir():
         app.mount(

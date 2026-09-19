@@ -15,7 +15,11 @@ import type {
   RunNowResponse,
   JobListFilter,
   JobRun,
-  JobRunListResponse
+  JobRunListResponse,
+  ExportDataResponse,
+  ImportDataRequest,
+  ImportDataResponse,
+  IntegrityCheckResponse
 } from './types';
 
 export class ApiClientError extends Error {
@@ -316,6 +320,49 @@ class ApiService {
     if (status) params.set('status', status);
     const res = await this.request<JobRunListResponse>(`/jobs/runs?${params.toString()}`);
     return res.runs;
+  }
+
+  async downloadDatabase(): Promise<Blob> {
+    const baseUrl = this.getBaseUrl();
+    const apiKey = this.getApiKey();
+    const headers: Record<string, string> = {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    };
+    if (apiKey) {
+      headers['x-api-key'] = apiKey;
+    }
+    const response = await fetch(`${baseUrl}/backup/database`, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      let detail = `Download falhou (${response.status})`;
+      try {
+        const json = JSON.parse(text);
+        if (json.detail) detail = localizeDetail(json.detail);
+      } catch {
+        // use default detail
+      }
+      throw new ApiClientError(response.status, detail);
+    }
+    return response.blob();
+  }
+
+  async exportData(includeRuns: boolean = true): Promise<ExportDataResponse> {
+    return this.request<ExportDataResponse>(`/backup/export?include_runs=${includeRuns}`);
+  }
+
+  async importData(payload: ImportDataRequest): Promise<ImportDataResponse> {
+    return this.request<ImportDataResponse>('/backup/import', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async checkIntegrity(): Promise<IntegrityCheckResponse> {
+    return this.request<IntegrityCheckResponse>('/backup/integrity');
   }
 }
 

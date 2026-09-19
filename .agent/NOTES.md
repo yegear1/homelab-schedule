@@ -34,6 +34,16 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-19] Backup Físico, Exportação/Importação JSON e Integridade do SQLite
+
+- **Contexto:** Necessidade de salvaguarda e portabilidade robusta para os dados do SQLite (jobs, contatos, templates e histórico de execuções) no homelab, com mecanismos atômicos de restauração e checagem contínua de integridade de páginas e chaves estrangeiras.
+- **Decisão:**
+  - **Backup Físico Online (`GET /backup/database`):** Utiliza a SQLite Online Backup API (`conn.backup()`) para gerar snapshot binário `.sqlite3` consistente diretamente do banco em modo WAL sem bloqueios em leituras/escritas concorrentes, com verificação de integridade antes da entrega.
+  - **Exportação Estruturada (`GET /backup/export`):** Gera bundle JSON padronizado com metadados de versão (`schema_version: 8`), data/hora UTC, contagens de registros, contatos, templates, histórico `job_runs` e recados SQLite. Rotinas com `source: yaml` são excluídas da exportação pois seu ciclo de vida pertence ao `routines.yaml`. Suporte a `download=true` via cabeçalhos `Content-Disposition`.
+  - **Importação Atômica (`POST /backup/import`):** Executada sob transação atômica (`BEGIN ... COMMIT/ROLLBACK`). Suporta modos `merge` (insere novos e atualiza existentes por telefone/nome/id sem perda de dados) e `replace` (expurga dados SQLite e substitui, mantendo rotinas YAML estritamente intocadas). Valida integridade e constraints de chaves estrangeiras (`PRAGMA foreign_key_check`), notificando o scheduler (`notebook_changed.set()`) se agendamentos ativos forem alterados.
+  - **Auditoria de Integridade (`GET /backup/integrity`):** Executa em tempo real `PRAGMA integrity_check` e `PRAGMA foreign_key_check`, reportando violações de integridade se houverem.
+  - **Interface do Operador (`BackupModal.svelte`):** Modal acessível (`focusTrap`) integrado ao `AppShell.svelte` com 4 abas (Snapshot Físico, Exportar JSON, Importar JSON com upload e seletor de modo, e Checagem de Integridade).
+
 ### [2026-09-19] Visão em Calendário e Linha do Tempo na UI (Svelte 5 Runes)
 
 - **Contexto:** Operadores precisavam de acompanhamento temporal intuitivo na interface web para além da visualização tabular estática, permitindo inspecionar a densidade cronológica dos agendamentos futuros (`next_run_at`) e correlacionar visualmente com o histórico de execuções passadas (`job_runs` / `ran_at`).
@@ -182,6 +192,7 @@ Canetas versionadas = MCP, HTTP, YAML. Dispatch = `POST /send` genérico. Caller
 | HTTP `/jobs` | MCP, curl, callers | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
 | HTTP `/contacts` | UI / curl | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
 | HTTP `/templates` | UI / curl | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
+| HTTP `/backup` | UI / curl / scripts | API homelab-schedule | [ENDPOINTS.md](ENDPOINTS.md) |
 | MCP stdio | Agente Cursor | HTTP local | [ADR-005](adr/005-mcp-superficie-fechada.md) |
 | `routines.yaml` | Git / operador | Loader + watch | [CHANNELS.md](CHANNELS.md) |
 | `POST /send` | Dispatcher | Gateway `WHATSAPP_API_URL` | `phone_number`, `content`, `quote_id`, `x-api-key` |

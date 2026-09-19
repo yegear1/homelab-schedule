@@ -232,6 +232,84 @@ Campos opcionais `name` e/ou `body`. `200`. `409` unicidade. `404`.
 
 `204`. `409` se existir job `status=scheduled` com aquele `template_id`. `404`.
 
+## Backup, Exportação e Integridade
+
+Operações administrativas seguras de backup físico, exportação e importação estruturada (JSON) e verificação de integridade do SQLite. Auth: `x-api-key`.
+
+### `GET /backup/database`
+
+Gera um backup binário online consistente da base SQLite (`.sqlite3`) utilizando a SQLite Online Backup API (seguro em modo WAL). Retorna o arquivo binário com `Content-Disposition: attachment; filename="homelab-schedule-backup-<timestamp>.sqlite3"`.
+
+`200` binary stream. `401` chave inválida.
+
+### `GET /backup/export`
+
+Exporta todos os contatos, templates, recados SQLite (excluindo rotinas YAML que vivem em arquivo) e histórico de execuções `job_runs`.
+
+Query: `include_runs` (bool, default `true`), `download` (bool, default `false`).
+Se `download=true`, envia cabeçalho `Content-Disposition: attachment; filename="homelab-schedule-export-<timestamp>.json"`.
+
+`200` →
+```json
+{
+  "metadata": {
+    "version": 1,
+    "schema_version": 8,
+    "exported_at": "2026-09-19T12:00:00Z",
+    "counts": {
+      "contacts": 5,
+      "templates": 3,
+      "jobs": 12,
+      "job_runs": 45
+    }
+  },
+  "contacts": [ ... ],
+  "templates": [ ... ],
+  "jobs": [ ... ],
+  "job_runs": [ ... ]
+}
+```
+
+### `POST /backup/import`
+
+Importa lote de entidades estruturadas para o SQLite sob transação atômica (`BEGIN IMMEDIATE ... COMMIT/ROLLBACK`).
+
+Modos (`mode`):
+- `merge` (padrão): insere novos registros e atualiza existentes por ID/telefone/nome sem perda de dados.
+- `replace`: expurga recados SQLite, modelos, contatos e histórico de execuções prévios, populando com os dados importados. Rotinas YAML (`source: yaml`) são estritamente preservadas.
+
+Verifica constraints e `PRAGMA foreign_key_check`. Notifica o scheduler (`notebook_changed`) caso jobs ativos sejam alterados.
+
+`200` →
+```json
+{
+  "status": "imported",
+  "mode": "merge",
+  "summary": {
+    "contacts": { "created": 2, "updated": 1, "skipped": 0 },
+    "templates": { "created": 1, "updated": 0, "skipped": 0 },
+    "jobs": { "created": 3, "updated": 0, "skipped": 0 },
+    "job_runs": { "created": 10, "updated": 0, "skipped": 0 }
+  },
+  "warnings": []
+}
+```
+
+### `GET /backup/integrity`
+
+Executa auditoria em tempo real com `PRAGMA integrity_check` e `PRAGMA foreign_key_check`.
+
+`200` →
+```json
+{
+  "integrity_ok": true,
+  "details": ["ok"],
+  "foreign_keys_ok": true,
+  "fk_violations": []
+}
+```
+
 ## Erros
 
 JSON `{ "detail": ... }` no estilo FastAPI. Não vazar path de SQLite nem API keys.
+
