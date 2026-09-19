@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[02.3]`
-- **Título:** Saudações e Variáveis Dinâmicas Seguras em Templates ({{greeting}}, {{time}}, {{date}})
+- **ID:** `[02.4]`
+- **Título:** Dead-Letter e Ação Rápida de Re-enfileiramento (Retry Manual na UI e API)
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Adicionar suporte a saudações contextuais dependentes de horário local (ex: Bom dia / Boa tarde / Boa noite) e variáveis dinâmicas em templates.
+- **Contexto:** Mecanismo para inspecionar jobs com erro definitivo/esgotados e disparar ou re-enfileirar manualmente via API e UI.
 
 ---
 
@@ -18,6 +18,7 @@
 
 Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
+- [02.3] Saudações e Variáveis Dinâmicas Seguras em Templates ({{greeting}}, {{time}}, {{date}})
 - [02.2] Tool de Preview / Dry-Run de Agendamento (renderização de variáveis e cálculo de next_run_at)
 - [02.1] Filtros Avançados e Busca na Caneta MCP (contato, texto, período relativo)
 
@@ -25,7 +26,6 @@ Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] Dead-Letter e Ação Rápida de Re-enfileiramento (Retry Manual na UI e API)
 - [ ] Histórico de Execuções (job_runs / auditoria de disparos)
 - [ ] Visão em Calendário / Linha do Tempo na UI
 - [ ] Importação / Exportação e Backup do SQLite

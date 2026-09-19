@@ -47,6 +47,11 @@
 
   const VALID_TAGS = new Set([
     '{{name}}',
+    '{{greeting}}',
+    '{{greeting_lower}}',
+    '{{saudacao}}',
+    '{{saudacao_lower}}',
+    '{{period}}',
     '{{date}}',
     '{{date_iso}}',
     '{{time}}',
@@ -54,6 +59,10 @@
     '{{day_name}}',
     '{{month_name}}',
     '{{year}}',
+    '{{day}}',
+    '{{month}}',
+    '{{hour}}',
+    '{{minute}}',
   ]);
 
   const unknownPlaceholders = $derived.by(() => {
@@ -66,15 +75,39 @@
     if (!templateBody.trim()) {
       return 'Digite no campo acima para gerar a simulação imediata...';
     }
+    const now = new Date();
+    const hour = now.getHours();
+    let greeting = 'Boa noite';
+    let greetingLower = 'boa noite';
+    let period = 'noite';
+    if (hour >= 5 && hour < 12) {
+      greeting = 'Bom dia';
+      greetingLower = 'bom dia';
+      period = 'manhã';
+    } else if (hour >= 12 && hour < 18) {
+      greeting = 'Boa tarde';
+      greetingLower = 'boa tarde';
+      period = 'tarde';
+    }
+
     return templateBody
+      .replace(/\{\{greeting_lower\}\}/g, greetingLower)
+      .replace(/\{\{saudacao_lower\}\}/g, greetingLower)
+      .replace(/\{\{greeting\}\}/g, greeting)
+      .replace(/\{\{saudacao\}\}/g, greeting)
+      .replace(/\{\{period\}\}/g, period)
       .replace(/\{\{name\}\}/g, 'Carlos Silva')
-      .replace(/\{\{date\}\}/g, new Date().toLocaleDateString('pt-BR'))
-      .replace(/\{\{date_iso\}\}/g, new Date().toISOString().split('T')[0])
-      .replace(/\{\{time\}\}/g, new Date().toLocaleTimeString('pt-BR'))
-      .replace(/\{\{weekday\}\}/g, 'Segunda-feira')
-      .replace(/\{\{day_name\}\}/g, String(new Date().getDate()))
-      .replace(/\{\{month_name\}\}/g, 'Setembro')
-      .replace(/\{\{year\}\}/g, String(new Date().getFullYear()));
+      .replace(/\{\{date_iso\}\}/g, now.toISOString().split('T')[0])
+      .replace(/\{\{date\}\}/g, now.toLocaleDateString('pt-BR'))
+      .replace(/\{\{time\}\}/g, now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+      .replace(/\{\{day_name\}\}/g, 'segunda-feira')
+      .replace(/\{\{weekday\}\}/g, 'seg')
+      .replace(/\{\{month_name\}\}/g, 'setembro')
+      .replace(/\{\{year\}\}/g, String(now.getFullYear()))
+      .replace(/\{\{day\}\}/g, String(now.getDate()).padStart(2, '0'))
+      .replace(/\{\{month\}\}/g, String(now.getMonth() + 1).padStart(2, '0'))
+      .replace(/\{\{hour\}\}/g, String(hour).padStart(2, '0'))
+      .replace(/\{\{minute\}\}/g, String(now.getMinutes()).padStart(2, '0'));
   });
 
   function resetForm() {
@@ -480,6 +513,28 @@
           </div>
         </div>
 
+        <!-- Saudações Contextuais -->
+        <div class="flex flex-col gap-space-xs">
+          <span class="font-label-ui text-label-ui uppercase tracking-wider text-outline">Saudações Contextuais (Horário Local)</span>
+          <div class="flex flex-wrap gap-space-xs font-mono">
+            {#each [
+              { tag: '{{greeting}}', label: 'Bom dia / Boa tarde / Boa noite' },
+              { tag: '{{greeting_lower}}', label: 'bom dia / boa tarde / boa noite' },
+              { tag: '{{saudacao}}', label: 'Alias de saudação' },
+              { tag: '{{period}}', label: 'manhã / tarde / noite' }
+            ] as item}
+              <button
+                class="btn-insert-placeholder px-space-sm py-1 bg-surface-container hover:bg-primary/20 hover:text-primary text-on-surface rounded font-label-code text-label-code transition-colors group shadow-xs"
+                onclick={() => insertPlaceholder(item.tag)}
+                type="button"
+              >
+                <span class="text-primary group-hover:underline font-semibold">{item.tag}</span>
+                <span class="text-outline text-label-code-sm ml-1">{item.label}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
+
         <!-- Relógio e Data -->
         <div class="flex flex-col gap-space-xs">
           <span class="font-label-ui text-label-ui uppercase tracking-wider text-outline">Relógio &amp; Calendário (Tick Local)</span>
@@ -487,11 +542,15 @@
             {#each [
               { tag: '{{date}}', label: 'DD/MM/AAAA' },
               { tag: '{{date_iso}}', label: 'AAAA-MM-DD' },
-              { tag: '{{time}}', label: 'HH:MM:SS' },
-              { tag: '{{weekday}}', label: 'Dia da semana (ex: Segunda)' },
-              { tag: '{{day_name}}', label: 'Dia do mês (ex: 15)' },
-              { tag: '{{month_name}}', label: 'Mês (ex: Setembro)' },
-              { tag: '{{year}}', label: 'Ano (ex: 2026)' }
+              { tag: '{{time}}', label: 'HH:MM' },
+              { tag: '{{day}}', label: 'Dia do mês (ex: 15)' },
+              { tag: '{{day_name}}', label: 'Dia da semana por extenso (ex: segunda-feira)' },
+              { tag: '{{weekday}}', label: 'Dia da semana curto (ex: seg)' },
+              { tag: '{{month_name}}', label: 'Mês por extenso (ex: setembro)' },
+              { tag: '{{month}}', label: 'Mês 2 dígitos (ex: 09)' },
+              { tag: '{{year}}', label: 'Ano (ex: 2026)' },
+              { tag: '{{hour}}', label: 'Hora (ex: 14)' },
+              { tag: '{{minute}}', label: 'Minuto (ex: 30)' }
             ] as item}
               <button
                 class="btn-insert-placeholder px-space-sm py-1 bg-surface-container hover:bg-primary/20 hover:text-primary text-on-surface rounded font-label-code text-label-code transition-colors group shadow-xs"

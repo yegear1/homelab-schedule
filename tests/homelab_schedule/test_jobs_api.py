@@ -661,3 +661,30 @@ def test_preview_job_validation_and_errors(client: TestClient, api_key: str) -> 
     )
     assert res_404.status_code == 404
 
+
+def test_preview_job_greetings_and_dynamic_variables(
+    client: TestClient, api_key: str
+) -> None:
+    # 09:30 local -> "Bom dia", "manhã"
+    payload = {
+        "when": "2027-09-15T09:30:00-03:00",
+        "content": (
+            "{{greeting}}, seu aviso das {{hour}}:{{minute}} no dia {{day}}/{{month}} ({{period}})."
+        ),
+        "to": "eu",
+        "title": "Aviso Matinal",
+    }
+    res = client.post("/jobs/preview", headers=_auth(api_key), json=payload)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["rendered_content"] == "Bom dia, seu aviso das 09:30 no dia 15/09 (manhã)."
+    assert body["variables"]["greeting"] == "Bom dia"
+    assert body["variables"]["greeting_lower"] == "bom dia"
+    assert body["variables"]["saudacao"] == "Bom dia"
+    assert body["variables"]["period"] == "manhã"
+    assert body["variables"]["day"] == "15"
+    assert body["variables"]["month"] == "09"
+    assert body["variables"]["hour"] == "09"
+    assert body["variables"]["minute"] == "30"
+
+

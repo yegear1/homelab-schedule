@@ -34,6 +34,18 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-19] Saudações Contextuais e Variáveis Dinâmicas Seguras em Templates
+
+- **Contexto:** Templates de mensagens e lembretes precisavam de saudações adaptadas dinamicamente ao horário local do envio (ex: "Bom dia" / "Boa tarde" / "Boa noite") e granularidade adicional de relógio/calendário (dia do mês numérico, hora, minuto, mês numérico, período) sem abrir brechas de injeção ou usar Jinja2.
+- **Decisão:**
+  - **Janelas Canônicas de Saudação (pt-BR, `America/Sao_Paulo`):**
+    - `05:00` às `11:59` → `Bom dia`, minúsculo `bom dia`, período `manhã`.
+    - `12:00` às `17:59` → `Boa tarde`, minúsculo `boa tarde`, período `tarde`.
+    - `18:00` às `04:59` → `Boa noite`, minúsculo `boa noite`, período `noite`.
+  - **Tags Disponíveis:** `{{greeting}}`, `{{greeting_lower}}`, `{{saudacao}}`, `{{saudacao_lower}}`, `{{period}}`, `{{day}}` (dia do mês 2 dígitos), `{{month}}` (mês 2 dígitos), `{{hour}}` (hora 2 dígitos), `{{minute}}` (minuto 2 dígitos).
+  - **Interpolação Segura sem Jinja:** Substituição estrita ordenada pelo comprimento decrescente das tags para evitar mangling de prefixos (ex: `{{day_name}}` antes de `{{day}}`, `{{greeting_lower}}` antes de `{{greeting}}`). Tags desconhecidas permanecem estritamente literais.
+  - **Integração End-to-End:** Refletido imediatamente no envio real (`due-tick`), no `POST /jobs/preview`, no MCP stdio e na UI do operador (`TemplatesPage.svelte` com `VALID_TAGS`, simulação reativa e botões de inserção rápida).
+
 ### [2026-09-19] Tool de Preview / Dry-Run de Agendamento (MCP preview e POST /jobs/preview)
 
 - **Contexto:** Agentes operando no MCP e chamadores da API precisavam testar e inspecionar previamente a resolução do destinatário (contato e telefone normalizado), o cálculo determinístico do próximo disparo (`next_run_at` em UTC e horário local formatado) e a prévia da mensagem com interpolação de tags de calendário e contato (`{{name}}`, `{{date}}`, `{{time}}`, `{{weekday}}`, `{{day_name}}`, `{{month_name}}`, `{{year}}`) antes de efetivamente persistir no SQLite.

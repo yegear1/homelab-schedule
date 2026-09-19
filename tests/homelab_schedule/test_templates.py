@@ -1,6 +1,10 @@
 from datetime import UTC, datetime
 
-from homelab_schedule.templates import render_outbound_message, render_template
+from homelab_schedule.templates import (
+    extract_template_variables,
+    render_outbound_message,
+    render_template,
+)
 
 
 def test_render_template_all_placeholders() -> None:
@@ -55,3 +59,73 @@ def test_render_outbound_prefers_catalog_and_name() -> None:
         catalog_body="Olá {{name}}, {{date}}.",
     )
     assert sent == "Olá Lia, 11/09/2026."
+
+
+def test_render_template_contextual_greetings() -> None:
+    # 08:00 local (11:00 UTC) -> Morning ("Bom dia", "manhã")
+    dt_morning = datetime(2026, 9, 11, 11, 0, 0, tzinfo=UTC)
+    msg_morning = render_template(
+        "{{greeting}}, {{name}}! Desejo um(a) ótimo(a) {{period}}. {{saudacao_lower}} a todos!",
+        dt_morning,
+        variables={"name": "Alice"},
+    )
+    assert msg_morning == "Bom dia, Alice! Desejo um(a) ótimo(a) manhã. bom dia a todos!"
+
+    # 14:00 local (17:00 UTC) -> Afternoon ("Boa tarde", "tarde")
+    dt_afternoon = datetime(2026, 9, 11, 17, 0, 0, tzinfo=UTC)
+    msg_afternoon = render_template(
+        "{{greeting_lower}}! {{saudacao}}! Período: {{period}}.",
+        dt_afternoon,
+    )
+    assert msg_afternoon == "boa tarde! Boa tarde! Período: tarde."
+
+    # 20:00 local (23:00 UTC) -> Night ("Boa noite", "noite")
+    dt_night = datetime(2026, 9, 11, 23, 0, 0, tzinfo=UTC)
+    msg_night = render_template(
+        "{{greeting}}, são {{hour}}:{{minute}} da {{period}}.",
+        dt_night,
+    )
+    assert msg_night == "Boa noite, são 20:00 da noite."
+
+    # 03:00 local (06:00 UTC) -> Late night / dawn ("Boa noite", "noite")
+    dt_dawn = datetime(2026, 9, 12, 6, 0, 0, tzinfo=UTC)
+    msg_dawn = render_template("{{greeting}}", dt_dawn)
+    assert msg_dawn == "Boa noite"
+
+
+def test_render_template_dynamic_calendar_and_clock_variables() -> None:
+    # 2026-09-05 14:08 local -> 17:08 UTC
+    dt = datetime(2026, 9, 5, 17, 8, 0, tzinfo=UTC)
+    template = "Dia {{day}}/{{month}}/{{year}} às {{hour}}:{{minute}} ({{day_name}})."
+    rendered = render_template(template, dt)
+    assert rendered == "Dia 05/09/2026 às 14:08 (sábado)."
+
+
+def test_render_template_day_and_day_name_no_collision() -> None:
+    dt = datetime(2026, 9, 11, 15, 30, 0, tzinfo=UTC)
+    template = "{{day_name}} dia {{day}}"
+    rendered = render_template(template, dt)
+    assert rendered == "sexta-feira dia 11"
+
+
+def test_extract_template_variables_all_keys() -> None:
+    dt = datetime(2026, 9, 11, 15, 30, 0, tzinfo=UTC)  # 12:30 local
+    vars_dict = extract_template_variables(dt, dest_name="Carlos")
+    assert vars_dict["name"] == "Carlos"
+    assert vars_dict["date"] == "11/09/2026"
+    assert vars_dict["date_iso"] == "2026-09-11"
+    assert vars_dict["time"] == "12:30"
+    assert vars_dict["day"] == "11"
+    assert vars_dict["month"] == "09"
+    assert vars_dict["year"] == "2026"
+    assert vars_dict["hour"] == "12"
+    assert vars_dict["minute"] == "30"
+    assert vars_dict["weekday"] == "sex"
+    assert vars_dict["day_name"] == "sexta-feira"
+    assert vars_dict["month_name"] == "setembro"
+    assert vars_dict["greeting"] == "Boa tarde"
+    assert vars_dict["greeting_lower"] == "boa tarde"
+    assert vars_dict["saudacao"] == "Boa tarde"
+    assert vars_dict["saudacao_lower"] == "boa tarde"
+    assert vars_dict["period"] == "tarde"
+
