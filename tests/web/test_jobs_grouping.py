@@ -11,10 +11,12 @@ def test_jobs_page_implements_group_clustering_contract() -> None:
     assert "type JobTableRow = GroupedJobRow | SingleJobRow" in content
     assert "let jobTableRows = $derived.by<JobTableRow[]>" in content
 
-    # Verify reactive collapse / expand controls
-    assert "let collapsedGroups = $state<Set<string>>" in content
+    # Verify reactive collapse / expand controls (collapsed by default)
+    assert "let expandedGroups = $state<Set<string>>" in content
     assert "function toggleGroupCollapse" in content
     assert "function toggleAllGroups" in content
+    assert "isAllExpanded ? 'Recolher todos' : 'Expandir todos'" in content
+    assert "expandedGroups.has(row.groupId)" in content
 
     # Verify template selectors for group master row and member rows
     assert "data-group-id={row.groupId}" in content

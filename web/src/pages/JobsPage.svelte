@@ -27,7 +27,7 @@
   // Group & Batch State
   let groupMembers = $state<JobListItem[]>([]);
   let loadingGroupMembers = $state(false);
-  let collapsedGroups = $state<Set<string>>(new Set());
+  let expandedGroups = $state<Set<string>>(new Set());
 
   interface GroupedJobRow {
     type: 'group';
@@ -107,24 +107,31 @@
     jobTableRows.filter((r) => r.type === 'group').length
   );
 
+  let allGroupIds = $derived(
+    jobTableRows
+      .filter((r): r is GroupedJobRow => r.type === 'group')
+      .map((r) => r.groupId)
+  );
+
+  let isAllExpanded = $derived(
+    allGroupIds.length > 0 && allGroupIds.every((id) => expandedGroups.has(id))
+  );
+
   function toggleGroupCollapse(groupId: string) {
-    const next = new Set(collapsedGroups);
+    const next = new Set(expandedGroups);
     if (next.has(groupId)) {
       next.delete(groupId);
     } else {
       next.add(groupId);
     }
-    collapsedGroups = next;
+    expandedGroups = next;
   }
 
   function toggleAllGroups() {
-    const allGroupIds = jobTableRows
-      .filter((r): r is GroupedJobRow => r.type === 'group')
-      .map((r) => r.groupId);
-    if (collapsedGroups.size > 0) {
-      collapsedGroups = new Set();
+    if (isAllExpanded) {
+      expandedGroups = new Set();
     } else {
-      collapsedGroups = new Set(allGroupIds);
+      expandedGroups = new Set(allGroupIds);
     }
   }
 
@@ -684,7 +691,7 @@
               class="text-[11px] text-secondary hover:underline cursor-pointer ml-1 font-sans"
               onclick={toggleAllGroups}
             >
-              {collapsedGroups.size > 0 ? 'Expandir todos' : 'Recolher todos'}
+              {isAllExpanded ? 'Recolher todos' : 'Expandir todos'}
             </button>
           {/if}
         </div>
@@ -837,7 +844,7 @@
                   </tr>
                 {:else}
                   <!-- LINHA MESTRA DO GRUPO -->
-                  {@const isExpanded = !collapsedGroups.has(row.groupId)}
+                  {@const isExpanded = expandedGroups.has(row.groupId)}
                   {@const isAnySelected = row.items.some((item) => item.id === selectedJob?.id)}
                   <tr
                     class="transition-colors cursor-pointer border-t border-secondary/30 {isAnySelected ? 'bg-secondary/15' : 'bg-surface-container-high/60 hover:bg-surface-container-high/90'}"

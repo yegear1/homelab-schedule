@@ -38,7 +38,7 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 - **Contexto:** Registros de jobs criados via `POST /jobs/batch` compartilham `group_id`, mas apareciam como linhas dispersas e repetitivas na tabela de Agendas Registradas (`JobsPage.svelte`).
 - **Decisão:** Agrupamento reativo derivado (`jobTableRows`) em Svelte 5. Jobs com `group_id` são consolidados sob uma linha mestra de grupo (`GroupedJobRow`) com resumo de status, prévia de contatos/aliases, ações em lote (`POST /jobs/group/{group_id}/run` e `/cancel`) e alternador expansível.
-- **Linhas Filhas:** Exibidas logo abaixo com guia visual (`border-l-4 border-l-secondary/60` e `subdirectory_arrow_right`), mantendo seleção individual, perfil do contato e ações atômicas (`Disparar`, `Editar`, `Cancelar`). Grupos iniciam abertos por padrão e são mantidos expandidos sempre que um de seus membros estiver selecionado no painel de inspeção.
+- **Linhas Filhas:** Exibidas logo abaixo com guia visual (`border-l-4 border-l-secondary/60` e `subdirectory_arrow_right`), mantendo seleção individual, perfil do contato e ações atômicas (`Disparar`, `Editar`, `Cancelar`). Grupos iniciam recolhidos por padrão (`expandedGroups = new Set()`); o clique na linha mestre ou no alternador (`unfold_more` / `Expandir todos`) expande as linhas filhas e inspeciona o primeiro membro.
 
 ### [2026-09-13] Tema sempre branco (tokens RGB + alpha)
 
