@@ -5,7 +5,13 @@
   import type { Contact, Job, JobListItem, JobListFilter, JobKind, JobRun, MessageTemplate } from '../lib/types';
   import RescheduleModal from '../components/RescheduleModal.svelte';
   import ContactPickerModal from '../components/ContactPickerModal.svelte';
+  import JobTimelineView from '../components/JobTimelineView.svelte';
+  import JobCalendarView from '../components/JobCalendarView.svelte';
   import { focusTrap } from '../lib/focusTrap';
+
+  let activeView = $state<'table' | 'timeline' | 'calendar'>('table');
+  let allRuns = $state<JobRun[]>([]);
+  let loadingAllRuns = $state(false);
 
   let jobs = $state<JobListItem[]>([]);
   let selectedJob = $state<Job | null>(null);
@@ -200,17 +206,32 @@
     };
   }
 
+  async function loadAllRuns() {
+    loadingAllRuns = true;
+    try {
+      allRuns = await api.getAllJobRuns(100);
+    } catch {
+      allRuns = [];
+    } finally {
+      loadingAllRuns = false;
+    }
+  }
+
   async function loadJobs() {
     loading = true;
     errorMsg = null;
     try {
-      jobs = await api.getJobs({
-        status: filterStatus,
-        from: filterFrom ? new Date(filterFrom).toISOString() : undefined,
-        to: filterTo ? new Date(filterTo).toISOString() : undefined,
-        phone: filterPhone.trim() || undefined,
-        limit: filterLimit || undefined,
-      });
+      const [fetchedJobs] = await Promise.all([
+        api.getJobs({
+          status: filterStatus,
+          from: filterFrom ? new Date(filterFrom).toISOString() : undefined,
+          to: filterTo ? new Date(filterTo).toISOString() : undefined,
+          phone: filterPhone.trim() || undefined,
+          limit: filterLimit || undefined,
+        }),
+        loadAllRuns(),
+      ]);
+      jobs = fetchedJobs;
 
       if (jobs.length > 0) {
         if (!selectedJob || !jobs.find((j) => j.id === selectedJob?.id)) {
@@ -765,8 +786,40 @@
         </div>
       </div>
 
-      <!-- Tabela Estruturada de Recados -->
-      <div class="overflow-x-auto w-full">
+      <!-- Segmented View Mode Switcher -->
+      <div class="flex items-center gap-1 p-1 bg-surface-container-lowest rounded border border-outline-variant/10 mb-space-sm w-fit" id="view-mode-switcher">
+        <button
+          type="button"
+          id="tab-view-table"
+          class="px-2.5 py-1 rounded text-[12px] font-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer {activeView === 'table' ? 'bg-primary text-on-primary font-semibold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
+          onclick={() => (activeView = 'table')}
+        >
+          <span class="material-symbols-outlined text-[15px]">table_rows</span>
+          <span>Tabela</span>
+        </button>
+        <button
+          type="button"
+          id="tab-view-timeline"
+          class="px-2.5 py-1 rounded text-[12px] font-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer {activeView === 'timeline' ? 'bg-primary text-on-primary font-semibold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
+          onclick={() => (activeView = 'timeline')}
+        >
+          <span class="material-symbols-outlined text-[15px]">timeline</span>
+          <span>Linha do Tempo</span>
+        </button>
+        <button
+          type="button"
+          id="tab-view-calendar"
+          class="px-2.5 py-1 rounded text-[12px] font-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer {activeView === 'calendar' ? 'bg-primary text-on-primary font-semibold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
+          onclick={() => (activeView = 'calendar')}
+        >
+          <span class="material-symbols-outlined text-[15px]">calendar_month</span>
+          <span>Calendário</span>
+        </button>
+      </div>
+
+      {#if activeView === 'table'}
+        <!-- Tabela Estruturada de Recados -->
+        <div class="overflow-x-auto w-full">
         <table class="w-full min-w-[660px] table-fixed text-left font-body-sm text-body-sm text-on-surface">
           <colgroup>
             <col style="width: 145px;" class="w-[145px]" />
@@ -1214,7 +1267,31 @@
           </tbody>
         </table>
       </div>
-    </section>
+    {:else if activeView === 'timeline'}
+      <JobTimelineView
+        jobs={jobs}
+        runs={allRuns}
+        selectedJobId={selectedJob?.id ?? null}
+        contactsByPhone={contactsByPhone}
+        onSelectJob={inspectJob}
+        onRunJob={handleRun}
+        onRetryJob={handleRetry}
+        onCancelJob={handleCancel}
+        onOpenReschedule={openReschedule}
+        onRefreshRuns={loadAllRuns}
+        loadingRuns={loadingAllRuns}
+      />
+    {:else if activeView === 'calendar'}
+      <JobCalendarView
+        jobs={jobs}
+        runs={allRuns}
+        selectedJobId={selectedJob?.id ?? null}
+        contactsByPhone={contactsByPhone}
+        onSelectJob={inspectJob}
+        onRunJob={handleRun}
+      />
+    {/if}
+  </section>
 
     <!-- WIDGET 3: JOB DETAIL (wdg-job-detail) - 5 cols on Desktop -->
     {#if selectedJob}

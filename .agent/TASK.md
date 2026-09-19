@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[02.6]`
-- **Título:** Visão em Calendário / Linha do Tempo na UI
+- **ID:** `[02.7]`
+- **Título:** Importação / Exportação e Backup do SQLite
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Visualização cronológica e/ou em calendário dos agendamentos e histórico de disparos para acompanhamento temporal intuitivo na interface web do operador.
+- **Contexto:** Mecanismo seguro de backup e exportação/importação dos dados SQLite (jobs, contatos, templates e histórico) com validação de integridade.
 
 ---
 
@@ -18,6 +18,7 @@
 
 Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
+- [02.6] Visão em Calendário / Linha do Tempo na UI
 - [02.5] Histórico de Execuções (job_runs / auditoria de disparos)
 - [02.4] Dead-Letter e Ação Rápida de Re-enfileiramento (Retry Manual na UI e API)
 - [02.3] Saudações e Variáveis Dinâmicas Seguras em Templates ({{greeting}}, {{time}}, {{date}})
@@ -28,7 +29,6 @@ Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] Importação / Exportação e Backup do SQLite
 - [ ] Contas: OTP + senha + sessão (adiado)
 
 ---

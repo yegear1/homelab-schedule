@@ -34,6 +34,15 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-19] Visão em Calendário e Linha do Tempo na UI (Svelte 5 Runes)
+
+- **Contexto:** Operadores precisavam de acompanhamento temporal intuitivo na interface web para além da visualização tabular estática, permitindo inspecionar a densidade cronológica dos agendamentos futuros (`next_run_at`) e correlacionar visualmente com o histórico de execuções passadas (`job_runs` / `ran_at`).
+- **Decisão:**
+  - **Alternador Segmentado no Header:** Em `Agendas Registradas` (`#wdg-job-list`), introduzido controle segmentado acessível (`tab-view-table`, `tab-view-timeline`, `tab-view-calendar`) com estado reativo `activeView: 'table' | 'timeline' | 'calendar'`, preservando a tabela clássica como default e permitindo alternância instantânea.
+  - **Componente Linha do Tempo (`JobTimelineView.svelte`):** Renderiza fluxo vertical cronológico conectado por marcadores visuais. Divide eventos em seções: "Próximos Agendamentos" (ordenados por vencimento ascendente, com cálculo de tempo relativo pt-BR e identificação de Dead-Letter) e "Histórico de Execuções" (ordenadas por data descendente com latência em ms e status HTTP do despachante). Filtro rápido permite alternar entre "Todos", "Futuros" e "Histórico".
+  - **Componente Calendário Mensal (`JobCalendarView.svelte`):** Grade mensal interativa calculada dinamicamente, com navegação de meses (Anterior, Próximo, "Hoje"), destaque visual para a data atual, chips com contagem diária de agendamentos e execuções com badge de erro/alerta, e painel de inspeção de eventos por data selecionada.
+  - **Integração Unificada com Drawer de Detalhes:** Ambas as novas visões reutilizam a seleção ativa `selectedJob` e as ações de disparo imediato (`handleRun`), re-enfileiramento (`handleRetry`), cancelamento e reagendamento, mantendo sincronia completa com `#wdg-job-detail`.
+
 ### [2026-09-19] Histórico de Execuções (job_runs / auditoria de disparos, SQLite v8)
 
 - **Contexto:** Necessidade de rastreabilidade ponta a ponta de cada tentativa de envio realizada pelo scheduler (loop `due-tick`) ou por disparos manuais (`run_now`), capturando instante exato, gatilho, latência do gateway HTTP, status code e erros ocorridos.
