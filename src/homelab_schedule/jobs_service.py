@@ -10,8 +10,10 @@ from homelab_schedule.contacts_service import ContactService
 from homelab_schedule.cron import next_cron_utc
 from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.errors import EntityNotFound, GatekeeperError, YamlJobImmutable
+from homelab_schedule.mcp_when import default_title, parse_when
 from homelab_schedule.repository import JobRepository
-from homelab_schedule.templates import render_outbound_message
+from homelab_schedule.store import APP_TZ
+from homelab_schedule.templates import extract_template_variables, render_outbound_message
 from homelab_schedule.templates_repository import TemplateRepository
 from schemas.api import (
     CreateBatchJobsRequest,
@@ -20,6 +22,8 @@ from schemas.api import (
     GroupActionResponse,
     JobListFilter,
     JobListItem,
+    PreviewJobRequest,
+    PreviewJobResponse,
     RescheduleJobRequest,
     RunNowResponse,
 )
@@ -103,6 +107,77 @@ class JobService:
             count=len(created_jobs),
             jobs=created_jobs,
         )
+
+    def preview(self, payload: PreviewJobRequest) -> PreviewJobResponse:
+        dest = (
+            normalize_whatsapp_phone(payload.target_number)
+            if payload.target_number
+            else self._resolve_to(payload.to)
+        )
+        dest_name = self._contacts.name_for_phone(dest) if self._contacts else None
+        raw_content, catalog_body = self._preview_content(payload)
+        title = payload.title if payload.title else default_title(raw_content)
+
+        kind, run_at, cron_expr, next_run_at = self._preview_schedule(payload)
+        next_run_at_local = (
+            next_run_at.astimezone(APP_TZ).strftime("%Y-%m-%d %H:%M:%S %z")
+            if next_run_at
+            else None
+        )
+
+        eval_when = next_run_at or self._now()
+        rendered_content = render_outbound_message(
+            stored_content=raw_content,
+            when=eval_when,
+            dest_name=dest_name,
+            catalog_body=catalog_body,
+        )
+        variables = extract_template_variables(eval_when, dest_name)
+
+        return PreviewJobResponse(
+            title=title,
+            to=payload.to,
+            target_number=dest,
+            recipient_name=dest_name,
+            kind=kind,
+            run_at=run_at,
+            cron_expr=cron_expr,
+            next_run_at=next_run_at,
+            next_run_at_local=next_run_at_local,
+            template_id=payload.template_id,
+            raw_content=raw_content,
+            rendered_content=rendered_content,
+            variables=variables,
+        )
+
+    def _preview_content(self, payload: PreviewJobRequest) -> tuple[str, str | None]:
+        if payload.template_id:
+            if self._templates is None:
+                raise EntityNotFound("template not found")
+            stored = self._templates.get(payload.template_id)
+            if stored is None:
+                raise EntityNotFound("template not found")
+            return stored.body, stored.body
+        if payload.content is not None:
+            return payload.content, None
+        return "", None
+
+    def _preview_schedule(
+        self, payload: PreviewJobRequest
+    ) -> tuple[JobKind, datetime | None, str | None, datetime | None]:
+        if payload.when:
+            kind, run_at, cron_expr = parse_when(payload.when, now=self._now())
+        else:
+            if payload.kind is None:
+                raise ValueError("kind is required when when is omitted")
+            kind, run_at, cron_expr = payload.kind, payload.run_at, payload.cron_expr
+
+        next_run_at: datetime | None = None
+        if kind is JobKind.ONCE and run_at is not None:
+            next_run_at = run_at
+        elif kind is JobKind.CRON and cron_expr is not None:
+            next_run_at = next_cron_utc(cron_expr, self._now())
+        return kind, run_at, cron_expr, next_run_at
 
     def get(self, job_id: str) -> Job:
         job = self._repo.get(job_id)

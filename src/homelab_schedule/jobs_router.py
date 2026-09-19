@@ -12,6 +12,8 @@ from schemas.api import (
     GroupActionResponse,
     JobListFilter,
     JobListResponse,
+    PreviewJobRequest,
+    PreviewJobResponse,
     RescheduleJobRequest,
     RunNowResponse,
 )
@@ -54,6 +56,13 @@ def list_jobs(
 @router.post("", response_model=Job, status_code=status.HTTP_201_CREATED)
 def create_job(request: Request, _: Auth, payload: CreateJobRequest) -> Job:
     return _service(request).create(payload)
+
+
+@router.post("/preview", response_model=PreviewJobResponse)
+def preview_job(
+    request: Request, _: Auth, payload: PreviewJobRequest
+) -> PreviewJobResponse:
+    return _service(request).preview(payload)
 
 
 @router.post("/batch", response_model=CreateBatchJobsResponse, status_code=status.HTTP_201_CREATED)

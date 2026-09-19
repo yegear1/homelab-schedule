@@ -30,7 +30,7 @@ O MCP é caneta do agente, não um segundo OpenAPI. Superfície fechada: [ADR-00
 
 ### Passo 1: Precisa de tool nova?
 
-Default: **não**. Cinco tools (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`). `PATCH` é proibido.
+Default: **não**. Seis tools (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`, `preview`). `PATCH` é proibido.
 
 ### Passo 2: Schema mínimo
 
@@ -83,7 +83,7 @@ Atualize `.agent/CHANNELS.md` e a skill `agenda-job` se a semântica mudar.
 
 ## 7. Checklist
 
-- [ ] Tool está na lista das quatro (ou débito documentado)
+- [ ] Tool está na lista da superfície fechada (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`, `preview`) (ou débito documentado)
 - [ ] Chamada só HTTP
 - [ ] Lista curta
 - [ ] CHANNELS.md alinhado

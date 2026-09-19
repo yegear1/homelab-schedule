@@ -39,6 +39,8 @@ Não usar: disparar `/send` na hora sem job (isso não é agenda). Bug de outro 
 
 Se `when` estiver ambíguo, **uma** pergunta. Não grave.
 
+Dica: utilize a tool MCP `preview` para inspecionar previamente a resolução do contato, cálculo de `next_run_at` e renderização de variáveis (`{{name}}`, `{{date}}`, etc.) antes de persistir.
+
 ### Passo 2: Gravar pela caneta certa
 
 - Recado pontual ou cron ad-hoc → MCP `schedule` (ou `POST /jobs`).

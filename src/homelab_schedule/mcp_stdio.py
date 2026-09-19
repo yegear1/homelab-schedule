@@ -7,6 +7,7 @@ from homelab_schedule.mcp_tools import (
     handle_cancel,
     handle_get_item,
     handle_list_agenda,
+    handle_preview,
     handle_reschedule,
     handle_schedule,
 )
@@ -70,6 +71,26 @@ def build_mcp(api: AgendaApi) -> MCPServer:
         interval +2h, or friendly time amanhã 10h).
         """
         return handle_reschedule(api, job_id, when)
+
+    @mcp.tool()
+    def preview(
+        when: str,
+        content: str | None = None,
+        to: str = "eu",
+        title: str | None = None,
+        template_id: str | None = None,
+    ) -> str:
+        """Dry-run / preview an agenda job without saving. Shows recipient resolution,
+        next_run_at (UTC and local), and rendered message content with dynamic variables.
+        """
+        return handle_preview(
+            api,
+            when=when,
+            content=content,
+            to=to,
+            title=title,
+            template_id=template_id,
+        )
 
     return mcp
 

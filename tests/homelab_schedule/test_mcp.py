@@ -6,9 +6,11 @@ import httpx
 import pytest
 
 from homelab_schedule.mcp_http import AgendaApi
+from homelab_schedule.mcp_stdio import build_mcp
 from homelab_schedule.mcp_tools import (
     handle_cancel,
     handle_list_agenda,
+    handle_preview,
     handle_reschedule,
     handle_schedule,
 )
@@ -403,4 +405,79 @@ def test_list_agenda_with_invalid_period_returns_json_error() -> None:
     payload = json.loads(text)
     assert "error" in payload
     assert "Não foi possível interpretar o período" in payload["error"]
+
+
+def test_handle_preview_success() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "title": "Aluguel",
+                "to": "eu",
+                "target_number": "5511999998888@c.us",
+                "recipient_name": "Yegear",
+                "kind": "once",
+                "next_run_at": "2027-09-12T17:00:00+00:00",
+                "next_run_at_local": "2027-09-12 14:00:00 -03:00",
+                "template_id": None,
+                "raw_content": "Pagar {{name}}",
+                "rendered_content": "Pagar Yegear",
+                "variables": {"name": "Yegear"},
+            },
+        )
+
+    api = _api(handler)
+    text = handle_preview(
+        api,
+        when="amanhã 14h",
+        content="Pagar {{name}}",
+        to="eu",
+        title="Aluguel",
+    )
+    payload = json.loads(text)
+    assert payload["title"] == "Aluguel"
+    assert payload["target_number"] == "5511999998888@c.us"
+    assert payload["rendered_content"] == "Pagar Yegear"
+    assert len(seen) == 1
+    assert seen[0].url.path == "/jobs/preview"
+    assert seen[0].headers["x-api-key"] == "secret-key"
+    body = json.loads(seen[0].content)
+    assert body["when"] == "amanhã 14h"
+    assert body["content"] == "Pagar {{name}}"
+    assert body["to"] == "eu"
+
+
+def test_handle_preview_error_returns_clean_json() -> None:
+    def handler_404(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, json={"detail": "template not found"})
+
+    api = _api(handler_404)
+    text = handle_preview(api, when="amanhã 14h", template_id="inexistente")
+    payload = json.loads(text)
+    assert payload == {"error": "template not found"}
+
+    def handler_422(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            422,
+            json={"detail": [{"loc": ["body", "when"], "msg": "Value error, Expressão inválida"}]},
+        )
+
+    api_422 = _api(handler_422)
+    text_422 = handle_preview(api_422, when="expressao_invalida")
+    payload_422 = json.loads(text_422)
+    assert payload_422 == {"error": "Expressão inválida"}
+
+
+def test_build_mcp_registers_preview_tool() -> None:
+    api = _api(lambda req: httpx.Response(200))
+    server = build_mcp(api)
+    # Check that preview is in registered tools
+    assert "preview" in server._tool_manager._tools
+    preview_tool = server._tool_manager._tools["preview"]
+    assert "when" in preview_tool.parameters["properties"]
+    assert "content" in preview_tool.parameters["properties"]
+    assert "template_id" in preview_tool.parameters["properties"]
 

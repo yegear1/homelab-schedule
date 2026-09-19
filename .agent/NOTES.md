@@ -34,6 +34,14 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-19] Tool de Preview / Dry-Run de Agendamento (MCP preview e POST /jobs/preview)
+
+- **Contexto:** Agentes operando no MCP e chamadores da API precisavam testar e inspecionar previamente a resolução do destinatário (contato e telefone normalizado), o cálculo determinístico do próximo disparo (`next_run_at` em UTC e horário local formatado) e a prévia da mensagem com interpolação de tags de calendário e contato (`{{name}}`, `{{date}}`, `{{time}}`, `{{weekday}}`, `{{day_name}}`, `{{month_name}}`, `{{year}}`) antes de efetivamente persistir no SQLite.
+- **Decisão:**
+  - **Endpoint `POST /jobs/preview`:** Rota autenticada (`x-api-key`) que executa dry-run completo: resolve destinatário via aliases e catálogo de contatos, avalia expressões de agendamento (`when` amigável/ISO/cron ou `kind`/`run_at`/`cron_expr`), renderiza variáveis com base no `next_run_at` calculado e extrai o mapa de variáveis resolvidas.
+  - **Garantia Estrita de Dry-Run:** Operação puramente em memória — zero inserts no repositório SQLite, sem disparo de `asyncio.Event` (`notebook_changed`) e sem contato com o gateway de envio.
+  - **Tool MCP `preview`:** Integrada à superfície fechada do MCP stdio (`build_mcp`) chamando `POST /jobs/preview`, mantendo tokens compactos e mensagens de erro amigáveis sem expor CRUD genérico.
+
 ### [2026-09-19] Filtros Avançados e Busca na Caneta MCP (list_agenda) e HTTP
 
 - **Contexto:** Agentes operando no MCP e chamadores da API precisavam filtrar jobs por destinatário/alias específico, realizar busca textual (por exemplo "remédio", "condomínio") e consultar janelas temporais relativas ("hoje", "amanhã", "esta semana", "7d", etc.) sem receber listas excessivas.

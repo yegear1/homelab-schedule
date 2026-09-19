@@ -17,6 +17,7 @@ Implementação neste repo: `uv run homelab-schedule-mcp` (stdio). Chama a HTTP 
 | `get_item` | Um id, com `content` |
 | `cancel` | Um id (sqlite). YAML → erro explícito “edite routines.yaml” |
 | `reschedule` | Reativa/adia recado (`when` novo: ISO, cron, intervalo relativo `+2h` ou amigável `amanhã 10h`) com mesmo id |
+| `preview` | Dry-run / simulação sem persistência: resolução de destinatário, cálculo de `next_run_at` (UTC e local) e renderização prévia de variáveis (`{{name}}`, `{{date}}`, etc.) |
 
 Skill do operador no Cursor: [`anotar-agenda`](skills/anotar-agenda/SKILL.md). Contrato de campos: [`agenda-job`](skills/agenda-job/SKILL.md).
 

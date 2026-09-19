@@ -139,3 +139,54 @@ class GroupActionResponse(BaseModel):
     affected: int
     status: str
 
+
+class PreviewJobRequest(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    to: str = "eu"
+    target_number: str | None = None
+    when: str | None = None
+    kind: JobKind | None = None
+    run_at: datetime | None = None
+    cron_expr: str | None = None
+    template_id: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_preview_fields(self) -> "PreviewJobRequest":
+        if self.content is not None and self.template_id:
+            raise ValueError("provide content or template_id, not both")
+        if not self.when and self.kind is None:
+            raise ValueError("either when or kind must be provided")
+        if self.when:
+            from homelab_schedule.mcp_when import parse_when
+
+            try:
+                parse_when(self.when)
+            except ValueError as exc:
+                raise ValueError(str(exc)) from exc
+        else:
+            if self.kind is JobKind.ONCE and self.run_at is None:
+                raise ValueError("kind=once requires run_at")
+            if self.kind is JobKind.CRON:
+                if self.cron_expr is None:
+                    raise ValueError("kind=cron requires cron_expr")
+                if len(self.cron_expr.split()) != 5:
+                    raise ValueError("cron_expr must have five fields")
+        return self
+
+
+class PreviewJobResponse(BaseModel):
+    title: str
+    to: str
+    target_number: str
+    recipient_name: str | None = None
+    kind: JobKind
+    run_at: datetime | None = None
+    cron_expr: str | None = None
+    next_run_at: datetime | None = None
+    next_run_at_local: str | None = None
+    template_id: str | None = None
+    raw_content: str
+    rendered_content: str
+    variables: dict[str, str] = Field(default_factory=dict)
+

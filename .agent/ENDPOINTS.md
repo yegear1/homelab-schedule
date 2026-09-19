@@ -82,6 +82,49 @@ Cria múltiplos recados vinculados pelo mesmo `group_id` (um job individual por 
 
 `201` → `{ "group_id": "grp_...", "count": 2, "jobs": [ Job, ... ] }`.
 
+### `POST /jobs/preview`
+
+Dry-run de agendamento (sem inserção no SQLite, sem disparo, sem mutação). Simula a resolução do destinatário, cálculo de `next_run_at` (UTC e horário local em `America/Sao_Paulo`) e renderização completa de variáveis (`{{name}}`, `{{date}}`, `{{time}}`, `{{weekday}}`, `{{day_name}}`, `{{month_name}}`, `{{year}}`).
+
+Aceita `when` (linguagem natural / ISO / cron) ou combinação explícita `kind` + `run_at` / `cron_expr`. Conteúdo via `content` ou `template_id`.
+
+```json
+{
+  "when": "amanhã 14h",
+  "content": "Olá {{name}}, lembrete para {{date}} às {{time}}.",
+  "to": "eu"
+}
+```
+
+`200` →
+```json
+{
+  "title": "Olá {{name}}, lembrete para {{date}} às {{time}}.",
+  "to": "eu",
+  "target_number": "5511999998888@c.us",
+  "recipient_name": "Yegear",
+  "kind": "once",
+  "run_at": "2026-09-20T17:00:00-03:00",
+  "cron_expr": null,
+  "next_run_at": "2026-09-20T17:00:00+00:00",
+  "next_run_at_local": "2026-09-20 14:00:00 -03:00",
+  "template_id": null,
+  "raw_content": "Olá {{name}}, lembrete para {{date}} às {{time}}.",
+  "rendered_content": "Olá Yegear, lembrete para 20/09/2026 às 14:00.",
+  "variables": {
+    "name": "Yegear",
+    "date": "20/09/2026",
+    "date_iso": "2026-09-20",
+    "time": "14:00",
+    "weekday": "dom",
+    "day_name": "domingo",
+    "month_name": "setembro",
+    "year": "2026"
+  }
+}
+```
+`401` chave inválida. `404` template não encontrado. `422` validação de campos.
+
 ### `POST /jobs/{id}/run`
 
 Disparo imediato (não altera `once` para `done` se também houver `run_at` futuro — **run now não substitui o agendamento**). `202` `{ "status": "queued", "job_id": "..." }` se o gateway aceitou. `404`. `502` se o gateway falhar (não 202).

@@ -105,3 +105,31 @@ def render_outbound_message(
         tz_name=tz_name,
         variables=variables,
     )
+
+
+def extract_template_variables(
+    when: datetime,
+    dest_name: str | None = None,
+    tz_name: str = "America/Sao_Paulo",
+) -> dict[str, str]:
+    try:
+        tz = ZoneInfo(tz_name)
+        local_dt = when.astimezone(tz)
+    except Exception:
+        local_dt = when
+
+    weekday_idx = local_dt.weekday()
+    month_idx = local_dt.month
+
+    vars_dict: dict[str, str] = {
+        "date": local_dt.strftime("%d/%m/%Y"),
+        "date_iso": local_dt.strftime("%Y-%m-%d"),
+        "time": local_dt.strftime("%H:%M"),
+        "weekday": _WEEKDAYS_SHORT_PT[weekday_idx],
+        "day_name": _WEEKDAYS_PT[weekday_idx],
+        "month_name": _MONTHS_PT[month_idx],
+        "year": str(local_dt.year),
+    }
+    if dest_name:
+        vars_dict["name"] = dest_name
+    return vars_dict

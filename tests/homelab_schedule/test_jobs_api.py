@@ -522,3 +522,142 @@ def test_list_jobs_query_text_search(client: TestClient, api_key: str) -> None:
     ids_combined = {item["id"] for item in res_combined.json()["jobs"]}
     assert ids_combined == {j1["id"]}
 
+
+def test_preview_job_once_friendly_when(client: TestClient, api_key: str) -> None:
+    payload = {
+        "when": "2027-09-12T14:00:00-03:00",
+        "content": "Olá {{name}}, lembrete para {{date}} às {{time}} ({{weekday}} - {{day_name}}).",
+        "to": "eu",
+    }
+    response = client.post("/jobs/preview", headers=_auth(api_key), json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["kind"] == "once"
+    assert body["to"] == "eu"
+    assert body["target_number"] == "5511999998888@c.us"
+    expected_title = (
+        "Olá {{name}}, lembrete para {{date}} às {{time}} ({{weekday}} - {{day_name}})."
+    )
+    assert body["title"] == expected_title
+    assert body["next_run_at"] is not None
+    assert "2027-09-12" in body["next_run_at_local"]
+    assert "14:00:00" in body["next_run_at_local"]
+    assert "12/09/2027" in body["rendered_content"]
+    assert "14:00" in body["rendered_content"]
+    assert "dom" in body["rendered_content"]
+    assert "domingo" in body["rendered_content"]
+    assert body["variables"]["date"] == "12/09/2027"
+    assert body["variables"]["time"] == "14:00"
+    assert body["variables"]["weekday"] == "dom"
+    assert body["variables"]["day_name"] == "domingo"
+
+    # Verify dry-run guarantees: no job was saved to DB
+    listed = client.get("/jobs", headers=_auth(api_key))
+    assert listed.status_code == 200
+    assert len(listed.json()["jobs"]) == 0
+
+
+def test_preview_job_cron(client: TestClient, api_key: str) -> None:
+    payload = {
+        "when": "0 9 * * 1",
+        "content": "Reunião semanal toda segunda às 09:00",
+        "to": "eu",
+        "title": "Reunião Semanal",
+    }
+    response = client.post("/jobs/preview", headers=_auth(api_key), json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["kind"] == "cron"
+    assert body["cron_expr"] == "0 9 * * 1"
+    assert body["title"] == "Reunião Semanal"
+    assert body["next_run_at"] is not None
+    assert body["next_run_at_local"] is not None
+
+
+def test_preview_job_with_contacts_and_template_id(client: TestClient, api_key: str) -> None:
+    # 1. Create a contact
+    contact_res = client.post(
+        "/contacts",
+        headers=_auth(api_key),
+        json={
+            "name": "Maria",
+            "phone": "5511888887777@c.us",
+            "alias": "maria",
+        },
+    )
+    assert contact_res.status_code == 201
+
+    # 2. Create a template
+    tmpl_res = client.post(
+        "/templates",
+        headers=_auth(api_key),
+        json={
+            "name": "Consulta",
+            "body": "Olá {{name}}, sua consulta está marcada para {{date}} às {{time}}.",
+        },
+    )
+    assert tmpl_res.status_code == 201
+    tmpl_id = tmpl_res.json()["id"]
+
+    # 3. Preview using contact alias and template_id
+    preview_res = client.post(
+        "/jobs/preview",
+        headers=_auth(api_key),
+        json={
+            "when": "2027-09-15T10:30:00-03:00",
+            "to": "maria",
+            "template_id": tmpl_id,
+        },
+    )
+    assert preview_res.status_code == 200
+    body = preview_res.json()
+    assert body["to"] == "maria"
+    assert body["target_number"] == "5511888887777@c.us"
+    assert body["recipient_name"] == "Maria"
+    assert body["template_id"] == tmpl_id
+    assert "Olá {{name}}, sua consulta" in body["raw_content"]
+    assert "às {{time}}." in body["raw_content"]
+    assert "Olá Maria, sua consulta" in body["rendered_content"]
+    assert "15/09/2027 às 10:30." in body["rendered_content"]
+    assert body["variables"]["name"] == "Maria"
+    assert body["variables"]["date"] == "15/09/2027"
+    assert body["variables"]["time"] == "10:30"
+
+
+def test_preview_job_validation_and_errors(client: TestClient, api_key: str) -> None:
+    # 1. 401 Unauthorized
+    res_401 = client.post("/jobs/preview", json={"when": "amanhã 10h", "content": "Teste"})
+    assert res_401.status_code == 401
+
+    # 2. 422: both content and template_id provided
+    res_both = client.post(
+        "/jobs/preview",
+        headers=_auth(api_key),
+        json={"when": "amanhã 10h", "content": "A", "template_id": "B"},
+    )
+    assert res_both.status_code == 422
+
+    # 3. 422: neither when nor kind provided
+    res_nokind = client.post(
+        "/jobs/preview",
+        headers=_auth(api_key),
+        json={"content": "Sem agendamento"},
+    )
+    assert res_nokind.status_code == 422
+
+    # 4. 422: invalid when expression
+    res_inv_when = client.post(
+        "/jobs/preview",
+        headers=_auth(api_key),
+        json={"when": "palavra_desconhecida_sem_sentido_algum", "content": "Teste"},
+    )
+    assert res_inv_when.status_code == 422
+
+    # 5. 404: template_id does not exist
+    res_404 = client.post(
+        "/jobs/preview",
+        headers=_auth(api_key),
+        json={"when": "2027-09-12T14:00:00-03:00", "template_id": "non-existent-template"},
+    )
+    assert res_404.status_code == 404
+

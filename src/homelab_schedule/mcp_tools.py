@@ -85,3 +85,24 @@ def handle_reschedule(api: AgendaApi, job_id: str, when: str) -> str:
         )
     except AgendaToolError as exc:
         return compact_json({"error": exc.message})
+
+
+def handle_preview(
+    api: AgendaApi,
+    when: str,
+    content: str | None = None,
+    to: str = "eu",
+    title: str | None = None,
+    template_id: str | None = None,
+) -> str:
+    try:
+        preview = api.preview_job(
+            when=when,
+            content=content,
+            to=to,
+            title=title,
+            template_id=template_id,
+        )
+        return compact_json(preview)
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})

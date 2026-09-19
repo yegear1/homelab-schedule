@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[02.2]`
-- **Título:** Tool de Preview / Dry-Run de Agendamento (renderização de variáveis e cálculo de next_run_at)
+- **ID:** `[02.3]`
+- **Título:** Saudações e Variáveis Dinâmicas Seguras em Templates ({{greeting}}, {{time}}, {{date}})
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Permitir testar e visualizar previamente a resolução de destinatário, cálculo de next_run_at e prévia de mensagem antes da persistência.
+- **Contexto:** Adicionar suporte a saudações contextuais dependentes de horário local (ex: Bom dia / Boa tarde / Boa noite) e variáveis dinâmicas em templates.
 
 ---
 
@@ -18,13 +18,13 @@
 
 Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
+- [02.2] Tool de Preview / Dry-Run de Agendamento (renderização de variáveis e cálculo de next_run_at)
 - [02.1] Filtros Avançados e Busca na Caneta MCP (contato, texto, período relativo)
 
 ---
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] Saudações e Variáveis Dinâmicas Seguras em Templates ({{greeting}}, {{time}}, {{date}})
 - [ ] Dead-Letter e Ação Rápida de Re-enfileiramento (Retry Manual na UI e API)
 - [ ] Histórico de Execuções (job_runs / auditoria de disparos)
 - [ ] Visão em Calendário / Linha do Tempo na UI

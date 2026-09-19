@@ -116,6 +116,28 @@ class AgendaApi:
         response = self._request("POST", f"/jobs/{job_id}/reschedule", json=payload)
         return _json_object(response)
 
+    def preview_job(
+        self,
+        *,
+        when: str,
+        content: str | None = None,
+        to: str = "eu",
+        title: str | None = None,
+        template_id: str | None = None,
+    ) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "when": when,
+            "to": to,
+        }
+        if content is not None:
+            payload["content"] = content
+        if title is not None:
+            payload["title"] = title
+        if template_id is not None:
+            payload["template_id"] = template_id
+        response = self._request("POST", "/jobs/preview", json=payload)
+        return _json_object(response)
+
     def _request(
         self,
         method: str,
@@ -148,7 +170,8 @@ def _raise_http(response: httpx.Response, base_url: str) -> httpx.Response:
     if response.status_code == 401:
         raise AgendaToolError("invalid or missing api key")
     if response.status_code == 404:
-        raise AgendaToolError("job not found")
+        detail = _detail(response)
+        raise AgendaToolError(detail if detail != "request failed" else "job not found")
     if response.status_code == 409:
         raise AgendaToolError("edite routines.yaml")
     if response.status_code >= 500:
@@ -167,6 +190,15 @@ def _detail(response: httpx.Response) -> str:
         detail = body.get("detail")
         if isinstance(detail, str):
             return detail
+        if isinstance(detail, list) and len(detail) > 0:
+            first = detail[0]
+            if isinstance(first, dict):
+                msg = first.get("msg")
+                if isinstance(msg, str):
+                    prefix = "Value error, "
+                    if msg.startswith(prefix):
+                        return msg[len(prefix) :]
+                    return msg
     return "request failed"
 
 
