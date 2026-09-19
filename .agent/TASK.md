@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[00.12]`
-- **Título:** Expressões de intervalo amigáveis no MCP (when)
-- **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Suporte a intervalos relativos e expressões amigáveis de tempo para agendamentos via MCP (`when`), alinhado com as diretrizes de usabilidade e skills da agenda.
+- **ID:** `Nenhum`
+- **Título:** Aguardando priorização do backlog
+- **Status:** `IDLE`
+- **Contexto:** Todas as tarefas planejadas da release foram concluídas. O backlog restante está adiado (Contas: OTP + senha + sessão). Próximo passo: aguardar direcionamento humano ou autorização para [99.1] Preparar Release (Tag Git).
 
 ---
 
@@ -20,6 +20,7 @@ Ciclos `v0.1.0` e `v0.2.0` arquivados em `ARCHIVE.md`.
 
 | Tarefa | Título | Commit(s) | Data |
 |---|---|---|---|
+| [00.12] | Expressões de intervalo amigáveis no MCP (when) | [`b8b1d6f`] | 2026-09-19 |
 | [00.15] | Agrupamento de lote recolhido por padrão na tabela de Agendas | [`26e74a0`] | 2026-09-19 |
 | [00.14] | Exibição agrupada de mensagens de lote na tabela de Agendas | [`12de27c`] | 2026-09-15 |
 | [00.13] | Corrigir seletor de tema (light / system / dark) | [`0900796`] | 2026-09-13 |

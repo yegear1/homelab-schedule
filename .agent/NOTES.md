@@ -34,6 +34,16 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-19] Expressões de Intervalo e Calendário Amigáveis no MCP (when)
+
+- **Contexto:** Chamadas de agendamento e reagendamento via MCP (`schedule` e `reschedule`) exigiam instantes estritos em ISO-8601 ou cron de 5 campos, tornando a anotação natural de lembretes pelo agente suscetível a erros de formatação.
+- **Decisão:** Resolução de linguagem natural e deltas temporais na caneta do MCP (`mcp_when.py`), preservando o contrato estrito da API HTTP (`POST /jobs` e `POST /jobs/{id}/reschedule`).
+- **Capacidades Suportadas:**
+  - Intervalos relativos simples e compostos (`+15m`, `2h`, `em 10 minutos`, `daqui a 1 hora e 30 minutos`, `1h30m`, `30s`, `1w`).
+  - Datas e horários amigáveis no fuso `America/Sao_Paulo` (`APP_TZ`): `amanhã 14h`, `amanha às 15:30`, `hoje 18:00`, `depois de amanhã 09:00`, dias da semana (`segunda 9h`, `próxima sexta às 18h`) e horários diretos (`14:00`, `18h`).
+  - Formatos vigentes intactos: ISO-8601 (com ou sem offset) e cron de 5 campos (com validação estrita dos campos para evitar colisão com frases).
+  - Tratamento de erro gracioso: `parse_when` levanta `ValueError` claro e amigável capturado pelo `AgendaApi` como `AgendaToolError`, devolvendo JSON limpo `{"error": "..."}` no MCP.
+
 ### [2026-09-15] Agrupamento Visual de Mensagens do Mesmo Lote (wdg-job-list)
 
 - **Contexto:** Registros de jobs criados via `POST /jobs/batch` compartilham `group_id`, mas apareciam como linhas dispersas e repetitivas na tabela de Agendas Registradas (`JobsPage.svelte`).
