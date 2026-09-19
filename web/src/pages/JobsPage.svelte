@@ -324,6 +324,40 @@
     }
   }
 
+  async function handleRetry(jobItem: JobListItem | Job) {
+    if (jobItem.source === 'yaml') {
+      toast.error('HTTP 409 Conflict: Recados originados de routines.yaml são imutáveis via API.');
+      return;
+    }
+
+    try {
+      await api.retryJob(jobItem.id);
+      toast.success(`Recado ${jobItem.id} re-enfileirado com sucesso.`);
+      await loadJobs();
+      if (selectedJob?.id === jobItem.id) {
+        selectedJob = await api.getJob(jobItem.id);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao re-enfileirar';
+      toast.error(msg);
+    }
+  }
+
+  async function handleRetryGroup(groupId: string) {
+    try {
+      const res = await api.retryGroup(groupId);
+      toast.success(`Grupo ${groupId}: ${res.affected} recado(s) em erro re-enfileirado(s).`);
+      await loadJobs();
+      if (selectedJob?.group_id === groupId) {
+        await loadGroupMembers(groupId);
+        selectedJob = await api.getJob(selectedJob.id);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao re-enfileirar grupo';
+      toast.error(msg);
+    }
+  }
+
   $effect(() => {
     function handleKeydown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -515,22 +549,34 @@
     </div>
 
     <!-- METRIC 3 -->
-    <div class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden border border-outline-variant/10">
-      <div class="flex items-center justify-between">
+    <button
+      type="button"
+      id="card-metric-errors"
+      class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden border border-outline-variant/10 text-left hover:border-error/40 transition-colors cursor-pointer"
+      onclick={() => {
+        filterStatus = 'error';
+        loadJobs();
+      }}
+      title="Clique para filtrar apenas jobs com erro (Dead-Letter)"
+    >
+      <div class="flex items-center justify-between w-full">
         <span class="font-label-ui text-label-ui text-on-surface-variant uppercase tracking-wider">Erros Registrados</span>
         <span class="material-symbols-outlined text-error text-[18px]">error</span>
       </div>
       <div class="my-space-xs flex items-baseline gap-space-xs">
-        <span class="font-headline-lg text-headline-lg text-error font-semibold font-mono">
+        <span class="font-headline-lg text-headline-lg text-error font-semibold font-mono" id="metric-error-count">
           {jobs.filter((j) => j.status === 'error').length}
         </span>
         <span class="font-label-code-sm text-label-code-sm text-error">jobs com falha</span>
       </div>
-      <div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm pt-space-xs font-mono">
-        <span>Retentativas max:</span>
-        <span class="text-outline">3 tentativas</span>
+      <div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm pt-space-xs font-mono w-full">
+        <span>Dead-Letter:</span>
+        <span class="text-error hover:underline flex items-center gap-0.5">
+          <span>Ver com erro</span>
+          <span class="material-symbols-outlined text-[12px]">arrow_forward</span>
+        </span>
       </div>
-    </div>
+    </button>
 
     <!-- METRIC 4: STORAGE -->
     <div class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden border border-outline-variant/10">
@@ -737,10 +783,17 @@
                     onclick={() => inspectJob(job.id)}
                   >
                     <td class="py-2.5 px-space-sm whitespace-nowrap w-[145px]">
-                      <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono whitespace-nowrap {job.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : job.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
-                        <span class="h-1.5 w-1.5 rounded-full shrink-0 {job.status === 'scheduled' ? 'bg-tertiary' : job.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
-                        <span>{formatStatus(job.status)}</span>
-                      </span>
+                      {#if job.status === 'error'}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono whitespace-nowrap bg-error/15 text-error font-semibold border border-error/30" title={job.last_error ? `Erro: ${job.last_error}` : 'Erro definitivo'}>
+                          <span class="material-symbols-outlined text-[13px]">error</span>
+                          <span>Dead-Letter</span>
+                        </span>
+                      {:else}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-code-sm text-label-code-sm uppercase font-mono whitespace-nowrap {job.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : 'bg-primary/10 text-primary'}">
+                          <span class="h-1.5 w-1.5 rounded-full shrink-0 {job.status === 'scheduled' ? 'bg-tertiary' : 'bg-primary'}"></span>
+                          <span>{formatStatus(job.status)}</span>
+                        </span>
+                      {/if}
                     </td>
 
                     <td class="py-2.5 px-space-sm">
@@ -777,6 +830,15 @@
                           <span class="text-outline-variant font-label-code-sm text-label-code-sm">• tpl: {job.template_id}</span>
                         {/if}
                       </div>
+                      {#if job.status === 'error' && job.last_error}
+                        <div class="text-error flex items-center gap-1 font-mono text-[11px] mt-0.5 truncate max-w-sm" title={job.last_error}>
+                          <span class="material-symbols-outlined text-[12px] shrink-0">report_problem</span>
+                          <span class="truncate">{job.last_error}</span>
+                          {#if job.retry_count}
+                            <span class="text-outline shrink-0 font-semibold">({job.retry_count}/3)</span>
+                          {/if}
+                        </div>
+                      {/if}
                     </td>
 
                     <td class="py-2.5 px-space-sm font-mono whitespace-nowrap w-[180px]">
@@ -802,6 +864,17 @@
 
                     <td class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
                       <div class="flex items-center justify-end gap-1.5 flex-nowrap">
+                        {#if job.source !== 'yaml' && job.status === 'error'}
+                          <button
+                            class="px-2 py-1 rounded bg-error/15 hover:bg-error hover:text-on-error text-error font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1 cursor-pointer"
+                            onclick={() => handleRetry(job)}
+                            title="Re-enfileirar (Resetar erro e agendar)"
+                            type="button"
+                          >
+                            <span class="material-symbols-outlined text-[13px]">replay</span>
+                            <span>Retry</span>
+                          </button>
+                        {/if}
                         <button
                           class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
                           onclick={() => handleRun(job.id)}
@@ -939,6 +1012,18 @@
                     <!-- Ações em Lote do Grupo -->
                     <td class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
                       <div class="flex items-center justify-end gap-1.5 flex-nowrap">
+                        {#if row.source !== 'yaml' && row.statusSummary.error > 0}
+                          <button
+                            class="px-2 py-1 rounded bg-error/15 hover:bg-error hover:text-on-error text-error font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1 cursor-pointer"
+                            onclick={() => handleRetryGroup(row.groupId)}
+                            title="Re-enfileirar {row.statusSummary.error} recado(s) em erro deste grupo"
+                            type="button"
+                          >
+                            <span class="material-symbols-outlined text-[13px]">replay</span>
+                            <span>Retry ({row.statusSummary.error})</span>
+                          </button>
+                        {/if}
+
                         <button
                           class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary text-secondary hover:text-on-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1"
                           onclick={() => handleRunGroup(row.groupId)}
@@ -992,9 +1077,14 @@
                             <span class="material-symbols-outlined text-[14px] text-secondary/70 shrink-0">
                               subdirectory_arrow_right
                             </span>
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono whitespace-nowrap {memberJob.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : memberJob.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
-                              <span class="h-1.5 w-1.5 rounded-full shrink-0 {memberJob.status === 'scheduled' ? 'bg-tertiary' : memberJob.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
-                              <span>{formatStatus(memberJob.status)}</span>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono whitespace-nowrap {memberJob.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : memberJob.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/15 text-error font-semibold border border-error/30'}">
+                              {#if memberJob.status === 'error'}
+                                <span class="material-symbols-outlined text-[11px]">error</span>
+                                <span>Dead-Letter</span>
+                              {:else}
+                                <span class="h-1.5 w-1.5 rounded-full shrink-0 {memberJob.status === 'scheduled' ? 'bg-tertiary' : 'bg-primary'}"></span>
+                                <span>{formatStatus(memberJob.status)}</span>
+                              {/if}
                             </span>
                           </div>
                         </td>
@@ -1028,6 +1118,12 @@
                               <span class="text-outline-variant font-label-code-sm text-label-code-sm">• tpl: {memberJob.template_id}</span>
                             {/if}
                           </div>
+                          {#if memberJob.status === 'error' && memberJob.last_error}
+                            <div class="text-error flex items-center gap-1 font-mono text-[10px] mt-0.5 truncate pl-6 max-w-xs" title={memberJob.last_error}>
+                              <span class="material-symbols-outlined text-[11px] shrink-0">report_problem</span>
+                              <span class="truncate">{memberJob.last_error}</span>
+                            </div>
+                          {/if}
                         </td>
 
                         <!-- Sub-horário (Formato idêntico para manter largura e alinhamento) -->
@@ -1046,6 +1142,17 @@
                         <!-- Sub-ações individuais (Alinhamento e altura idênticos) -->
                         <td class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
                           <div class="flex items-center justify-end gap-1.5 flex-nowrap">
+                            {#if memberJob.source !== 'yaml' && memberJob.status === 'error'}
+                              <button
+                                class="px-2 py-1 rounded bg-error/15 hover:bg-error hover:text-on-error text-error font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1 cursor-pointer"
+                                onclick={() => handleRetry(memberJob)}
+                                title="Re-enfileirar apenas este destinatário"
+                                type="button"
+                              >
+                                <span class="material-symbols-outlined text-[13px]">replay</span>
+                                <span>Retry</span>
+                              </button>
+                            {/if}
                             <button
                               class="px-2 py-1 rounded bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
                               onclick={() => handleRun(memberJob.id)}
@@ -1122,6 +1229,45 @@
             <span class="material-symbols-outlined text-primary text-[16px] mt-0.5">lock</span>
             <div>
               <span class="font-semibold text-on-surface">Recado Declarativo:</span> Definido em <code class="text-primary font-label-code-sm font-mono">routines.yaml</code>. Alterações devem ser commitadas no arquivo YAML. Tentativas de mutação direta retornam <strong>HTTP 409 Conflict</strong>.
+            </div>
+          </div>
+        {/if}
+
+        {#if selectedJob.status === 'error'}
+          <div class="p-space-sm rounded bg-error-container/20 text-on-surface flex flex-col gap-space-xs border border-error/30" id="detail-dead-letter-box">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5 text-error font-semibold font-body-sm">
+                <span class="material-symbols-outlined text-[18px]">report_problem</span>
+                <span>Dead-Letter: Execução com Falha</span>
+              </div>
+              <span class="font-label-code-sm text-label-code-sm font-mono px-1.5 py-0.5 rounded bg-error/20 text-error font-bold" id="detail-dead-letter-retries">
+                {selectedJob.retry_count} / 3 tentativas
+              </span>
+            </div>
+            <div class="font-label-code-sm text-label-code-sm font-mono text-error break-words whitespace-pre-wrap bg-surface-container-lowest/80 p-space-xs rounded border border-error/20" id="detail-dead-letter-error">
+              {selectedJob.last_error || 'Falha permanente sem mensagem detalhada.'}
+            </div>
+            <div class="flex items-center gap-2 pt-1 flex-wrap">
+              {#if selectedJob.source !== 'yaml'}
+                <button
+                  type="button"
+                  class="px-space-sm py-1.5 rounded bg-error text-on-error hover:brightness-110 active:brightness-95 font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 font-semibold cursor-pointer shadow-sm"
+                  id="btn-dead-letter-retry"
+                  onclick={() => handleRetry(selectedJob!)}
+                >
+                  <span class="material-symbols-outlined text-[15px]">replay</span>
+                  <span>Re-enfileirar (Retry)</span>
+                </button>
+              {/if}
+              <button
+                type="button"
+                class="px-space-sm py-1.5 rounded bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 font-semibold cursor-pointer"
+                id="btn-dead-letter-run-now"
+                onclick={() => handleRun(selectedJob!.id)}
+              >
+                <span class="material-symbols-outlined text-[15px]">send</span>
+                <span>Disparar Agora</span>
+              </button>
             </div>
           </div>
         {/if}
@@ -1318,7 +1464,19 @@
         <!-- Comandos do Operador -->
         <div class="pt-space-xs flex flex-col gap-space-xs border-t border-outline-variant/10">
           <span class="font-label-ui text-label-ui uppercase text-outline">Comandos do Operador</span>
-          <div class="grid grid-cols-3 gap-space-xs">
+          <div class="grid {selectedJob.source !== 'yaml' && selectedJob.status === 'error' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'} gap-space-xs">
+            {#if selectedJob.source !== 'yaml' && selectedJob.status === 'error'}
+              <button
+                class="px-space-sm py-2 rounded bg-error text-on-error font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm hover:brightness-110 active:brightness-95 transition-all font-semibold cursor-pointer"
+                id="btn-detail-retry"
+                onclick={() => handleRetry(selectedJob!)}
+                type="button"
+              >
+                <span class="material-symbols-outlined text-[16px]">replay</span>
+                <span>Retry</span>
+              </button>
+            {/if}
+
             <button
               class="px-space-sm py-2 rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm hover:brightness-110 active:brightness-95 transition-all font-semibold"
               id="btn-detail-run"

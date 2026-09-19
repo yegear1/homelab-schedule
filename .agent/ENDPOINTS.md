@@ -40,11 +40,11 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 
 ### `GET /jobs`
 
-Query: `status` (`upcoming` \| `done` \| `paused` \| `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino), `phone` (destino **ou** criador, normalizado; aceita nome/id de contato), `group_id` (filtro por grupo de envio), `query` (busca textual em título ou conteúdo), `limit`. Lista **curta**: sem `content` completo.
+Query: `status` (`upcoming` | `done` | `paused` | `error` | `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino), `phone` (destino **ou** criador, normalizado; aceita nome/id de contato), `group_id` (filtro por grupo de envio), `query` (busca textual em título ou conteúdo), `limit`. Lista **curta**: sem `content` completo.
 
 Query `to` é **fim de intervalo de data**. Filtro de pessoa: `?phone=`. Filtro de grupo: `?group_id=`. Busca textual: `?query=`.
 
-`200` → `{ "jobs": [ JobListItem ] }` (inclui `created_by`, `template_id`, `group_id`, sem `content`)
+`200` → `{ "jobs": [ JobListItem ] }` (inclui `created_by`, `template_id`, `group_id`, `last_error`, `retry_count`, sem `content`)
 
 ### `GET /jobs/{id}`
 
@@ -127,7 +127,7 @@ Aceita `when` (linguagem natural / ISO / cron) ou combinação explícita `kind`
 
 ### `POST /jobs/{id}/run`
 
-Disparo imediato (não altera `once` para `done` se também houver `run_at` futuro — **run now não substitui o agendamento**). `202` `{ "status": "queued", "job_id": "..." }` se o gateway aceitou. `404`. `502` se o gateway falhar (não 202).
+Disparo imediato (não altera `once` para `done` se também houver `run_at` futuro — **run now não substitui o agendamento futuro**). Se o job estiver em `status=error`, o disparo bem-sucedido transita para `status=done`, desativa `enabled=false`, limpa `last_error` e zera `retry_count=0`. `202` `{ "status": "queued", "job_id": "..." }` se o gateway aceitou. `404`. `502` se o gateway falhar (não 202).
 
 ### `POST /jobs/group/{group_id}/run`
 
@@ -141,7 +141,20 @@ Sqlite: pontual → remove ou `status=done` cancelado; cron → `enabled=false` 
 
 Cancela todos os recados sqlite ativos vinculados ao `group_id`. `200` → `{ "group_id": "...", "affected": N, "status": "cancelled" }`.
 
-Não há `PATCH` genérico. Recado sqlite: `POST /jobs/{id}/reschedule`. YAML: edite o arquivo.
+### `POST /jobs/{id}/retry`
+
+Re-enfileira um job com erro (Dead-Letter) para novo ciclo de agendamento:
+- Redefine `status=scheduled`, `enabled=true`, `retry_count=0`, `last_error=null`.
+- Se for job `once` com `run_at` no passado, ajusta `next_run_at` e `run_at` para o instante atual para disparo no próximo tick. Se `cron`, recalcula `next_run_at` para a próxima ocorrência.
+- Aciona `notebook_changed` no asyncio Event.
+- YAML: `409` (imutável). `404` se inexistente.
+- `200` + Job.
+
+### `POST /jobs/group/{group_id}/retry`
+
+Re-enfileira todos os recados em `status=error` vinculados ao `group_id`. `200` → `{ "group_id": "...", "affected": N, "status": "scheduled" }`.
+
+Não há `PATCH` genérico. Recado sqlite: `POST /jobs/{id}/reschedule` ou `POST /jobs/{id}/retry`. YAML: edite o arquivo.
 
 ## Contacts
 

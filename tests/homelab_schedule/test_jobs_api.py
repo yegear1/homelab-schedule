@@ -688,3 +688,232 @@ def test_preview_job_greetings_and_dynamic_variables(
     assert body["variables"]["minute"] == "30"
 
 
+def test_retry_job_auth_and_errors(
+    client: TestClient, app: FastAPI, api_key: str
+) -> None:
+    res_401 = client.post("/jobs/some-id/retry")
+    assert res_401.status_code == 401
+
+    res_404 = client.post("/jobs/non-existent/retry", headers=_auth(api_key))
+    assert res_404.status_code == 404
+
+    # YAML job is 409
+    repo = app.state.repo
+    yaml_job = Job(
+        id="yaml-routine-1",
+        title="Routine",
+        content="Hello",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.CRON,
+        cron_expr="0 9 * * 1",
+        source=JobSource.YAML,
+        status=JobStatus.ERROR,
+        last_error="gateway down",
+        retry_count=3,
+    )
+    repo.insert(yaml_job)
+    res_409 = client.post(f"/jobs/{yaml_job.id}/retry", headers=_auth(api_key))
+    assert res_409.status_code == 409
+
+
+def test_retry_once_job_dead_letter(
+    client: TestClient, app: FastAPI, api_key: str
+) -> None:
+    repo: JobRepository = app.state.repo
+    # Future job: remains scheduled without immediate tick execution
+    job_future = Job(
+        id="dead-once-future",
+        title="Dead Once Future",
+        content="Pagar boleto",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.ONCE,
+        run_at=datetime(2027, 9, 10, 12, 0, tzinfo=UTC),
+        source=JobSource.SQLITE,
+        status=JobStatus.ERROR,
+        enabled=False,
+        next_run_at=None,
+        last_error="422 Unprocessable Entity",
+        retry_count=3,
+    )
+    repo.insert(job_future)
+
+    res = client.post(f"/jobs/{job_future.id}/retry", headers=_auth(api_key))
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "scheduled"
+    assert data["enabled"] is True
+    assert data["retry_count"] == 0
+    assert data["last_error"] is None
+    assert data["next_run_at"] is not None
+
+    persisted = repo.get(job_future.id)
+    assert persisted is not None
+    assert persisted.status == JobStatus.SCHEDULED
+    assert persisted.enabled is True
+    assert persisted.retry_count == 0
+    assert persisted.last_error is None
+
+
+def test_retry_cron_job_dead_letter(
+    client: TestClient, app: FastAPI, api_key: str
+) -> None:
+    repo: JobRepository = app.state.repo
+    job = Job(
+        id="dead-cron-1",
+        title="Dead Cron",
+        content="Rotina semanal",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.CRON,
+        cron_expr="0 9 * * 1",
+        source=JobSource.SQLITE,
+        status=JobStatus.ERROR,
+        enabled=False,
+        last_error="gateway 500 error",
+        retry_count=3,
+    )
+    repo.insert(job)
+
+    res = client.post(f"/jobs/{job.id}/retry", headers=_auth(api_key))
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "scheduled"
+    assert data["enabled"] is True
+    assert data["retry_count"] == 0
+    assert data["last_error"] is None
+    assert data["next_run_at"] is not None
+
+
+def test_retry_group_dead_letter(
+    client: TestClient, app: FastAPI, api_key: str
+) -> None:
+    repo: JobRepository = app.state.repo
+    group_id = "grp_dead_test"
+    j1 = Job(
+        id="grp-j1",
+        title="Aviso 1",
+        content="Msg 1",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.ONCE,
+        run_at=datetime(2027, 9, 10, 10, 0, tzinfo=UTC),
+        source=JobSource.SQLITE,
+        status=JobStatus.ERROR,
+        enabled=False,
+        last_error="422 Invalid",
+        retry_count=3,
+        group_id=group_id,
+    )
+    j2 = Job(
+        id="grp-j2",
+        title="Aviso 2",
+        content="Msg 2",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.ONCE,
+        run_at=datetime(2027, 9, 10, 10, 0, tzinfo=UTC),
+        source=JobSource.SQLITE,
+        status=JobStatus.DONE,
+        enabled=False,
+        last_status="queued",
+        retry_count=0,
+        group_id=group_id,
+    )
+    j3 = Job(
+        id="grp-j3",
+        title="Aviso 3",
+        content="Msg 3",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.ONCE,
+        run_at=datetime(2027, 9, 10, 10, 0, tzinfo=UTC),
+        source=JobSource.SQLITE,
+        status=JobStatus.ERROR,
+        enabled=False,
+        last_error="401 Unauthorized",
+        retry_count=1,
+        group_id=group_id,
+    )
+    repo.insert(j1)
+    repo.insert(j2)
+    repo.insert(j3)
+
+    res = client.post(f"/jobs/group/{group_id}/retry", headers=_auth(api_key))
+    assert res.status_code == 200
+    body = res.json()
+    assert body["group_id"] == group_id
+    assert body["affected"] == 2
+    assert body["status"] == "scheduled"
+
+    # Verify j1 and j3 are now scheduled, j2 remains done
+    assert repo.get("grp-j1").status == JobStatus.SCHEDULED  # type: ignore[union-attr]
+    assert repo.get("grp-j1").retry_count == 0  # type: ignore[union-attr]
+    assert repo.get("grp-j2").status == JobStatus.DONE  # type: ignore[union-attr]
+    assert repo.get("grp-j3").status == JobStatus.SCHEDULED  # type: ignore[union-attr]
+    assert repo.get("grp-j3").retry_count == 0  # type: ignore[union-attr]
+
+
+def test_run_now_on_error_once_job_transitions_to_done(
+    client: TestClient, app: FastAPI, api_key: str
+) -> None:
+    repo: JobRepository = app.state.repo
+    job = Job(
+        id="dead-run-now-1",
+        title="Dead Run Now",
+        content="Mensagem imediata",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.ONCE,
+        run_at=datetime(2026, 9, 10, 12, 0, tzinfo=UTC),
+        source=JobSource.SQLITE,
+        status=JobStatus.ERROR,
+        enabled=False,
+        last_error="failed before",
+        retry_count=3,
+    )
+    repo.insert(job)
+
+    run_res = client.post(f"/jobs/{job.id}/run", headers=_auth(api_key))
+    assert run_res.status_code == 202
+    assert run_res.json() == {"status": "queued", "job_id": job.id}
+
+    persisted = repo.get(job.id)
+    assert persisted is not None
+    assert persisted.status == JobStatus.DONE
+    assert persisted.enabled is False
+    assert persisted.last_error is None
+    assert persisted.retry_count == 0
+    assert persisted.last_status == "queued"
+
+
+def test_job_list_item_includes_last_error_and_retry_count(
+    client: TestClient, app: FastAPI, api_key: str
+) -> None:
+    repo: JobRepository = app.state.repo
+    job = Job(
+        id="inspect-err-1",
+        title="Inspect Error",
+        content="Texto",
+        to="eu",
+        target_number="5511999998888@c.us",
+        kind=JobKind.ONCE,
+        run_at=datetime(2026, 9, 10, 12, 0, tzinfo=UTC),
+        source=JobSource.SQLITE,
+        status=JobStatus.ERROR,
+        enabled=False,
+        last_error="Permanent error 422",
+        retry_count=3,
+    )
+    repo.insert(job)
+
+    res = client.get("/jobs?status=error", headers=_auth(api_key))
+    assert res.status_code == 200
+    jobs = res.json()["jobs"]
+    matching = [j for j in jobs if j["id"] == "inspect-err-1"]
+    assert len(matching) == 1
+    assert matching[0]["last_error"] == "Permanent error 422"
+    assert matching[0]["retry_count"] == 3
+
+

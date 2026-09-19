@@ -34,6 +34,16 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-19] Dead-Letter e Ação Rápida de Re-enfileiramento (Retry Manual na UI e API)
+
+- **Contexto:** Jobs com erro definitivo (ex: 401/422 no gateway) ou com retentativas esgotadas entram em estado de Dead-Letter (`status: error`, `enabled: false`). Operadores e sistemas externos precisavam inspecionar a causa (`last_error`, `retry_count`) e re-enfileirar manualmente os jobs ou grupos sem precisar recriá-los do zero.
+- **Decisão:**
+  - **Inspeção Enriquecida:** Modelo `JobListItem` em `GET /jobs` agora inclui `last_error` e `retry_count`, permitindo auditoria visual direta em listagens e filtros sem chamadas `GET /jobs/{id}` individuais.
+  - **Endpoint `POST /jobs/{id}/retry`:** Reativa o job: redefine `status = scheduled`, `enabled = true`, `retry_count = 0`, `last_error = null`. Se job `once` com tempo no passado, ajusta `next_run_at` e `run_at` para o instante atual e notifica o loop de vencimento (`notebook_changed.set()`). Retorna 409 para jobs YAML.
+  - **Endpoint `POST /jobs/group/{group_id}/retry`:** Re-enfileira em lote todos os jobs do grupo que estejam em `status == error`.
+  - **Conclusão com Sucesso em Run-Now:** Ao executar `POST /jobs/{id}/run` em um job pontual previamente em erro, o retorno `202 Accepted` transita o estado para `done`, `enabled = false`, limpando `last_error` e `retry_count`.
+  - **UI do Operador:** Métrica "Erros Registrados" funciona como filtro rápido para `status=error`, linhas da tabela destacam Dead-Letter com botão "Retry", e painel lateral exibe banner de Dead-Letter com a mensagem do erro e botões para re-enfileirar ou disparar imediatamente.
+
 ### [2026-09-19] Saudações Contextuais e Variáveis Dinâmicas Seguras em Templates
 
 - **Contexto:** Templates de mensagens e lembretes precisavam de saudações adaptadas dinamicamente ao horário local do envio (ex: "Bom dia" / "Boa tarde" / "Boa noite") e granularidade adicional de relógio/calendário (dia do mês numérico, hora, minuto, mês numérico, período) sem abrir brechas de injeção ou usar Jinja2.

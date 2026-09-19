@@ -224,6 +224,7 @@ class JobService:
             "enabled": True,
             "status": JobStatus.SCHEDULED,
             "last_error": None,
+            "retry_count": 0,
         }
         if payload.run_at is not None:
             updates["kind"] = JobKind.ONCE
@@ -241,6 +242,37 @@ class JobService:
         self._notebook_changed.set()
         return stored
 
+    def retry(self, job_id: str) -> Job:
+        job = self.get(job_id)
+        if job.source is JobSource.YAML:
+            raise YamlJobImmutable("edit routines.yaml to change this job")
+
+        now_instant = self._now()
+        next_run = now_instant
+        run_at = job.run_at
+        if job.kind is JobKind.ONCE:
+            if job.run_at is not None and job.run_at > now_instant:
+                next_run = job.run_at
+            else:
+                next_run = now_instant
+                run_at = now_instant
+        elif job.kind is JobKind.CRON and job.cron_expr is not None:
+            next_run = next_cron_utc(job.cron_expr, now_instant)
+
+        updated = job.model_copy(
+            update={
+                "enabled": True,
+                "status": JobStatus.SCHEDULED,
+                "retry_count": 0,
+                "last_error": None,
+                "next_run_at": next_run,
+                "run_at": run_at,
+            }
+        )
+        stored = self._repo.update(updated)
+        self._notebook_changed.set()
+        return stored
+
     async def run_now(self, job_id: str) -> RunNowResponse:
         job = self.get(job_id)
         dest = job.target_number or resolve_destination(job.to, self._aliases)
@@ -251,15 +283,17 @@ class JobService:
         if not result.ok:
             self._repo.update(job.model_copy(update={"last_error": result.last_error}))
             raise GatekeeperError("gatekeeper did not accept the message")
-        self._repo.update(
-            job.model_copy(
-                update={
-                    "last_run_at": now_instant,
-                    "last_status": "queued",
-                    "last_error": None,
-                }
-            )
-        )
+        updates: dict[str, object] = {
+            "last_run_at": now_instant,
+            "last_status": "queued",
+            "last_error": None,
+            "retry_count": 0,
+        }
+        if job.kind is JobKind.ONCE and job.status is JobStatus.ERROR:
+            updates["status"] = JobStatus.DONE
+            updates["enabled"] = False
+            updates["next_run_at"] = None
+        self._repo.update(job.model_copy(update=updates))
         return RunNowResponse(status="queued", job_id=job.id)
 
     def cancel_group(self, group_id: str) -> GroupActionResponse:
@@ -285,6 +319,43 @@ class JobService:
             await self.run_now(job.id)
             affected += 1
         return GroupActionResponse(group_id=group_id, affected=affected, status="queued")
+
+    def retry_group(self, group_id: str) -> GroupActionResponse:
+        jobs = self._repo.list_by_group(group_id)
+        if not jobs:
+            raise EntityNotFound(f"group {group_id} not found")
+        affected = 0
+        now_instant = self._now()
+        for job in jobs:
+            if job.source is JobSource.YAML:
+                continue
+            if job.status is JobStatus.ERROR:
+                next_run = now_instant
+                run_at = job.run_at
+                if job.kind is JobKind.ONCE:
+                    if job.run_at is not None and job.run_at > now_instant:
+                        next_run = job.run_at
+                    else:
+                        next_run = now_instant
+                        run_at = now_instant
+                elif job.kind is JobKind.CRON and job.cron_expr is not None:
+                    next_run = next_cron_utc(job.cron_expr, now_instant)
+
+                updated = job.model_copy(
+                    update={
+                        "enabled": True,
+                        "status": JobStatus.SCHEDULED,
+                        "retry_count": 0,
+                        "last_error": None,
+                        "next_run_at": next_run,
+                        "run_at": run_at,
+                    }
+                )
+                self._repo.update(updated)
+                affected += 1
+        if affected > 0:
+            self._notebook_changed.set()
+        return GroupActionResponse(group_id=group_id, affected=affected, status="scheduled")
 
     def _resolve_to(self, to: str) -> str:
         if self._contacts is not None:

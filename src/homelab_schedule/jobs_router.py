@@ -88,6 +88,11 @@ async def run_group_now(
     return await _service(request).run_group_now(group_id)
 
 
+@router.post("/group/{group_id}/retry", response_model=GroupActionResponse)
+def retry_group(request: Request, _: Auth, group_id: str) -> GroupActionResponse:
+    return _service(request).retry_group(group_id)
+
+
 @router.get("/{job_id}", response_model=Job)
 def get_job(request: Request, _: Auth, job_id: str) -> Job:
     return _service(request).get(job_id)
@@ -106,6 +111,11 @@ def reschedule_job(
     payload: RescheduleJobRequest,
 ) -> Job:
     return _service(request).reschedule(job_id, payload)
+
+
+@router.post("/{job_id}/retry", response_model=Job)
+def retry_job(request: Request, _: Auth, job_id: str) -> Job:
+    return _service(request).retry(job_id)
 
 
 @router.post("/{job_id}/run", response_model=RunNowResponse, status_code=status.HTTP_202_ACCEPTED)

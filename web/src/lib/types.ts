@@ -42,6 +42,8 @@ export interface JobListItem {
   created_by: string;
   template_id: string | null;
   group_id?: string | null;
+  last_error?: string | null;
+  retry_count?: number;
 }
 
 export interface CreateJobRequest {

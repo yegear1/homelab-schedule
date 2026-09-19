@@ -63,6 +63,8 @@ class JobListItem(BaseModel):
     created_by: str = ""
     template_id: str | None = None
     group_id: str | None = None
+    last_error: str | None = None
+    retry_count: int = 0
 
 
 class JobListResponse(BaseModel):

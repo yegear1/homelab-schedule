@@ -283,8 +283,20 @@ class ApiService {
     });
   }
 
+  async retryJob(id: string): Promise<Job> {
+    return this.request<Job>(`/jobs/${encodeURIComponent(id)}/retry`, {
+      method: 'POST',
+    });
+  }
+
   async runGroup(groupId: string): Promise<GroupActionResponse> {
     return this.request<GroupActionResponse>(`/jobs/group/${encodeURIComponent(groupId)}/run`, {
+      method: 'POST',
+    });
+  }
+
+  async retryGroup(groupId: string): Promise<GroupActionResponse> {
+    return this.request<GroupActionResponse>(`/jobs/group/${encodeURIComponent(groupId)}/retry`, {
       method: 'POST',
     });
   }
