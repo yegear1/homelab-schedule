@@ -18,7 +18,7 @@ from schemas.message_template import MessageTemplate
 
 class ExportMetadata(BaseModel):
     version: int = 1
-    schema_version: int = 8
+    schema_version: int = 9
     exported_at: datetime
     counts: dict[str, int]
 
@@ -68,6 +68,7 @@ class JobImportItem(BaseModel):
     created_by: str = ""
     template_id: str | None = None
     group_id: str | None = None
+    variables: dict[str, str] = Field(default_factory=dict)
 
 
 class JobRunImportItem(BaseModel):

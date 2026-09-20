@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,7 +16,7 @@ from schemas.job import (
     JobStatus,
 )
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 APP_TZ = ZoneInfo("America/Sao_Paulo")
 
 _CREATE_JOBS = """
@@ -38,7 +39,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     retry_count INTEGER NOT NULL DEFAULT 0,
     created_by TEXT NOT NULL DEFAULT '',
     template_id TEXT,
-    group_id TEXT
+    group_id TEXT,
+    variables TEXT NOT NULL DEFAULT '{}'
 )
 """
 
@@ -146,6 +148,11 @@ def init_schema(conn: sqlite3.Connection) -> None:
             "CREATE INDEX IF NOT EXISTS idx_job_runs_ran_at ON job_runs (ran_at DESC)"
         )
         conn.execute("PRAGMA user_version=8")
+    if version < 9:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()]
+        if "variables" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN variables TEXT NOT NULL DEFAULT '{}'")
+        conn.execute("PRAGMA user_version=9")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_jobs_phone ON jobs (target_number, created_by)"
     )
@@ -174,6 +181,23 @@ def _dt_from_db(value: object) -> datetime | None:
 
 
 def _row_to_job(row: sqlite3.Row) -> Job:
+    raw_vars = (
+        row["variables"]
+        if "variables" in row.keys() and row["variables"] is not None
+        else None
+    )
+    parsed_vars: dict[str, str] = {}
+    if raw_vars:
+        if isinstance(raw_vars, str):
+            try:
+                loaded = json.loads(raw_vars)
+                if isinstance(loaded, dict):
+                    parsed_vars = {str(k): str(v) for k, v in loaded.items()}
+            except Exception:
+                parsed_vars = {}
+        elif isinstance(raw_vars, dict):
+            parsed_vars = {str(k): str(v) for k, v in raw_vars.items()}
+
     return Job(
         id=str(row["id"]),
         title=str(row["title"]),
@@ -204,6 +228,7 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         group_id=str(row["group_id"])
         if "group_id" in row.keys() and row["group_id"] is not None
         else None,
+        variables=parsed_vars,
     )
 
 

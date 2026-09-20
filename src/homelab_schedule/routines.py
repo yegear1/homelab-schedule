@@ -88,6 +88,7 @@ def _job_from_spec(spec: RoutineSpec) -> Job:
         source=JobSource.YAML,
         status=JobStatus.SCHEDULED,
         enabled=True,
+        variables=spec.variables,
     )
 
 
@@ -107,5 +108,6 @@ def _apply_spec(existing: Job, spec: RoutineSpec, now: datetime) -> Job:
             "enabled": True,
             "status": JobStatus.SCHEDULED,
             "next_run_at": next_run,
+            "variables": spec.variables,
         }
     )

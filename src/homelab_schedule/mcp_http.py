@@ -31,6 +31,7 @@ class AgendaApi:
         content: str,
         to: str,
         title: str | None,
+        variables: dict[str, str] | None = None,
     ) -> dict[str, object]:
         try:
             kind, run_at, cron_expr = parse_when(when)
@@ -46,6 +47,8 @@ class AgendaApi:
             payload["run_at"] = run_at.isoformat()
         if kind is JobKind.CRON and cron_expr is not None:
             payload["cron_expr"] = cron_expr
+        if variables:
+            payload["variables"] = variables
         response = self._request("POST", "/jobs", json=payload)
         return _json_object(response)
 
@@ -124,6 +127,7 @@ class AgendaApi:
         to: str = "eu",
         title: str | None = None,
         template_id: str | None = None,
+        variables: dict[str, str] | None = None,
     ) -> dict[str, object]:
         payload: dict[str, object] = {
             "when": when,
@@ -135,6 +139,8 @@ class AgendaApi:
             payload["title"] = title
         if template_id is not None:
             payload["template_id"] = template_id
+        if variables:
+            payload["variables"] = variables
         response = self._request("POST", "/jobs/preview", json=payload)
         return _json_object(response)
 

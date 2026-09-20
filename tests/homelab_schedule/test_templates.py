@@ -129,3 +129,50 @@ def test_extract_template_variables_all_keys() -> None:
     assert vars_dict["saudacao_lower"] == "boa tarde"
     assert vars_dict["period"] == "tarde"
 
+
+def test_render_template_custom_variables() -> None:
+    from homelab_schedule.templates import render_outbound_message
+
+    dt = datetime(2026, 9, 11, 15, 30, 0, tzinfo=UTC)  # 12:30 local, Boa tarde
+    template = (
+        "Olá {{name}}, consulta de {{especialidade}} agendada com {{medico}}. "
+        "Protocolo: {{protocolo}}."
+    )
+    custom = {
+        "especialidade": "Cardiologia",
+        "medico": "Dra. Ana",
+        "protocolo": "CARD-7788",
+    }
+    rendered = render_template(template, dt, variables={"name": "Maria", **custom})
+    expected_maria = (
+        "Olá Maria, consulta de Cardiologia agendada com Dra. Ana. "
+        "Protocolo: CARD-7788."
+    )
+    assert rendered == expected_maria
+
+    # Test via render_outbound_message
+    outbound = render_outbound_message(
+        stored_content=template,
+        when=dt,
+        dest_name="Maria Silva",
+        custom_variables=custom,
+    )
+    expected_outbound = (
+        "Olá Maria Silva, consulta de Cardiologia agendada com Dra. Ana. "
+        "Protocolo: CARD-7788."
+    )
+    assert outbound == expected_outbound
+
+    # Test extract_template_variables with custom_variables
+    all_vars = extract_template_variables(dt, dest_name="Maria Silva", custom_variables=custom)
+    assert all_vars["name"] == "Maria Silva"
+    assert all_vars["especialidade"] == "Cardiologia"
+    assert all_vars["medico"] == "Dra. Ana"
+    assert all_vars["protocolo"] == "CARD-7788"
+    assert all_vars["greeting"] == "Boa tarde"
+
+    # Test unknown tags remain literal
+    template_with_unknown = "Protocolo {{protocolo}} e chave {{desconhecida}}."
+    rendered_unknown = render_template(template_with_unknown, dt, variables={"protocolo": "123"})
+    assert rendered_unknown == "Protocolo 123 e chave {{desconhecida}}."
+

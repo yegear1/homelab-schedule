@@ -91,13 +91,18 @@ def render_outbound_message(
     dest_name: str | None = None,
     catalog_body: str | None = None,
     tz_name: str = "America/Sao_Paulo",
+    custom_variables: dict[str, str] | None = None,
 ) -> str:
-    variables = {"name": dest_name} if dest_name else None
+    variables: dict[str, str] = {}
+    if dest_name:
+        variables["name"] = dest_name
+    if custom_variables:
+        variables.update(custom_variables)
     return render_template(
         outbound_body(stored_content=stored_content, catalog_body=catalog_body),
         when,
         tz_name=tz_name,
-        variables=variables,
+        variables=variables if variables else None,
     )
 
 
@@ -105,6 +110,7 @@ def extract_template_variables(
     when: datetime,
     dest_name: str | None = None,
     tz_name: str = "America/Sao_Paulo",
+    custom_variables: dict[str, str] | None = None,
 ) -> dict[str, str]:
     try:
         tz = ZoneInfo(tz_name)
@@ -136,4 +142,6 @@ def extract_template_variables(
     }
     if dest_name:
         vars_dict["name"] = dest_name
+    if custom_variables:
+        vars_dict.update(custom_variables)
     return vars_dict

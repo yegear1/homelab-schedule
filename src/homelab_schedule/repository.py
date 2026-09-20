@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import UTC, datetime
 
@@ -20,8 +21,9 @@ class JobRepository:
             INSERT INTO jobs (
                 id, title, content, "to", target_number, kind, run_at, cron_expr,
                 enabled, source, status, next_run_at, last_run_at,
-                last_status, last_error, retry_count, created_by, template_id, group_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                last_status, last_error, retry_count, created_by, template_id, group_id,
+                variables
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             _job_params(to_store),
         )
@@ -109,7 +111,7 @@ class JobRepository:
                 title = ?, content = ?, "to" = ?, target_number = ?, kind = ?, run_at = ?,
                 cron_expr = ?, enabled = ?, source = ?, status = ?,
                 next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?, retry_count = ?,
-                created_by = ?, template_id = ?, group_id = ?
+                created_by = ?, template_id = ?, group_id = ?, variables = ?
             WHERE id = ?
             """,
             (
@@ -331,6 +333,7 @@ def _job_params(job: Job) -> tuple[
     str,
     str | None,
     str | None,
+    str,
 ]:
     return (
         job.id,
@@ -352,4 +355,5 @@ def _job_params(job: Job) -> tuple[
         job.created_by,
         job.template_id,
         job.group_id,
+        json.dumps(job.variables, ensure_ascii=False),
     )

@@ -24,12 +24,19 @@ def build_mcp(api: AgendaApi) -> MCPServer:
     mcp = MCPServer("homelab-schedule")
 
     @mcp.tool()
-    def schedule(when: str, content: str, to: str = "eu", title: str | None = None) -> str:
+    def schedule(
+        when: str,
+        content: str,
+        to: str = "eu",
+        title: str | None = None,
+        variables: dict[str, str] | None = None,
+    ) -> str:
         """Create an agenda job. when is ISO-8601, 5-field cron, relative interval
         (+15m, 2h, em 10 minutos), or friendly date/time (amanhã 14h, hoje 18:00, segunda 9h).
-        to is a phone or alias.
+        to is a phone or alias. variables is an optional dictionary of custom key-value pairs
+        for template interpolation.
         """
-        return handle_schedule(api, when, content, to, title)
+        return handle_schedule(api, when, content, to, title, variables)
 
     @mcp.tool()
     def list_agenda(
@@ -79,9 +86,10 @@ def build_mcp(api: AgendaApi) -> MCPServer:
         to: str = "eu",
         title: str | None = None,
         template_id: str | None = None,
+        variables: dict[str, str] | None = None,
     ) -> str:
         """Dry-run / preview an agenda job without saving. Shows recipient resolution,
-        next_run_at (UTC and local), and rendered message content with dynamic variables.
+        next_run_at (UTC and local), and rendered message content with dynamic and custom variables.
         """
         return handle_preview(
             api,
@@ -90,6 +98,7 @@ def build_mcp(api: AgendaApi) -> MCPServer:
             to=to,
             title=title,
             template_id=template_id,
+            variables=variables,
         )
 
     return mcp

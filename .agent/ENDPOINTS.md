@@ -37,6 +37,7 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 | `created_by` | string | Telefone normalizado de quem criou; vazio se omitido |
 | `template_id` | string \| null | Catálogo; no disparo o `body` atual vence o snapshot |
 | `group_id` | string \| null | Identificador do lote para agendamentos com múltiplos destinatários |
+| `variables` | object (dict[str, str]) | Dicionário de variáveis contextuais para interpolação em templates e mensagens |
 
 ### `GET /jobs`
 

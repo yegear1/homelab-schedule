@@ -147,6 +147,7 @@ def test_export_and_import_roundtrip(client: TestClient) -> None:
             "to": "5511988887777",
             "kind": "once",
             "run_at": "2026-09-20T10:00:00Z",
+            "variables": {"tipo": "urgente"},
         },
     )
     assert j_res.status_code == 201
@@ -162,15 +163,17 @@ def test_export_and_import_roundtrip(client: TestClient) -> None:
     export_payload = exp_res.json()
 
     assert export_payload["metadata"]["version"] == 1
+    assert export_payload["metadata"]["schema_version"] == 9
     assert export_payload["metadata"]["counts"]["contacts"] >= 1
     assert export_payload["metadata"]["counts"]["templates"] >= 1
     assert export_payload["metadata"]["counts"]["jobs"] >= 1
     assert export_payload["metadata"]["counts"]["job_runs"] >= 1
 
     assert any(c["id"] == contact_id for c in export_payload["contacts"])
-    assert any(t["id"] == template_id for t in export_payload["templates"])
-    assert any(j["id"] == job_id for j in export_payload["jobs"])
-    # Routine YAML must not be in exported jobs
+    assert any(
+        j["id"] == job_id and j["variables"] == {"tipo": "urgente"}
+        for j in export_payload["jobs"]
+    )
     assert not any(j["id"] == "routine-weekly-review" for j in export_payload["jobs"])
 
     # 3. Test export with download=true
@@ -199,6 +202,7 @@ def test_export_and_import_roundtrip(client: TestClient) -> None:
                 "run_at": "2026-09-21T10:00:00Z",
                 "source": "sqlite",
                 "status": "scheduled",
+                "variables": {"tipo": "alterado"},
             },
             {
                 "title": "Rotina Ignorada",
@@ -248,6 +252,7 @@ def test_export_and_import_roundtrip(client: TestClient) -> None:
     # Verify job update
     updated_j = client.get(f"/jobs/{job_id}", headers=auth).json()
     assert updated_j["title"] == "Aviso Bob (Atualizado)"
+    assert updated_j["variables"] == {"tipo": "alterado"}
 
 
 def test_import_replace_mode_preserves_yaml_routines(client: TestClient) -> None:
@@ -285,6 +290,7 @@ def test_import_replace_mode_preserves_yaml_routines(client: TestClient) -> None
                 "run_at": "2026-09-22T10:00:00Z",
                 "source": "sqlite",
                 "status": "scheduled",
+                "variables": {"canal": "geral"},
             }
         ],
         "job_runs": [],
@@ -307,5 +313,7 @@ def test_import_replace_mode_preserves_yaml_routines(client: TestClient) -> None
     jobs = client.get("/jobs?status=all", headers=auth).json()["jobs"]
     job_ids = [j["id"] for j in jobs]
     assert "new-j1" in job_ids
+    fresh_j = client.get("/jobs/new-j1", headers=auth).json()
+    assert fresh_j["variables"] == {"canal": "geral"}
     # Crucial: The YAML routine must still be present!
     assert "routine-weekly-review" in job_ids

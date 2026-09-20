@@ -40,6 +40,7 @@ export interface Job {
   created_by: string;
   template_id: string | null;
   group_id?: string | null;
+  variables?: Record<string, string>;
 }
 
 export interface JobListItem {
@@ -61,6 +62,7 @@ export interface JobListItem {
   group_id?: string | null;
   last_error?: string | null;
   retry_count?: number;
+  variables?: Record<string, string>;
 }
 
 export interface CreateJobRequest {
@@ -74,6 +76,7 @@ export interface CreateJobRequest {
   created_by?: string | null;
   template_id?: string | null;
   group_id?: string | null;
+  variables?: Record<string, string>;
 }
 
 export interface CreateBatchJobsRequest {
@@ -85,6 +88,7 @@ export interface CreateBatchJobsRequest {
   cron_expr?: string | null;
   created_by?: string | null;
   template_id?: string | null;
+  variables?: Record<string, string>;
 }
 
 export interface CreateBatchJobsResponse {

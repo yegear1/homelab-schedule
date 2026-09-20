@@ -157,6 +157,23 @@
   let createTemplateId = $state('');
   let creatingJob = $state(false);
 
+  let createCustomVars = $state<Array<{ key: string; value: string }>>([]);
+  let newVarKey = $state('');
+  let newVarValue = $state('');
+
+  function addCustomVar() {
+    const k = newVarKey.trim().replace(/[{}]/g, '');
+    const v = newVarValue.trim();
+    if (!k) return;
+    createCustomVars = [...createCustomVars.filter((item) => item.key !== k), { key: k, value: v }];
+    newVarKey = '';
+    newVarValue = '';
+  }
+
+  function removeCustomVar(key: string) {
+    createCustomVars = createCustomVars.filter((item) => item.key !== key);
+  }
+
   // Aux Modals
   let rescheduleModalOpen = $state(false);
   let rescheduleJobId = $state('');
@@ -512,6 +529,10 @@
 
     creatingJob = true;
     try {
+      const variablesPayload = createCustomVars.length > 0
+        ? Object.fromEntries(createCustomVars.map((v) => [v.key, v.value]))
+        : undefined;
+
       if (createRecipients.length > 1) {
         const batchRes = await api.createBatchJobs({
           title: createTitle.trim(),
@@ -522,6 +543,7 @@
           content: payloadContent,
           template_id: payloadTemplateId,
           created_by: createCreatedBy.trim() || null,
+          variables: variablesPayload,
         });
         toast.success(`Grupo criado com ${batchRes.count} agendamentos vinculados.`);
       } else {
@@ -534,6 +556,7 @@
           content: payloadContent,
           template_id: payloadTemplateId,
           created_by: createCreatedBy.trim() || null,
+          variables: variablesPayload,
         });
         toast.success(`Job "${createTitle}" registrado na agenda.`);
       }
@@ -546,6 +569,9 @@
       createCronExpr = '';
       createRecipients = ['eu'];
       recipientInput = '';
+      createCustomVars = [];
+      newVarKey = '';
+      newVarValue = '';
       await loadJobs();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao agendar';
@@ -903,6 +929,12 @@
                         <span class="text-label-code-sm">{recipient.targetNumber}</span>
                         {#if job.template_id}
                           <span class="text-outline-variant font-label-code-sm text-label-code-sm">• tpl: {job.template_id}</span>
+                        {/if}
+                        {#if job.variables && Object.keys(job.variables).length > 0}
+                          <span class="badge-variable-count inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary text-[11px] font-mono" title={Object.entries(job.variables).map(([k,v]) => `${k}=${v}`).join(', ')}>
+                            <span class="material-symbols-outlined text-[11px]">data_object</span>
+                            <span>{Object.keys(job.variables).length} {Object.keys(job.variables).length === 1 ? 'var' : 'vars'}</span>
+                          </span>
                         {/if}
                       </div>
                       {#if job.status === 'error' && job.last_error}
@@ -1540,6 +1572,26 @@
           </div>
         </div>
 
+        {#if selectedJob.variables && Object.keys(selectedJob.variables).length > 0}
+          <div class="bg-surface-container p-space-sm rounded flex flex-col gap-space-xs border border-primary/20" id="detail-variables-card">
+            <div class="flex items-center justify-between">
+              <span class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold flex items-center gap-1">
+                <span class="material-symbols-outlined text-[15px] text-primary">data_object</span>
+                <span>Variáveis Customizadas ({Object.keys(selectedJob.variables).length})</span>
+              </span>
+              <span class="font-label-code-sm text-label-code-sm text-outline font-mono">variables</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 pt-1" id="detail-variables-list">
+              {#each Object.entries(selectedJob.variables) as [k, v] (k)}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-lowest text-secondary font-mono text-label-code-sm border border-outline-variant/20">
+                  <span class="font-semibold text-primary font-mono">&#123;&#123;{k}&#125;&#125;:</span>
+                  <span class="text-on-surface font-normal font-mono">{v}</span>
+                </span>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
         {#if selectedJob.group_id}
           <div class="bg-surface-container p-space-sm rounded flex flex-col gap-space-xs border border-secondary/20" id="detail-group-card">
             <div class="flex items-center justify-between flex-wrap gap-1">
@@ -1930,6 +1982,78 @@
                 </select>
               </div>
             {/if}
+          </div>
+
+          <!-- VARIÁVEIS CUSTOMIZADAS (variables) -->
+          <div class="flex flex-col gap-space-xs p-space-sm bg-surface-container rounded border border-outline-variant/10" id="section-custom-variables">
+            <div class="flex items-center justify-between">
+              <span class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold flex items-center gap-1">
+                <span class="material-symbols-outlined text-[15px] text-primary">data_object</span>
+                <span>Variáveis Customizadas (Contexto)</span>
+              </span>
+              <span class="font-label-code-sm text-label-code-sm text-outline font-mono">
+                {createCustomVars.length} {createCustomVars.length === 1 ? 'definida' : 'definidas'}
+              </span>
+            </div>
+            <p class="font-body-sm text-body-sm text-outline">
+              Valores contextuais injetados em tags <code>&#123;&#123;chave&#125;&#125;</code> do template ou mensagem (ex: protocolo, médico, valor).
+            </p>
+
+            {#if createCustomVars.length > 0}
+              <div class="flex flex-wrap gap-1.5 p-1.5 rounded bg-surface-container-lowest border border-outline-variant/20 items-center">
+                {#each createCustomVars as item (item.key)}
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/10 text-secondary font-mono text-label-code-sm">
+                    <span class="font-semibold text-primary">&#123;&#123;{item.key}&#125;&#125;:</span>
+                    <span class="text-on-surface truncate max-w-[120px]">{item.value}</span>
+                    <button
+                      type="button"
+                      class="hover:text-error ml-0.5 cursor-pointer flex items-center"
+                      title="Remover variável"
+                      onclick={() => removeCustomVar(item.key)}
+                    >
+                      <span class="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </span>
+                {/each}
+              </div>
+            {/if}
+
+            <div class="flex items-center gap-2 pt-1 flex-wrap sm:flex-nowrap">
+              <input
+                class="flex-1 min-w-[120px] bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-1.5 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                id="input-var-key"
+                placeholder="Chave (ex: protocolo)"
+                type="text"
+                bind:value={newVarKey}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCustomVar();
+                  }
+                }}
+              />
+              <input
+                class="flex-1 min-w-[120px] bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-1.5 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                id="input-var-value"
+                placeholder="Valor (ex: #98421)"
+                type="text"
+                bind:value={newVarValue}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCustomVar();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                class="px-2.5 py-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-primary font-label-ui text-label-ui uppercase tracking-wider font-semibold cursor-pointer shrink-0"
+                id="btn-add-var"
+                onclick={addCustomVar}
+              >
+                + Adicionar
+              </button>
+            </div>
           </div>
 
           <div class="flex items-center justify-end gap-space-sm pt-space-xs border-t border-outline-variant/10">

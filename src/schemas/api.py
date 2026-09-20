@@ -29,6 +29,7 @@ class CreateJobRequest(BaseModel):
     created_by: str | None = None
     template_id: str | None = None
     group_id: str | None = None
+    variables: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _kind_schedule_fields(self) -> "CreateJobRequest":
@@ -65,6 +66,7 @@ class JobListItem(BaseModel):
     group_id: str | None = None
     last_error: str | None = None
     retry_count: int = 0
+    variables: dict[str, str] = Field(default_factory=dict)
 
 
 class JobListResponse(BaseModel):
@@ -113,6 +115,7 @@ class CreateBatchJobsRequest(BaseModel):
     cron_expr: str | None = None
     created_by: str | None = None
     template_id: str | None = None
+    variables: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _kind_schedule_fields(self) -> "CreateBatchJobsRequest":
@@ -156,6 +159,7 @@ class PreviewJobRequest(BaseModel):
     run_at: datetime | None = None
     cron_expr: str | None = None
     template_id: str | None = None
+    variables: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _validate_preview_fields(self) -> "PreviewJobRequest":

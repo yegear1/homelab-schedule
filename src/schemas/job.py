@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class JobKind(StrEnum):
@@ -62,6 +62,7 @@ class Job(BaseModel):
     created_by: str = ""
     template_id: str | None = None
     group_id: str | None = None
+    variables: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _kind_schedule_fields(self) -> "Job":

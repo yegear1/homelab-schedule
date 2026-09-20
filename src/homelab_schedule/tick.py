@@ -112,6 +112,7 @@ async def fire_due(
             when=now,
             dest_name=name,
             catalog_body=catalog,
+            custom_variables=job.variables,
         )
         result = await dispatcher.send(phone_number=dest, content=content_to_send)
         run_record = JobRun(

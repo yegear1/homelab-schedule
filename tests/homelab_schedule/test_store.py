@@ -616,3 +616,90 @@ def test_job_runs_cascade_delete_on_job_deletion(tmp_path: Path) -> None:
 
     assert repo.get_run("run-cascade-1") is None
     conn.close()
+
+
+def test_migration_v8_to_v9_adds_variables(tmp_path: Path) -> None:
+    import sqlite3
+
+    db = tmp_path / "v8.sqlite"
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute(
+        """
+        CREATE TABLE jobs (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            "to" TEXT NOT NULL,
+            target_number TEXT NOT NULL DEFAULT '',
+            kind TEXT NOT NULL,
+            run_at TEXT,
+            cron_expr TEXT,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL,
+            next_run_at TEXT,
+            last_run_at TEXT,
+            last_status TEXT,
+            last_error TEXT,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT NOT NULL DEFAULT '',
+            template_id TEXT,
+            group_id TEXT
+        )
+        """
+    )
+    conn.execute("PRAGMA user_version=8")
+    conn.execute(
+        """
+        INSERT INTO jobs (
+            id, title, content, "to", target_number, kind, run_at, enabled, source, status
+        ) VALUES (
+            'j8', 'v8 job', 'hello v8', 'eu', '5511999998888@c.us', 'once',
+            '2026-09-12T17:00:00+00:00', 1, 'sqlite', 'scheduled'
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    migrated = connect(str(db))
+    repo = JobRepository(migrated)
+    job = repo.get("j8")
+    assert job is not None
+    assert job.variables == {}
+
+    # Check user_version is 9
+    row = migrated.execute("PRAGMA user_version").fetchone()
+    assert row[0] == 9
+    migrated.close()
+
+
+def test_job_variables_roundtrip(tmp_path: Path) -> None:
+    conn = connect(str(tmp_path / "variables.sqlite"))
+    repo = JobRepository(conn)
+
+    job = Job(
+        id="job-vars-1",
+        title="Job with Variables",
+        content="Olá {{name}}, seu protocolo é {{protocolo}}.",
+        to="eu",
+        kind=JobKind.ONCE,
+        run_at=datetime(2027, 9, 20, 12, 0, tzinfo=UTC),
+        variables={"protocolo": "PROT-12345", "sala": "302"},
+    )
+    inserted = repo.insert(job)
+    assert inserted.variables == {"protocolo": "PROT-12345", "sala": "302"}
+
+    fetched = repo.get("job-vars-1")
+    assert fetched is not None
+    assert fetched.variables == {"protocolo": "PROT-12345", "sala": "302"}
+
+    # Update variables
+    updated = repo.update(fetched.model_copy(update={"variables": {"protocolo": "PROT-99999"}}))
+    assert updated.variables == {"protocolo": "PROT-99999"}
+
+    re_fetched = repo.get("job-vars-1")
+    assert re_fetched is not None
+    assert re_fetched.variables == {"protocolo": "PROT-99999"}
+    conn.close()

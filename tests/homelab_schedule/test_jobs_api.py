@@ -936,7 +936,7 @@ def test_get_job_runs_and_all_runs_endpoints(
         to="eu",
         target_number="5511999998888@c.us",
         kind=JobKind.ONCE,
-        run_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
+        run_at=datetime(2027, 9, 20, 10, 0, tzinfo=UTC),
         source=JobSource.SQLITE,
         status=JobStatus.SCHEDULED,
     )
@@ -990,7 +990,7 @@ def test_manual_run_failure_records_error_job_run(
         to="eu",
         target_number="5511999998888@c.us",
         kind=JobKind.ONCE,
-        run_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
+        run_at=datetime(2027, 9, 20, 10, 0, tzinfo=UTC),
         source=JobSource.SQLITE,
         status=JobStatus.SCHEDULED,
     )
@@ -1006,5 +1006,86 @@ def test_manual_run_failure_records_error_job_run(
     assert runs[0]["trigger"] == "manual"
     assert runs[0]["status"] == "error"
     assert runs[0]["error_message"] is not None
+
+
+def test_create_job_with_variables_and_dispatch(
+    client: TestClient, api_key: str, dispatcher: RecordingDispatcher
+) -> None:
+    res = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "Consulta Marcada",
+            "content": "Olá {{name}}, consulta com {{medico}}. Protocolo: {{protocolo}}.",
+            "to": "5511999998888@c.us",
+            "kind": "once",
+            "run_at": "2027-09-25T14:00:00-03:00",
+            "variables": {"medico": "Dr. House", "protocolo": "HOUSE-123"},
+        },
+    )
+    assert res.status_code == 201
+    job_data = res.json()
+    assert job_data["variables"] == {"medico": "Dr. House", "protocolo": "HOUSE-123"}
+    job_id = job_data["id"]
+
+    # Verify GET /jobs/{id}
+    get_res = client.get(f"/jobs/{job_id}", headers=_auth(api_key))
+    assert get_res.status_code == 200
+    assert get_res.json()["variables"] == {"medico": "Dr. House", "protocolo": "HOUSE-123"}
+
+    # Verify GET /jobs list includes variables
+    list_res = client.get("/jobs?status=upcoming", headers=_auth(api_key))
+    assert list_res.status_code == 200
+    items = [j for j in list_res.json()["jobs"] if j["id"] == job_id]
+    assert len(items) == 1
+    assert items[0]["variables"] == {"medico": "Dr. House", "protocolo": "HOUSE-123"}
+
+    # Run now and verify rendered message sent to gateway
+    run_res = client.post(f"/jobs/{job_id}/run", headers=_auth(api_key))
+    assert run_res.status_code == 202
+    assert len(dispatcher.calls) == 1
+    phone, content = dispatcher.calls[0]
+    assert phone == "5511999998888@c.us"
+    assert "consulta com Dr. House. Protocolo: HOUSE-123." in content
+
+
+def test_batch_jobs_with_variables(client: TestClient, api_key: str) -> None:
+    res = client.post(
+        "/jobs/batch",
+        headers=_auth(api_key),
+        json={
+            "title": "Aviso da Turma",
+            "content": "Aviso para a turma {{turma}}.",
+            "recipients": ["5511999991111", "5511999992222"],
+            "kind": "once",
+            "run_at": "2027-09-25T14:00:00-03:00",
+            "variables": {"turma": "Engenharia 3A"},
+        },
+    )
+    assert res.status_code == 201
+    data = res.json()
+    assert data["count"] == 2
+    for j in data["jobs"]:
+        assert j["variables"] == {"turma": "Engenharia 3A"}
+
+
+def test_preview_job_with_variables(client: TestClient, api_key: str) -> None:
+    res = client.post(
+        "/jobs/preview",
+        headers=_auth(api_key),
+        json={
+            "when": "amanhã 14h",
+            "content": "Seu código é {{codigo}} para {{date}}.",
+            "to": "eu",
+            "variables": {"codigo": "SEC-8899"},
+        },
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "Seu código é SEC-8899" in data["rendered_content"]
+    assert data["variables"]["codigo"] == "SEC-8899"
+    assert "date" in data["variables"]
+    assert "greeting" in data["variables"]
+
 
 

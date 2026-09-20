@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[02.8]`
-- **Título:** Contas: OTP + Senha + Sessão na UI (Adiado / Avaliação)
+- **ID:** `[02.10]`
+- **Título:** Alertas de Dead-Letter para o Operador (Notificação de Falha Crítica no Gateway)
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Mecanismo opcional de autenticação e sessão local para acesso operador (avaliar necessidade frente ao modelo atual de x-api-key armazenada no cliente).
+- **Contexto:** Notificar o operador (`WHATSAPP_ADMIN_NUMBER` ou alias configurável) quando um job atingir estado definitivo de erro / dead-letter após falhas repetidas no gateway de envio.
 
 ---
 
@@ -18,6 +18,7 @@
 
 Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
+- [02.9] Variáveis Customizadas em Jobs e Templates (`variables` em Jobs e Interpolação Segura)
 - [02.7] Importação / Exportação e Backup do SQLite
 - [02.6] Visão em Calendário / Linha do Tempo na UI
 - [02.5] Histórico de Execuções (job_runs / auditoria de disparos)
@@ -30,12 +31,14 @@ Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-(Vazio no momento - todas as tarefas planejadas para o ciclo foram concluídas ou promovidas)
+- [ ] **[02.11]** Ciclo de Vida Avançado para Recorrentes (`until`, `max_runs` e Pausa Temporária/Snooze)
+- [ ] **[02.12]** Síntese Matinal e Prevenção de Conflitos no MCP (`daily_digest` e aviso preventivo)
 
 ---
 
 ## Backlog Futuro / Ideias (não priorizadas)
 
+- [ ] **[02.8]** Contas: OTP + Senha + Sessão na UI (Adiado para avaliação futura de necessidade)
 - [ ] **[99.1]** Preparar Release (Tag Git) e Sanitizar Contexto (Apenas executar com permissão explícita do usuário)
 
 ---

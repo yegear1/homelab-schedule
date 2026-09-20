@@ -7,6 +7,7 @@ class RoutineSpec(BaseModel):
     when: str
     content: str = Field(min_length=1)
     to: str = "eu"
+    variables: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("when")
     @classmethod

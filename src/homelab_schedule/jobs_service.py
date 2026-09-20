@@ -78,6 +78,7 @@ class JobService:
             created_by=self._created_by(payload.created_by),
             template_id=template_id,
             group_id=payload.group_id,
+            variables=payload.variables,
         )
         stored = self._repo.insert(job)
         self._notebook_changed.set()
@@ -105,6 +106,7 @@ class JobService:
                 created_by=created_by,
                 template_id=template_id,
                 group_id=group_id,
+                variables=payload.variables,
             )
             stored = self._repo.insert(job)
             created_jobs.append(stored)
@@ -139,8 +141,11 @@ class JobService:
             when=eval_when,
             dest_name=dest_name,
             catalog_body=catalog_body,
+            custom_variables=payload.variables,
         )
-        variables = extract_template_variables(eval_when, dest_name)
+        variables = extract_template_variables(
+            eval_when, dest_name, custom_variables=payload.variables
+        )
 
         return PreviewJobResponse(
             title=title,
@@ -427,6 +432,7 @@ class JobService:
             when=when,
             dest_name=dest_name,
             catalog_body=catalog_body,
+            custom_variables=job.variables,
         )
 
 

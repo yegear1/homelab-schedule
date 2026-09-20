@@ -9,6 +9,7 @@ from homelab_schedule.mcp_http import AgendaApi
 from homelab_schedule.mcp_stdio import build_mcp
 from homelab_schedule.mcp_tools import (
     handle_cancel,
+    handle_get_item,
     handle_list_agenda,
     handle_preview,
     handle_reschedule,
@@ -71,6 +72,39 @@ def test_schedule_posts_once_job_without_gatekeeper_fields() -> None:
     assert body["kind"] == "once"
     assert "phone_number" not in body
     assert seen[0].headers["x-api-key"] == "secret-key"
+
+
+def test_schedule_with_variables_posts_and_returns_variables() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(
+            201,
+            json={
+                "id": "var-1",
+                "title": "Aviso",
+                "content": "Olá {{cliente}}",
+                "to": "eu",
+                "next_run_at": "2026-09-12T17:00:00+00:00",
+                "variables": {"cliente": "Alice", "pedido": "999"},
+            },
+        )
+
+    api = _api(handler)
+    text = handle_schedule(
+        api,
+        when="2026-09-12T14:00:00-03:00",
+        content="Olá {{cliente}}",
+        title="Aviso",
+        variables={"cliente": "Alice", "pedido": "999"},
+    )
+    payload = json.loads(text)
+    assert payload["id"] == "var-1"
+    assert payload["variables"] == {"cliente": "Alice", "pedido": "999"}
+    assert len(seen) == 1
+    body = json.loads(seen[0].content)
+    assert body["variables"] == {"cliente": "Alice", "pedido": "999"}
 
 
 def test_list_agenda_omits_content_and_caps() -> None:
@@ -436,11 +470,13 @@ def test_handle_preview_success() -> None:
         content="Pagar {{name}}",
         to="eu",
         title="Aluguel",
+        variables={"name": "Yegear"},
     )
     payload = json.loads(text)
     assert payload["title"] == "Aluguel"
     assert payload["target_number"] == "5511999998888@c.us"
     assert payload["rendered_content"] == "Pagar Yegear"
+    assert payload["variables"] == {"name": "Yegear"}
     assert len(seen) == 1
     assert seen[0].url.path == "/jobs/preview"
     assert seen[0].headers["x-api-key"] == "secret-key"
@@ -448,6 +484,7 @@ def test_handle_preview_success() -> None:
     assert body["when"] == "amanhã 14h"
     assert body["content"] == "Pagar {{name}}"
     assert body["to"] == "eu"
+    assert body["variables"] == {"name": "Yegear"}
 
 
 def test_handle_preview_error_returns_clean_json() -> None:
@@ -471,13 +508,48 @@ def test_handle_preview_error_returns_clean_json() -> None:
     assert payload_422 == {"error": "Expressão inválida"}
 
 
+def test_handle_get_item_includes_variables() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "id": "job-vars-123",
+                "title": "Aviso médico",
+                "content": "Olá {{paciente}}, consulta às {{hora}}",
+                "to": "5511999990000",
+                "kind": "once",
+                "status": "scheduled",
+                "next_run_at": "2026-09-25T14:00:00+00:00",
+                "source": "api",
+                "variables": {"paciente": "Carlos", "hora": "14h"},
+            },
+        )
+
+    api = _api(handler)
+    text = handle_get_item(api, "job-vars-123")
+    payload = json.loads(text)
+    assert payload["id"] == "job-vars-123"
+    assert payload["variables"] == {"paciente": "Carlos", "hora": "14h"}
+    assert payload["source"] == "api"
+    assert len(seen) == 1
+    assert seen[0].url.path == "/jobs/job-vars-123"
+
+
 def test_build_mcp_registers_preview_tool() -> None:
     api = _api(lambda req: httpx.Response(200))
     server = build_mcp(api)
-    # Check that preview is in registered tools
+    # Check that preview and schedule have variables parameter
     assert "preview" in server._tool_manager._tools
     preview_tool = server._tool_manager._tools["preview"]
     assert "when" in preview_tool.parameters["properties"]
     assert "content" in preview_tool.parameters["properties"]
     assert "template_id" in preview_tool.parameters["properties"]
+    assert "variables" in preview_tool.parameters["properties"]
+
+    assert "schedule" in server._tool_manager._tools
+    schedule_tool = server._tool_manager._tools["schedule"]
+    assert "variables" in schedule_tool.parameters["properties"]
 

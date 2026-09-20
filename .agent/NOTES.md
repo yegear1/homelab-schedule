@@ -34,6 +34,19 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-20] Variáveis Customizadas em Jobs e Templates (SQLite v9)
+
+- **Contexto:** Chamadores da API, rotinas YAML, agentes no MCP e operadores na interface web precisavam associar pares de variáveis chave-valor arbitrárias (`variables: dict[str, str]`) a cada job no momento do agendamento (ex: `protocolo`, `nome_cliente`, `link_rastreio`, `servidor`), interpolando-as de forma segura no template ou mensagem sem a complexidade ou riscos de segurança do Jinja2.
+- **Decisão:**
+  - **Schema SQLite v9:** Adicionada coluna `variables TEXT NOT NULL DEFAULT '{}'` à tabela `jobs`, persistida em JSON UTF-8. Migração incremental no connect (`if version < 9: ALTER TABLE jobs ADD COLUMN variables TEXT NOT NULL DEFAULT '{}'`).
+  - **Interpolação Segura sem Jinja2:** Motor em `templates.py` combina variáveis nativas de contato/calendário com `custom_variables`. Substituição realizada em ordem decrescente de tamanho da chave para evitar que substrings quebrem variáveis mais longas (ex: `{{protocolo_longo}}` antes de `{{protocolo}}`). Tags não mapeadas permanecem literais.
+  - **Canetas Integradas:**
+    - **HTTP API:** Suportado em `POST /jobs`, `POST /jobs/batch`, `POST /jobs/preview`, e retornado em `JobListItem`, `JobDetail` e exportação de backup (`schema_version: 9`).
+    - **Rotinas YAML:** Suporte a `variables: { chave: valor }` em `RoutineSpec` no `routines.yaml`.
+    - **MCP stdio:** Ferramentas `schedule` e `preview` recebem argumento opcional `variables: dict[str, str]`; `get_item` inclui `variables` na resposta estruturada.
+    - **Web UI (Svelte 5):** Seção interativa de variáveis customizadas no modal de criação (`#wdg-job-create`), badge contador de variáveis na listagem de jobs, e painel inspetor de variáveis no drawer de detalhes (`#wdg-job-detail`).
+    - **Backup:** Preservação completa de `variables` em `export` e `import` (modos `replace` e `merge`).
+
 ### [2026-09-19] Backup Físico, Exportação/Importação JSON e Integridade do SQLite
 
 - **Contexto:** Necessidade de salvaguarda e portabilidade robusta para os dados do SQLite (jobs, contatos, templates e histórico de execuções) no homelab, com mecanismos atômicos de restauração e checagem contínua de integridade de páginas e chaves estrangeiras.
