@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field, field_validator
+from datetime import datetime
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class RoutineSpec(BaseModel):
@@ -8,6 +10,8 @@ class RoutineSpec(BaseModel):
     content: str = Field(min_length=1)
     to: str = "eu"
     variables: dict[str, str] = Field(default_factory=dict)
+    until: datetime | None = None
+    max_runs: int | None = None
 
     @field_validator("when")
     @classmethod
@@ -15,3 +19,9 @@ class RoutineSpec(BaseModel):
         if len(value.split()) != 5:
             raise ValueError("when must be a five-field cron expression")
         return value
+
+    @model_validator(mode="after")
+    def _validate_lifecycle(self) -> "RoutineSpec":
+        if self.max_runs is not None and self.max_runs <= 0:
+            raise ValueError("max_runs must be greater than 0")
+        return self

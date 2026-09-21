@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -1086,6 +1086,201 @@ def test_preview_job_with_variables(client: TestClient, api_key: str) -> None:
     assert data["variables"]["codigo"] == "SEC-8899"
     assert "date" in data["variables"]
     assert "greeting" in data["variables"]
+
+
+def test_job_create_with_until_and_max_runs(client: TestClient, api_key: str) -> None:
+    until = (datetime.now(UTC) + timedelta(days=30)).isoformat()
+    res = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "Recorrente com limites",
+            "content": "Aviso limitado",
+            "to": "eu",
+            "kind": "cron",
+            "cron_expr": "0 10 * * *",
+            "until": until,
+            "max_runs": 5,
+        },
+    )
+    assert res.status_code == 201
+    data = res.json()
+    assert data["max_runs"] == 5
+    assert data["run_count"] == 0
+    assert data["until"] is not None
+
+    job_id = data["id"]
+    get_res = client.get(f"/jobs/{job_id}", headers=_auth(api_key))
+    assert get_res.status_code == 200
+    detail = get_res.json()
+    assert detail["max_runs"] == 5
+    assert detail["run_count"] == 0
+    assert detail["until"] is not None
+
+
+def test_job_lifecycle_pause_and_resume(client: TestClient, api_key: str) -> None:
+    res = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "Job para pausar",
+            "content": "Conteúdo teste",
+            "to": "eu",
+            "kind": "cron",
+            "cron_expr": "0 8 * * *",
+        },
+    )
+    assert res.status_code == 201
+    job_id = res.json()["id"]
+
+    # Pause
+    pause_res = client.post(f"/jobs/{job_id}/pause", headers=_auth(api_key))
+    assert pause_res.status_code == 200
+    paused_job = pause_res.json()
+    assert paused_job["status"] == "paused"
+    assert paused_job["enabled"] is False
+
+    # Pausing again should 409
+    pause_again = client.post(f"/jobs/{job_id}/pause", headers=_auth(api_key))
+    assert pause_again.status_code == 409
+
+    # Resume
+    resume_res = client.post(f"/jobs/{job_id}/resume", headers=_auth(api_key))
+    assert resume_res.status_code == 200
+    resumed_job = resume_res.json()
+    assert resumed_job["status"] == "scheduled"
+    assert resumed_job["enabled"] is True
+    assert resumed_job["next_run_at"] is not None
+
+    # Resuming again should 409
+    resume_again = client.post(f"/jobs/{job_id}/resume", headers=_auth(api_key))
+    assert resume_again.status_code == 409
+
+
+def test_job_lifecycle_snooze(client: TestClient, api_key: str) -> None:
+    res = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "Job para adiar",
+            "content": "Conteúdo teste",
+            "to": "eu",
+            "kind": "cron",
+            "cron_expr": "0 8 * * *",
+        },
+    )
+    assert res.status_code == 201
+    job_id = res.json()["id"]
+
+    # Snooze to future
+    future_time = datetime.now(UTC) + timedelta(hours=5)
+    snooze_res = client.post(
+        f"/jobs/{job_id}/snooze",
+        headers=_auth(api_key),
+        json={"until": future_time.isoformat()},
+    )
+    assert snooze_res.status_code == 200
+    snoozed_job = snooze_res.json()
+    assert snoozed_job["status"] == "scheduled"
+    assert snoozed_job["cron_expr"] == "0 8 * * *"
+    assert snoozed_job["next_run_at"] is not None
+
+    # Snooze to past should return 422
+    past_time = datetime.now(UTC) - timedelta(hours=1)
+    bad_snooze = client.post(
+        f"/jobs/{job_id}/snooze",
+        headers=_auth(api_key),
+        json={"until": past_time.isoformat()},
+    )
+    assert bad_snooze.status_code == 422
+
+
+def test_group_lifecycle_pause_resume_snooze(client: TestClient, api_key: str) -> None:
+    batch = client.post(
+        "/jobs/batch",
+        headers=_auth(api_key),
+        json={
+            "recipients": ["5511999991111", "5511999992222"],
+            "title": "Grupo Ciclo de Vida",
+            "content": "Aviso em lote",
+            "kind": "cron",
+            "cron_expr": "0 9 * * *",
+        },
+    ).json()
+    group_id = batch["group_id"]
+
+    # Pause group
+    pause_res = client.post(f"/jobs/group/{group_id}/pause", headers=_auth(api_key))
+    assert pause_res.status_code == 200
+    assert pause_res.json()["affected"] == 2
+
+    for job_summary in batch["jobs"]:
+        j = client.get(f"/jobs/{job_summary['id']}", headers=_auth(api_key)).json()
+        assert j["status"] == "paused"
+        assert j["enabled"] is False
+
+    # Resume group
+    resume_res = client.post(f"/jobs/group/{group_id}/resume", headers=_auth(api_key))
+    assert resume_res.status_code == 200
+    assert resume_res.json()["affected"] == 2
+
+    for job_summary in batch["jobs"]:
+        j = client.get(f"/jobs/{job_summary['id']}", headers=_auth(api_key)).json()
+        assert j["status"] == "scheduled"
+        assert j["enabled"] is True
+
+    # Snooze group
+    snooze_time = datetime.now(UTC) + timedelta(hours=3)
+    snooze_res = client.post(
+        f"/jobs/group/{group_id}/snooze",
+        headers=_auth(api_key),
+        json={"until": snooze_time.isoformat()},
+    )
+    assert snooze_res.status_code == 200
+    assert snooze_res.json()["affected"] == 2
+
+
+def test_yaml_job_lifecycle_mutations_rejected(
+    client: TestClient,
+    api_key: str,
+    tmp_path: Path,
+) -> None:
+    from homelab_schedule.store import connect
+
+    # Insert a fake YAML job directly into DB
+    conn = connect(str(tmp_path / "schedule.sqlite"))
+    repo = JobRepository(conn)
+    repo.insert(
+        Job(
+            id="routine-daily",
+            title="Rotina Diária",
+            content="Texto rotina",
+            to="eu",
+            target_number="5511999998888@c.us",
+            kind=JobKind.CRON,
+            cron_expr="0 8 * * *",
+            source=JobSource.YAML,
+            status=JobStatus.SCHEDULED,
+            enabled=True,
+            created_by="system",
+        )
+    )
+    conn.close()
+
+    pause_res = client.post("/jobs/routine-daily/pause", headers=_auth(api_key))
+    assert pause_res.status_code == 409
+
+    resume_res = client.post("/jobs/routine-daily/resume", headers=_auth(api_key))
+    assert resume_res.status_code == 409
+
+    future_time = datetime.now(UTC) + timedelta(hours=2)
+    snooze_res = client.post(
+        "/jobs/routine-daily/snooze",
+        headers=_auth(api_key),
+        json={"until": future_time.isoformat()},
+    )
+    assert snooze_res.status_code == 409
+
 
 
 

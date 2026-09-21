@@ -30,15 +30,22 @@ class CreateJobRequest(BaseModel):
     template_id: str | None = None
     group_id: str | None = None
     variables: dict[str, str] = Field(default_factory=dict)
+    until: datetime | None = None
+    max_runs: int | None = None
 
     @model_validator(mode="after")
     def _kind_schedule_fields(self) -> "CreateJobRequest":
+        if self.max_runs is not None and self.max_runs <= 0:
+            raise ValueError("max_runs must be greater than 0")
         if self.content is None and not self.template_id:
             raise ValueError("content or template_id is required")
         if self.content is not None and self.template_id:
             raise ValueError("provide content or template_id, not both")
-        if self.kind is JobKind.ONCE and self.run_at is None:
-            raise ValueError("kind=once requires run_at")
+        if self.kind is JobKind.ONCE:
+            if self.run_at is None:
+                raise ValueError("kind=once requires run_at")
+            if self.until is not None and self.run_at > self.until:
+                raise ValueError("run_at cannot be later than until")
         if self.kind is JobKind.CRON:
             if self.cron_expr is None:
                 raise ValueError("kind=cron requires cron_expr")
@@ -67,6 +74,9 @@ class JobListItem(BaseModel):
     last_error: str | None = None
     retry_count: int = 0
     variables: dict[str, str] = Field(default_factory=dict)
+    until: datetime | None = None
+    max_runs: int | None = None
+    run_count: int = 0
 
 
 class JobListResponse(BaseModel):
@@ -95,6 +105,21 @@ class RescheduleJobRequest(BaseModel):
         return self
 
 
+class SnoozeJobRequest(BaseModel):
+    until: datetime | None = None
+    duration_minutes: int | None = None
+    when: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_snooze(self) -> "SnoozeJobRequest":
+        has_when = bool(self.when and self.when.strip())
+        if self.until is None and self.duration_minutes is None and not has_when:
+            raise ValueError("at least one of until, duration_minutes, or when must be provided")
+        if self.duration_minutes is not None and self.duration_minutes <= 0:
+            raise ValueError("duration_minutes must be greater than 0")
+        return self
+
+
 class ReloadRoutinesResponse(BaseModel):
     status: str = "reloaded"
     count: int
@@ -116,15 +141,22 @@ class CreateBatchJobsRequest(BaseModel):
     created_by: str | None = None
     template_id: str | None = None
     variables: dict[str, str] = Field(default_factory=dict)
+    until: datetime | None = None
+    max_runs: int | None = None
 
     @model_validator(mode="after")
     def _kind_schedule_fields(self) -> "CreateBatchJobsRequest":
+        if self.max_runs is not None and self.max_runs <= 0:
+            raise ValueError("max_runs must be greater than 0")
         if self.content is None and not self.template_id:
             raise ValueError("content or template_id is required")
         if self.content is not None and self.template_id:
             raise ValueError("provide content or template_id, not both")
-        if self.kind is JobKind.ONCE and self.run_at is None:
-            raise ValueError("kind=once requires run_at")
+        if self.kind is JobKind.ONCE:
+            if self.run_at is None:
+                raise ValueError("kind=once requires run_at")
+            if self.until is not None and self.run_at > self.until:
+                raise ValueError("run_at cannot be later than until")
         if self.kind is JobKind.CRON:
             if self.cron_expr is None:
                 raise ValueError("kind=cron requires cron_expr")
@@ -160,9 +192,13 @@ class PreviewJobRequest(BaseModel):
     cron_expr: str | None = None
     template_id: str | None = None
     variables: dict[str, str] = Field(default_factory=dict)
+    until: datetime | None = None
+    max_runs: int | None = None
 
     @model_validator(mode="after")
     def _validate_preview_fields(self) -> "PreviewJobRequest":
+        if self.max_runs is not None and self.max_runs <= 0:
+            raise ValueError("max_runs must be greater than 0")
         if self.content is not None and self.template_id:
             raise ValueError("provide content or template_id, not both")
         if not self.when and self.kind is None:
@@ -199,4 +235,6 @@ class PreviewJobResponse(BaseModel):
     raw_content: str
     rendered_content: str
     variables: dict[str, str] = Field(default_factory=dict)
+    until: datetime | None = None
+    max_runs: int | None = None
 

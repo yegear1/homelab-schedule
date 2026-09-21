@@ -109,6 +109,16 @@ async def fire_due(
     failed = False
     clean_admin = admin_recipient.strip() if admin_recipient else ""
     for job in repo.list_due(now):
+        is_expired = job.until is not None and (
+            now > job.until or (job.next_run_at and job.next_run_at > job.until)
+        )
+        if is_expired:
+            repo.update(
+                job.model_copy(
+                    update={"status": JobStatus.DONE, "enabled": False, "next_run_at": None}
+                )
+            )
+            continue
         dest = job.target_number or resolve_destination(job.to, aliases)
         catalog: str | None = None
         if job.template_id and template_body is not None:
@@ -227,6 +237,7 @@ def _next_delay(
 
 
 def _after_success(job: Job, now: datetime) -> Job:
+    new_run_count = job.run_count + 1
     if job.kind is JobKind.ONCE:
         return job.model_copy(
             update={
@@ -237,17 +248,49 @@ def _after_success(job: Job, now: datetime) -> Job:
                 "last_status": "queued",
                 "last_error": None,
                 "retry_count": 0,
+                "run_count": new_run_count,
             }
         )
     if job.cron_expr is None:
         raise RuntimeError("cron job missing cron_expr")
+
+    if job.max_runs is not None and new_run_count >= job.max_runs:
+        return job.model_copy(
+            update={
+                "status": JobStatus.DONE,
+                "enabled": False,
+                "next_run_at": None,
+                "last_run_at": now,
+                "last_status": "queued",
+                "last_error": None,
+                "retry_count": 0,
+                "run_count": new_run_count,
+            }
+        )
+
+    nxt = next_cron_utc(job.cron_expr, now)
+    if job.until is not None and nxt > job.until:
+        return job.model_copy(
+            update={
+                "status": JobStatus.DONE,
+                "enabled": False,
+                "next_run_at": None,
+                "last_run_at": now,
+                "last_status": "queued",
+                "last_error": None,
+                "retry_count": 0,
+                "run_count": new_run_count,
+            }
+        )
+
     return job.model_copy(
         update={
-            "next_run_at": next_cron_utc(job.cron_expr, now),
+            "next_run_at": nxt,
             "last_run_at": now,
             "last_status": "queued",
             "last_error": None,
             "retry_count": 0,
+            "run_count": new_run_count,
         }
     )
 
@@ -265,10 +308,21 @@ def _after_failure(job: Job, last_error: str | None, permanent: bool, now: datet
             )
         if job.cron_expr is None:
             raise RuntimeError("cron job missing cron_expr")
+        nxt = next_cron_utc(job.cron_expr, now)
+        if job.until is not None and nxt > job.until:
+            return job.model_copy(
+                update={
+                    "status": JobStatus.DONE,
+                    "enabled": False,
+                    "next_run_at": None,
+                    "last_error": last_error,
+                    "retry_count": 0,
+                }
+            )
         return job.model_copy(
             update={
                 "last_error": last_error,
-                "next_run_at": next_cron_utc(job.cron_expr, now),
+                "next_run_at": nxt,
                 "retry_count": 0,
             }
         )
@@ -276,6 +330,16 @@ def _after_failure(job: Job, last_error: str | None, permanent: bool, now: datet
     new_retry = job.retry_count + 1
     delay_minutes = _BASE_RETRY_MINUTES**new_retry
     next_run = now + timedelta(minutes=delay_minutes)
+    if job.until is not None and next_run > job.until:
+        return job.model_copy(
+            update={
+                "status": JobStatus.DONE,
+                "enabled": False,
+                "last_error": last_error,
+                "next_run_at": None,
+                "retry_count": new_retry,
+            }
+        )
     return job.model_copy(
         update={
             "retry_count": new_retry,

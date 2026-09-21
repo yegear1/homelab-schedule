@@ -12,12 +12,15 @@ Implementação neste repo: `uv run homelab-schedule-mcp` (stdio). Chama a HTTP 
 
 | Tool | Papel |
 | :--- | :--- |
-| `schedule` | Cria. `when` (ISO-8601, cron de 5 campos, intervalo relativo `+15m`/`2h`/`em 10 minutos` ou amigável `amanhã 14h`/`hoje 18:00`), `content`, `to` (default `eu`), `title` opcional, `variables` (dicionário chave-valor opcional) |
+| `schedule` | Cria. `when` (ISO-8601, cron de 5 campos, intervalo relativo `+15m`/`2h`/`em 10 minutos` ou amigável `amanhã 14h`/`hoje 18:00`), `content`, `to` (default `eu`), `title` opcional, `variables` (dicionário chave-valor opcional), `until` (ISO-8601 limite opcional), `max_runs` (int opcional) |
 | `list_agenda` | Lista curta: id, when, to, title, status (filtros opcionais `status`, `limit`, `to`, `query` textual e `period` relativo como 'hoje', 'amanhã', 'esta semana', '7d') |
-| `get_item` | Um id, com `content`, `source`, `variables` e metadados |
+| `get_item` | Um id, com `content`, `source`, `variables`, `until`, `max_runs`, `run_count` e metadados |
 | `cancel` | Um id (sqlite). YAML → erro explícito “edite routines.yaml” |
+| `pause` | Pausa temporariamente um recado (`status=paused`, `enabled=false`). YAML → erro |
+| `resume` | Retoma um recado pausado (`status=scheduled`, `enabled=true`). YAML → erro |
+| `snooze` | Adia a próxima execução (`next_run_at`) sem alterar a regra cron (`when` relativo ou timestamp) |
 | `reschedule` | Reativa/adia recado (`when` novo: ISO, cron, intervalo relativo `+2h` ou amigável `amanhã 10h`) com mesmo id |
-| `preview` | Dry-run / simulação sem persistência: resolução de destinatário, cálculo de `next_run_at` (UTC e local) e renderização prévia de variáveis nativas (`{{name}}`, `{{date}}`, etc.) e customizadas (`variables`) |
+| `preview` | Dry-run / simulação sem persistência: resolução de destinatário, cálculo de `next_run_at` (UTC e local), renderização prévia de variáveis e validação de `until`/`max_runs` |
 
 Skill do operador no Cursor: [`anotar-agenda`](skills/anotar-agenda/SKILL.md). Contrato de campos: [`agenda-job`](skills/agenda-job/SKILL.md).
 

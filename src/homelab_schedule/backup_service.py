@@ -126,7 +126,7 @@ class BackupService:
         now = self._clock_now()
         metadata = ExportMetadata(
             version=1,
-            schema_version=9,
+            schema_version=10,
             exported_at=now,
             counts={
                 "contacts": len(contacts),
@@ -401,6 +401,9 @@ class BackupService:
             item.template_id,
             item.group_id,
             json.dumps(item.variables, ensure_ascii=False),
+            _dt_to_db(item.until),
+            item.max_runs,
+            item.run_count,
         )
 
         if mode is ImportMode.REPLACE:
@@ -410,8 +413,8 @@ class BackupService:
                     id, title, content, "to", target_number, kind, run_at, cron_expr,
                     enabled, source, status, next_run_at, last_run_at,
                     last_status, last_error, retry_count, created_by, template_id, group_id,
-                    variables
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    variables, until, max_runs, run_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 params,
             )
@@ -431,7 +434,7 @@ class BackupService:
                     run_at = ?, cron_expr = ?, enabled = ?, source = ?, status = ?,
                     next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?,
                     retry_count = ?, created_by = ?, template_id = ?, group_id = ?,
-                    variables = ?
+                    variables = ?, until = ?, max_runs = ?, run_count = ?
                 WHERE id = ?
                 """,
                 params[1:] + (jid,),
@@ -444,8 +447,8 @@ class BackupService:
                 id, title, content, "to", target_number, kind, run_at, cron_expr,
                 enabled, source, status, next_run_at, last_run_at,
                 last_status, last_error, retry_count, created_by, template_id, group_id,
-                variables
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                variables, until, max_runs, run_count
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             params,
         )

@@ -63,11 +63,19 @@ class Job(BaseModel):
     template_id: str | None = None
     group_id: str | None = None
     variables: dict[str, str] = Field(default_factory=dict)
+    until: datetime | None = None
+    max_runs: int | None = None
+    run_count: int = 0
 
     @model_validator(mode="after")
     def _kind_schedule_fields(self) -> "Job":
-        if self.kind is JobKind.ONCE and self.run_at is None:
-            raise ValueError("kind=once requires run_at")
+        if self.max_runs is not None and self.max_runs <= 0:
+            raise ValueError("max_runs must be greater than 0")
+        if self.kind is JobKind.ONCE:
+            if self.run_at is None:
+                raise ValueError("kind=once requires run_at")
+            if self.until is not None and self.run_at > self.until:
+                raise ValueError("run_at cannot be later than until")
         if self.kind is JobKind.CRON:
             if self.cron_expr is None:
                 raise ValueError("kind=cron requires cron_expr")

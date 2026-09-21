@@ -163,7 +163,7 @@ def test_export_and_import_roundtrip(client: TestClient) -> None:
     export_payload = exp_res.json()
 
     assert export_payload["metadata"]["version"] == 1
-    assert export_payload["metadata"]["schema_version"] == 9
+    assert export_payload["metadata"]["schema_version"] == 10
     assert export_payload["metadata"]["counts"]["contacts"] >= 1
     assert export_payload["metadata"]["counts"]["templates"] >= 1
     assert export_payload["metadata"]["counts"]["jobs"] >= 1

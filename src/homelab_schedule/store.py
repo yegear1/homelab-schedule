@@ -16,7 +16,7 @@ from schemas.job import (
     JobStatus,
 )
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 APP_TZ = ZoneInfo("America/Sao_Paulo")
 
 _CREATE_JOBS = """
@@ -40,7 +40,10 @@ CREATE TABLE IF NOT EXISTS jobs (
     created_by TEXT NOT NULL DEFAULT '',
     template_id TEXT,
     group_id TEXT,
-    variables TEXT NOT NULL DEFAULT '{}'
+    variables TEXT NOT NULL DEFAULT '{}',
+    until TEXT,
+    max_runs INTEGER,
+    run_count INTEGER NOT NULL DEFAULT 0
 )
 """
 
@@ -153,6 +156,15 @@ def init_schema(conn: sqlite3.Connection) -> None:
         if "variables" not in cols:
             conn.execute("ALTER TABLE jobs ADD COLUMN variables TEXT NOT NULL DEFAULT '{}'")
         conn.execute("PRAGMA user_version=9")
+    if version < 10:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()]
+        if "until" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN until TEXT")
+        if "max_runs" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN max_runs INTEGER")
+        if "run_count" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN run_count INTEGER NOT NULL DEFAULT 0")
+        conn.execute("PRAGMA user_version=10")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_jobs_phone ON jobs (target_number, created_by)"
     )
@@ -229,6 +241,13 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         if "group_id" in row.keys() and row["group_id"] is not None
         else None,
         variables=parsed_vars,
+        until=_dt_from_db(row["until"]) if "until" in row.keys() else None,
+        max_runs=int(row["max_runs"])
+        if "max_runs" in row.keys() and row["max_runs"] is not None
+        else None,
+        run_count=int(row["run_count"])
+        if "run_count" in row.keys() and row["run_count"] is not None
+        else 0,
     )
 
 

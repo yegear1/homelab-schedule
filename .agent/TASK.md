@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[02.11]`
-- **Título:** Ciclo de Vida Avançado para Recorrentes (`until`, `max_runs` e Pausa Temporária/Snooze)
+- **ID:** `[02.12]`
+- **Título:** Síntese Matinal e Prevenção de Conflitos no MCP (`daily_digest` e aviso preventivo)
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Suporte a condições de encerramento automático para jobs recorrentes (`until` em timestamp UTC e `max_runs` em contador de ocorrências) e capacidade de pausa temporária/adiamento (snooze) sem cancelamento definitivo.
+- **Contexto:** Tool MCP de consolidação de agenda diária (`daily_digest`) e detecção/alerta preventivo de potenciais conflitos de horários e sobreposição de mensagens para o mesmo destinatário.
 
 ---
 
@@ -18,6 +18,7 @@
 
 Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
+- [02.11] Ciclo de Vida Avançado para Recorrentes (`until`, `max_runs` e Pausa Temporária/Snooze)
 - [02.10] Alertas de Dead-Letter para o Operador (Notificação de Falha Crítica no Gateway)
 - [02.9] Variáveis Customizadas em Jobs e Templates (`variables` em Jobs e Interpolação Segura)
 - [02.7] Importação / Exportação e Backup do SQLite
@@ -32,7 +33,7 @@ Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[02.12]** Síntese Matinal e Prevenção de Conflitos no MCP (`daily_digest` e aviso preventivo)
+(Vazio no ciclo atual)
 
 ---
 

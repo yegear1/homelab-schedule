@@ -22,8 +22,8 @@ class JobRepository:
                 id, title, content, "to", target_number, kind, run_at, cron_expr,
                 enabled, source, status, next_run_at, last_run_at,
                 last_status, last_error, retry_count, created_by, template_id, group_id,
-                variables
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                variables, until, max_runs, run_count
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             _job_params(to_store),
         )
@@ -111,7 +111,8 @@ class JobRepository:
                 title = ?, content = ?, "to" = ?, target_number = ?, kind = ?, run_at = ?,
                 cron_expr = ?, enabled = ?, source = ?, status = ?,
                 next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?, retry_count = ?,
-                created_by = ?, template_id = ?, group_id = ?, variables = ?
+                created_by = ?, template_id = ?, group_id = ?, variables = ?,
+                until = ?, max_runs = ?, run_count = ?
             WHERE id = ?
             """,
             (
@@ -303,13 +304,30 @@ def _apply_status_filter(
 
 
 def _with_next_run(job: Job, now: datetime | None = None) -> Job:
+    if job.max_runs is not None and job.run_count >= job.max_runs:
+        return job.model_copy(
+            update={"status": JobStatus.DONE, "enabled": False, "next_run_at": None}
+        )
     if job.next_run_at is not None:
+        if job.until is not None and job.next_run_at > job.until:
+            return job.model_copy(
+                update={"status": JobStatus.DONE, "enabled": False, "next_run_at": None}
+            )
         return job
     if job.kind is JobKind.ONCE and job.run_at is not None:
+        if job.until is not None and job.run_at > job.until:
+            return job.model_copy(
+                update={"status": JobStatus.DONE, "enabled": False, "next_run_at": None}
+            )
         return job.model_copy(update={"next_run_at": job.run_at})
     if job.kind is JobKind.CRON and job.cron_expr is not None:
         instant = now if now is not None else datetime.now(UTC)
-        return job.model_copy(update={"next_run_at": next_cron_utc(job.cron_expr, instant)})
+        nxt = next_cron_utc(job.cron_expr, instant)
+        if job.until is not None and nxt > job.until:
+            return job.model_copy(
+                update={"status": JobStatus.DONE, "enabled": False, "next_run_at": None}
+            )
+        return job.model_copy(update={"next_run_at": nxt})
     return job
 
 
@@ -334,6 +352,9 @@ def _job_params(job: Job) -> tuple[
     str | None,
     str | None,
     str,
+    str | None,
+    int | None,
+    int,
 ]:
     return (
         job.id,
@@ -356,4 +377,7 @@ def _job_params(job: Job) -> tuple[
         job.template_id,
         job.group_id,
         json.dumps(job.variables, ensure_ascii=False),
+        _dt_to_db(job.until),
+        job.max_runs,
+        job.run_count,
     )

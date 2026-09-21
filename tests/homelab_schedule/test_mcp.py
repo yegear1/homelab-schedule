@@ -11,9 +11,12 @@ from homelab_schedule.mcp_tools import (
     handle_cancel,
     handle_get_item,
     handle_list_agenda,
+    handle_pause,
     handle_preview,
     handle_reschedule,
+    handle_resume,
     handle_schedule,
+    handle_snooze,
 )
 from homelab_schedule.mcp_when import parse_period, parse_when
 from homelab_schedule.store import APP_TZ
@@ -552,4 +555,94 @@ def test_build_mcp_registers_preview_tool() -> None:
     assert "schedule" in server._tool_manager._tools
     schedule_tool = server._tool_manager._tools["schedule"]
     assert "variables" in schedule_tool.parameters["properties"]
+    assert "until" in schedule_tool.parameters["properties"]
+    assert "max_runs" in schedule_tool.parameters["properties"]
+
+    assert "pause" in server._tool_manager._tools
+    assert "resume" in server._tool_manager._tools
+    assert "snooze" in server._tool_manager._tools
+
+
+def test_handle_pause_and_resume() -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        if request.url.path.endswith("/pause"):
+            return httpx.Response(
+                200, json={"id": "job-1", "status": "paused", "title": "Pausado"}
+            )
+        if request.url.path.endswith("/resume"):
+            return httpx.Response(
+                200, json={"id": "job-1", "status": "scheduled", "title": "Ativo"}
+            )
+        return httpx.Response(404)
+
+    api = _api(handler)
+    pause_text = handle_pause(api, "job-1")
+    pause_data = json.loads(pause_text)
+    assert pause_data["status"] == "paused"
+    assert "/jobs/job-1/pause" in calls
+
+    resume_text = handle_resume(api, "job-1")
+    resume_data = json.loads(resume_text)
+    assert resume_data["status"] == "scheduled"
+    assert "/jobs/job-1/resume" in calls
+
+
+def test_handle_snooze() -> None:
+    seen_payload: dict[str, str] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal seen_payload
+        seen_payload = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "id": "job-1",
+                "status": "scheduled",
+                "next_run_at": "2026-09-20T22:00:00+00:00",
+            },
+        )
+
+    api = _api(handler)
+    res = handle_snooze(api, "job-1", when="2026-09-20T22:00:00+00:00")
+    data = json.loads(res)
+    assert data["status"] == "scheduled"
+    assert "when" in seen_payload
+
+
+def test_handle_schedule_with_until_and_max_runs() -> None:
+    seen_payload: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal seen_payload
+        seen_payload = json.loads(request.content)
+        return httpx.Response(
+            201,
+            json={
+                "id": "job-limits",
+                "title": "Aviso com limites",
+                "content": "Texto",
+                "to": "eu",
+                "next_run_at": "2026-09-20T22:00:00+00:00",
+                "until": "2026-10-01T00:00:00+00:00",
+                "max_runs": 10,
+            },
+        )
+
+    api = _api(handler)
+    res = handle_schedule(
+        api,
+        when="0 8 * * *",
+        content="Texto",
+        title="Aviso com limites",
+        until="2026-10-01T00:00:00+00:00",
+        max_runs=10,
+    )
+    data = json.loads(res)
+    assert data["id"] == "job-limits"
+    assert seen_payload["until"] == "2026-10-01T00:00:00+00:00"
+    assert seen_payload["max_runs"] == 10
+
 

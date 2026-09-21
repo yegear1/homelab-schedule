@@ -12,6 +12,7 @@ import type {
   CreateBatchJobsResponse,
   GroupActionResponse,
   RescheduleJobRequest,
+  SnoozeJobRequest,
   RunNowResponse,
   JobListFilter,
   JobRun,
@@ -270,9 +271,47 @@ class ApiService {
     });
   }
 
+  async pauseJob(id: string): Promise<Job> {
+    return this.request<Job>(`/jobs/${encodeURIComponent(id)}/pause`, {
+      method: 'POST',
+    });
+  }
+
+  async resumeJob(id: string): Promise<Job> {
+    return this.request<Job>(`/jobs/${encodeURIComponent(id)}/resume`, {
+      method: 'POST',
+    });
+  }
+
+  async snoozeJob(id: string, payload: SnoozeJobRequest): Promise<Job> {
+    return this.request<Job>(`/jobs/${encodeURIComponent(id)}/snooze`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async cancelGroup(groupId: string): Promise<GroupActionResponse> {
     return this.request<GroupActionResponse>(`/jobs/group/${encodeURIComponent(groupId)}/cancel`, {
       method: 'POST',
+    });
+  }
+
+  async pauseGroup(groupId: string): Promise<GroupActionResponse> {
+    return this.request<GroupActionResponse>(`/jobs/group/${encodeURIComponent(groupId)}/pause`, {
+      method: 'POST',
+    });
+  }
+
+  async resumeGroup(groupId: string): Promise<GroupActionResponse> {
+    return this.request<GroupActionResponse>(`/jobs/group/${encodeURIComponent(groupId)}/resume`, {
+      method: 'POST',
+    });
+  }
+
+  async snoozeGroup(groupId: string, payload: SnoozeJobRequest): Promise<GroupActionResponse> {
+    return this.request<GroupActionResponse>(`/jobs/group/${encodeURIComponent(groupId)}/snooze`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   }
 

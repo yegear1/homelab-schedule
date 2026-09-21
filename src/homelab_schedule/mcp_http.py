@@ -32,6 +32,8 @@ class AgendaApi:
         to: str,
         title: str | None,
         variables: dict[str, str] | None = None,
+        until: str | None = None,
+        max_runs: int | None = None,
     ) -> dict[str, object]:
         try:
             kind, run_at, cron_expr = parse_when(when)
@@ -49,6 +51,10 @@ class AgendaApi:
             payload["cron_expr"] = cron_expr
         if variables:
             payload["variables"] = variables
+        if until:
+            payload["until"] = until
+        if max_runs is not None:
+            payload["max_runs"] = max_runs
         response = self._request("POST", "/jobs", json=payload)
         return _json_object(response)
 
@@ -106,6 +112,18 @@ class AgendaApi:
         self._request("POST", f"/jobs/{job_id}/cancel")
         return {"cancelled": job_id}
 
+    def pause(self, job_id: str) -> dict[str, object]:
+        response = self._request("POST", f"/jobs/{job_id}/pause")
+        return _json_object(response)
+
+    def resume(self, job_id: str) -> dict[str, object]:
+        response = self._request("POST", f"/jobs/{job_id}/resume")
+        return _json_object(response)
+
+    def snooze(self, job_id: str, when: str) -> dict[str, object]:
+        response = self._request("POST", f"/jobs/{job_id}/snooze", json={"when": when})
+        return _json_object(response)
+
     def reschedule_job(self, *, job_id: str, when: str) -> dict[str, object]:
         try:
             kind, run_at, cron_expr = parse_when(when)
@@ -128,6 +146,8 @@ class AgendaApi:
         title: str | None = None,
         template_id: str | None = None,
         variables: dict[str, str] | None = None,
+        until: str | None = None,
+        max_runs: int | None = None,
     ) -> dict[str, object]:
         payload: dict[str, object] = {
             "when": when,
@@ -141,6 +161,10 @@ class AgendaApi:
             payload["template_id"] = template_id
         if variables:
             payload["variables"] = variables
+        if until:
+            payload["until"] = until
+        if max_runs is not None:
+            payload["max_runs"] = max_runs
         response = self._request("POST", "/jobs/preview", json=payload)
         return _json_object(response)
 

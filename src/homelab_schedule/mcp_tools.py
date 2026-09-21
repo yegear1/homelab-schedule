@@ -8,9 +8,19 @@ def handle_schedule(
     to: str = "eu",
     title: str | None = None,
     variables: dict[str, str] | None = None,
+    until: str | None = None,
+    max_runs: int | None = None,
 ) -> str:
     try:
-        job = api.create_job(when=when, content=content, to=to, title=title, variables=variables)
+        job = api.create_job(
+            when=when,
+            content=content,
+            to=to,
+            title=title,
+            variables=variables,
+            until=until,
+            max_runs=max_runs,
+        )
         result: dict[str, object] = {
             "id": job.get("id"),
             "next_run_at": job.get("next_run_at"),
@@ -20,6 +30,10 @@ def handle_schedule(
         }
         if job.get("variables"):
             result["variables"] = job.get("variables")
+        if job.get("until"):
+            result["until"] = job.get("until")
+        if job.get("max_runs") is not None:
+            result["max_runs"] = job.get("max_runs")
         return compact_json(result)
     except AgendaToolError as exc:
         return compact_json({"error": exc.message})
@@ -60,6 +74,9 @@ def handle_get_item(api: AgendaApi, job_id: str) -> str:
             "next_run_at": job.get("next_run_at"),
             "source": job.get("source"),
             "variables": job.get("variables", {}),
+            "until": job.get("until"),
+            "max_runs": job.get("max_runs"),
+            "run_count": job.get("run_count", 0),
         }
         return compact_json(result)
     except AgendaToolError as exc:
@@ -69,6 +86,50 @@ def handle_get_item(api: AgendaApi, job_id: str) -> str:
 def handle_cancel(api: AgendaApi, job_id: str) -> str:
     try:
         return compact_json(api.cancel(job_id))
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})
+
+
+def handle_pause(api: AgendaApi, job_id: str) -> str:
+    try:
+        job = api.pause(job_id)
+        return compact_json(
+            {
+                "id": job.get("id"),
+                "title": job.get("title"),
+                "status": job.get("status"),
+            }
+        )
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})
+
+
+def handle_resume(api: AgendaApi, job_id: str) -> str:
+    try:
+        job = api.resume(job_id)
+        return compact_json(
+            {
+                "id": job.get("id"),
+                "title": job.get("title"),
+                "status": job.get("status"),
+                "next_run_at": job.get("next_run_at"),
+            }
+        )
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})
+
+
+def handle_snooze(api: AgendaApi, job_id: str, when: str) -> str:
+    try:
+        job = api.snooze(job_id, when)
+        return compact_json(
+            {
+                "id": job.get("id"),
+                "title": job.get("title"),
+                "status": job.get("status"),
+                "next_run_at": job.get("next_run_at"),
+            }
+        )
     except AgendaToolError as exc:
         return compact_json({"error": exc.message})
 
@@ -97,6 +158,8 @@ def handle_preview(
     title: str | None = None,
     template_id: str | None = None,
     variables: dict[str, str] | None = None,
+    until: str | None = None,
+    max_runs: int | None = None,
 ) -> str:
     try:
         preview = api.preview_job(
@@ -106,6 +169,8 @@ def handle_preview(
             title=title,
             template_id=template_id,
             variables=variables,
+            until=until,
+            max_runs=max_runs,
         )
         return compact_json(preview)
     except AgendaToolError as exc:

@@ -89,6 +89,8 @@ def _job_from_spec(spec: RoutineSpec) -> Job:
         status=JobStatus.SCHEDULED,
         enabled=True,
         variables=spec.variables,
+        until=spec.until,
+        max_runs=spec.max_runs,
     )
 
 
@@ -109,5 +111,7 @@ def _apply_spec(existing: Job, spec: RoutineSpec, now: datetime) -> Job:
             "status": JobStatus.SCHEDULED,
             "next_run_at": next_run,
             "variables": spec.variables,
+            "until": spec.until,
+            "max_runs": spec.max_runs,
         }
     )

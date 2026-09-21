@@ -3,13 +3,18 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from homelab_schedule.aliases import normalize_whatsapp_phone, resolve_destination
 from homelab_schedule.contacts_service import ContactService
 from homelab_schedule.cron import next_cron_utc
 from homelab_schedule.dispatch import Dispatcher
-from homelab_schedule.errors import EntityNotFound, GatekeeperError, YamlJobImmutable
+from homelab_schedule.errors import (
+    Conflict,
+    EntityNotFound,
+    GatekeeperError,
+    YamlJobImmutable,
+)
 from homelab_schedule.mcp_when import default_title, parse_when
 from homelab_schedule.repository import JobRepository
 from homelab_schedule.store import APP_TZ
@@ -26,6 +31,7 @@ from schemas.api import (
     PreviewJobResponse,
     RescheduleJobRequest,
     RunNowResponse,
+    SnoozeJobRequest,
 )
 from schemas.job import (
     Job,
@@ -79,6 +85,8 @@ class JobService:
             template_id=template_id,
             group_id=payload.group_id,
             variables=payload.variables,
+            until=payload.until,
+            max_runs=payload.max_runs,
         )
         stored = self._repo.insert(job)
         self._notebook_changed.set()
@@ -107,6 +115,8 @@ class JobService:
                 template_id=template_id,
                 group_id=group_id,
                 variables=payload.variables,
+                until=payload.until,
+                max_runs=payload.max_runs,
             )
             stored = self._repo.insert(job)
             created_jobs.append(stored)
@@ -161,6 +171,8 @@ class JobService:
             raw_content=raw_content,
             rendered_content=rendered_content,
             variables=variables,
+            until=payload.until,
+            max_runs=payload.max_runs,
         )
 
     def _preview_content(self, payload: PreviewJobRequest) -> tuple[str, str | None]:
@@ -190,6 +202,8 @@ class JobService:
             next_run_at = run_at
         elif kind is JobKind.CRON and cron_expr is not None:
             next_run_at = next_cron_utc(cron_expr, self._now())
+        if payload.until is not None and next_run_at is not None and next_run_at > payload.until:
+            next_run_at = None
         return kind, run_at, cron_expr, next_run_at
 
     def get(self, job_id: str) -> Job:
@@ -307,18 +321,138 @@ class JobService:
         if not result.ok:
             self._repo.update(job.model_copy(update={"last_error": result.last_error}))
             raise GatekeeperError("gatekeeper did not accept the message")
+        new_run_count = job.run_count + 1
         updates: dict[str, object] = {
             "last_run_at": now_instant,
             "last_status": "queued",
             "last_error": None,
             "retry_count": 0,
+            "run_count": new_run_count,
         }
         if job.kind is JobKind.ONCE and job.status is JobStatus.ERROR:
             updates["status"] = JobStatus.DONE
             updates["enabled"] = False
             updates["next_run_at"] = None
+        elif job.kind is JobKind.CRON:
+            if job.max_runs is not None and new_run_count >= job.max_runs:
+                updates["status"] = JobStatus.DONE
+                updates["enabled"] = False
+                updates["next_run_at"] = None
+            elif (
+                job.until is not None
+                and job.next_run_at is not None
+                and job.next_run_at > job.until
+            ):
+                updates["status"] = JobStatus.DONE
+                updates["enabled"] = False
+                updates["next_run_at"] = None
         self._repo.update(job.model_copy(update=updates))
         return RunNowResponse(status="queued", job_id=job.id)
+
+    def pause(self, job_id: str) -> Job:
+        job = self.get(job_id)
+        if job.source is JobSource.YAML:
+            raise YamlJobImmutable("edit routines.yaml to change this job")
+        if job.status is JobStatus.PAUSED:
+            raise Conflict("job is already paused")
+        if job.status is JobStatus.DONE:
+            raise Conflict("cannot pause completed job")
+        updated = job.model_copy(update={"status": JobStatus.PAUSED, "enabled": False})
+        stored = self._repo.update(updated)
+        self._notebook_changed.set()
+        return stored
+
+    def resume(self, job_id: str) -> Job:
+        job = self.get(job_id)
+        if job.source is JobSource.YAML:
+            raise YamlJobImmutable("edit routines.yaml to change this job")
+        if job.status is JobStatus.DONE:
+            raise Conflict("cannot resume completed job")
+        if job.status is not JobStatus.PAUSED:
+            raise Conflict("job is not paused")
+
+        now_instant = self._now()
+        next_run: datetime | None = None
+        status = JobStatus.SCHEDULED
+        enabled = True
+
+        if job.kind is JobKind.CRON:
+            if job.cron_expr is None:
+                raise RuntimeError("cron job missing cron_expr")
+            nxt = next_cron_utc(job.cron_expr, now_instant)
+            until_exceeded = job.until is not None and nxt > job.until
+            runs_exceeded = job.max_runs is not None and job.run_count >= job.max_runs
+            if until_exceeded or runs_exceeded:
+                status = JobStatus.DONE
+                enabled = False
+                next_run = None
+            else:
+                next_run = nxt
+        elif job.kind is JobKind.ONCE:
+            if job.run_at is not None and job.run_at > now_instant:
+                next_run = job.run_at
+            else:
+                next_run = now_instant
+
+        updated = job.model_copy(
+            update={
+                "status": status,
+                "enabled": enabled,
+                "next_run_at": next_run,
+                "retry_count": 0,
+                "last_error": None,
+            }
+        )
+        stored = self._repo.update(updated)
+        self._notebook_changed.set()
+        return stored
+
+    def snooze(self, job_id: str, payload: SnoozeJobRequest) -> Job:
+        job = self.get(job_id)
+        if job.source is JobSource.YAML:
+            raise YamlJobImmutable("edit routines.yaml to change this job")
+        if job.status is JobStatus.DONE:
+            raise Conflict("cannot snooze completed job")
+
+        now_instant = self._now()
+        snooze_until: datetime
+        if payload.duration_minutes is not None:
+            snooze_until = now_instant + timedelta(minutes=payload.duration_minutes)
+        elif payload.until is not None:
+            snooze_until = payload.until
+        elif payload.when is not None:
+            kind, run_at, _ = parse_when(payload.when, now=now_instant)
+            if kind is JobKind.CRON or run_at is None:
+                raise ValueError(
+                    "snooze requires a specific timestamp or interval, not a recurring cron"
+                )
+            snooze_until = run_at
+        else:
+            raise ValueError("at least one of until, duration_minutes, or when must be provided")
+
+        if snooze_until <= now_instant:
+            raise ValueError("snooze target must be in the future")
+
+        if job.until is not None and snooze_until > job.until:
+            raise ValueError(
+                f"snooze target {snooze_until.isoformat()} exceeds "
+                f"job until expiration {job.until.isoformat()}"
+            )
+
+        updates: dict[str, object] = {
+            "status": JobStatus.SCHEDULED,
+            "enabled": True,
+            "next_run_at": snooze_until,
+            "retry_count": 0,
+            "last_error": None,
+        }
+        if job.kind is JobKind.ONCE:
+            updates["run_at"] = snooze_until
+
+        updated = job.model_copy(update=updates)
+        stored = self._repo.update(updated)
+        self._notebook_changed.set()
+        return stored
 
     def list_job_runs(self, job_id: str, limit: int = 50) -> list[JobRun]:
         self.get(job_id)
@@ -340,6 +474,113 @@ class JobService:
                 affected += 1
         self._notebook_changed.set()
         return GroupActionResponse(group_id=group_id, affected=affected, status="cancelled")
+
+    def pause_group(self, group_id: str) -> GroupActionResponse:
+        jobs = self._repo.list_by_group(group_id)
+        if not jobs:
+            raise EntityNotFound(f"group {group_id} not found")
+        affected = 0
+        for job in jobs:
+            if job.source is JobSource.YAML:
+                continue
+            if job.status is not JobStatus.PAUSED and job.status is not JobStatus.DONE:
+                self._repo.update(
+                    job.model_copy(update={"status": JobStatus.PAUSED, "enabled": False})
+                )
+                affected += 1
+        if affected > 0:
+            self._notebook_changed.set()
+        return GroupActionResponse(group_id=group_id, affected=affected, status="paused")
+
+    def resume_group(self, group_id: str) -> GroupActionResponse:
+        jobs = self._repo.list_by_group(group_id)
+        if not jobs:
+            raise EntityNotFound(f"group {group_id} not found")
+        affected = 0
+        now_instant = self._now()
+        for job in jobs:
+            if job.source is JobSource.YAML:
+                continue
+            if job.status is JobStatus.PAUSED:
+                status = JobStatus.SCHEDULED
+                enabled = True
+                next_run: datetime | None = None
+                if job.kind is JobKind.CRON:
+                    if job.cron_expr is not None:
+                        nxt = next_cron_utc(job.cron_expr, now_instant)
+                        if (job.until is not None and nxt > job.until) or (
+                            job.max_runs is not None and job.run_count >= job.max_runs
+                        ):
+                            status = JobStatus.DONE
+                            enabled = False
+                            next_run = None
+                        else:
+                            next_run = nxt
+                elif job.kind is JobKind.ONCE:
+                    if job.run_at is not None and job.run_at > now_instant:
+                        next_run = job.run_at
+                    else:
+                        next_run = now_instant
+                self._repo.update(
+                    job.model_copy(
+                        update={
+                            "status": status,
+                            "enabled": enabled,
+                            "next_run_at": next_run,
+                            "retry_count": 0,
+                            "last_error": None,
+                        }
+                    )
+                )
+                affected += 1
+        if affected > 0:
+            self._notebook_changed.set()
+        return GroupActionResponse(group_id=group_id, affected=affected, status="resumed")
+
+    def snooze_group(self, group_id: str, payload: SnoozeJobRequest) -> GroupActionResponse:
+        jobs = self._repo.list_by_group(group_id)
+        if not jobs:
+            raise EntityNotFound(f"group {group_id} not found")
+        now_instant = self._now()
+        snooze_until: datetime
+        if payload.duration_minutes is not None:
+            snooze_until = now_instant + timedelta(minutes=payload.duration_minutes)
+        elif payload.until is not None:
+            snooze_until = payload.until
+        elif payload.when is not None:
+            kind, run_at, _ = parse_when(payload.when, now=now_instant)
+            if kind is JobKind.CRON or run_at is None:
+                raise ValueError(
+                    "snooze requires a specific timestamp or interval, not a recurring cron"
+                )
+            snooze_until = run_at
+        else:
+            raise ValueError("at least one of until, duration_minutes, or when must be provided")
+
+        if snooze_until <= now_instant:
+            raise ValueError("snooze target must be in the future")
+
+        affected = 0
+        for job in jobs:
+            if job.source is JobSource.YAML or job.status is JobStatus.DONE:
+                continue
+            if job.until is not None and snooze_until > job.until:
+                continue
+            updates: dict[str, object] = {
+                "status": JobStatus.SCHEDULED,
+                "enabled": True,
+                "next_run_at": snooze_until,
+                "retry_count": 0,
+                "last_error": None,
+            }
+            if job.kind is JobKind.ONCE:
+                updates["run_at"] = snooze_until
+            self._repo.update(job.model_copy(update=updates))
+            affected += 1
+
+        if affected > 0:
+            self._notebook_changed.set()
+        return GroupActionResponse(group_id=group_id, affected=affected, status="snoozed")
 
     async def run_group_now(self, group_id: str) -> GroupActionResponse:
         jobs = self._repo.list_by_group(group_id)

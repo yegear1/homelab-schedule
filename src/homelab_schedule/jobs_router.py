@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 
 from homelab_schedule.auth import Auth
 from homelab_schedule.jobs_service import JobService
@@ -17,6 +17,7 @@ from schemas.api import (
     PreviewJobResponse,
     RescheduleJobRequest,
     RunNowResponse,
+    SnoozeJobRequest,
 )
 from schemas.job import Job
 
@@ -94,6 +95,28 @@ def retry_group(request: Request, _: Auth, group_id: str) -> GroupActionResponse
     return _service(request).retry_group(group_id)
 
 
+@router.post("/group/{group_id}/pause", response_model=GroupActionResponse)
+def pause_group(request: Request, _: Auth, group_id: str) -> GroupActionResponse:
+    return _service(request).pause_group(group_id)
+
+
+@router.post("/group/{group_id}/resume", response_model=GroupActionResponse)
+def resume_group(request: Request, _: Auth, group_id: str) -> GroupActionResponse:
+    return _service(request).resume_group(group_id)
+
+
+@router.post("/group/{group_id}/snooze", response_model=GroupActionResponse)
+def snooze_group(
+    request: Request, _: Auth, group_id: str, payload: SnoozeJobRequest
+) -> GroupActionResponse:
+    try:
+        return _service(request).snooze_group(group_id, payload)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+
+
 @router.get("/runs", response_model=JobRunListResponse)
 def list_all_runs(
     request: Request,
@@ -127,6 +150,31 @@ def list_job_runs(
 @router.post("/{job_id}/cancel", status_code=status.HTTP_204_NO_CONTENT)
 def cancel_job(request: Request, _: Auth, job_id: str) -> None:
     _service(request).cancel(job_id)
+
+
+@router.post("/{job_id}/pause", response_model=Job)
+def pause_job(request: Request, _: Auth, job_id: str) -> Job:
+    return _service(request).pause(job_id)
+
+
+@router.post("/{job_id}/resume", response_model=Job)
+def resume_job(request: Request, _: Auth, job_id: str) -> Job:
+    return _service(request).resume(job_id)
+
+
+@router.post("/{job_id}/snooze", response_model=Job)
+def snooze_job(
+    request: Request,
+    _: Auth,
+    job_id: str,
+    payload: SnoozeJobRequest,
+) -> Job:
+    try:
+        return _service(request).snooze(job_id, payload)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
 
 
 @router.post("/{job_id}/reschedule", response_model=Job)

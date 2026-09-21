@@ -34,6 +34,36 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-20] Ciclo de Vida Avançado para Recorrentes (until, max_runs, Pausa Temporária e Snooze, SQLite v10)
+
+- **Contexto:** Agendamentos recorrentes no homelab frequentemente exigem limites de validade temporal (ex: "repetir até 31 de dezembro"), quotas máximas de execução (ex: "executar 10 vezes e parar"), suspensão temporária sem perda da configuração (pausa/retomada) e postergação pontual de disparos imediatos (snooze) sem alterar a regra mestra do cron.
+- **Decisão:**
+  - **Schema SQLite v10:** Adicionadas colunas `until TEXT` (timestamp ISO-8601 UTC de expiração), `max_runs INTEGER` (limite de ocorrências) e `run_count INTEGER NOT NULL DEFAULT 0` (contador acumulado de disparos realizados). Migração incremental no connect (`PRAGMA user_version = 10`).
+  - **Parada Automática no Scheduler (`due-tick`):**
+    - `run_count` é incrementado em cada disparo bem-sucedido (tanto no tick periódico quanto em `POST /jobs/{id}/run`).
+    - Ao atingir `run_count >= max_runs` ou quando o próximo disparo calculado ultrapassar `until`, o job transita automaticamente para `status = done`, `enabled = false`, `next_run_at = null`.
+    - No `fire_due`, validação prévia de expiração impede que jobs cujo prazo `until` já venceu sejam disparados indevidamente.
+  - **Pausa e Retomada (`POST /jobs/{id}/pause`, `POST /jobs/{id}/resume`):**
+    - `pause` suspende o agendamento (`status = paused`, `enabled = false`) sem remover do banco nem cancelar definitivamente. Retorna HTTP 409 se já pausado, concluído ou se originado de `routines.yaml`.
+    - `resume` reativa o agendamento (`status = scheduled`, `enabled = true`), recalculando o próximo vencimento a partir do instante atual. Retorna HTTP 409 se não estiver pausado.
+    - Suporte equivalente para grupos: `POST /jobs/group/{group_id}/pause` e `resume`.
+  - **Adiamento sem Mutação de Cron (`POST /jobs/{id}/snooze`):**
+    - Diferente de `reschedule` (que altera a definição da regra `cron_expr` ou `run_at`), o `snooze` apenas posterga o valor imediato de `next_run_at`. A regra `cron_expr` permanece intocada. Após o disparo snoozado, os ciclos subsequentes voltam a respeitar a cadência cron normal calculada a partir de `now()`.
+    - Aceita `until` (ISO-8601), `duration_minutes` ou `when` (linguagem natural / amigável).
+    - Valida que o horário adiado esteja no futuro e não ultrapasse `until`.
+    - Suporte para grupos: `POST /jobs/group/{group_id}/snooze`.
+  - **Superfície MCP stdio:**
+    - Novas tools: `pause`, `resume`, `snooze`.
+    - Tools `schedule` e `preview` recebem parâmetros opcionais `until` e `max_runs`.
+    - `get_item` inclui `until`, `max_runs` e `run_count` na resposta estruturada.
+  - **Interface Web (Svelte 5):**
+    - Modal de criação (`#wdg-job-create`): campos opcionais de data limite (`until`) e máximo de execuções (`max_runs`).
+    - Listagem e Detalhes: exibição de badge/texto com prazo limite e contador `run_count / max_runs`.
+    - Ações interativas: botões de "Pausar" / "Retomar" e botão de adiamento (`SnoozeModal.svelte` com atalhos de +1h, +3h, +1d, +1sem) nas linhas individuais, no cabeçalho do grupo e no drawer de detalhes.
+  - **Backup & Rotinas YAML:**
+    - `schema_version = 10` nos metadados de exportação JSON, com preservação de `until`, `max_runs` e `run_count`.
+    - Mapeamento completo em `RoutineSpec` (`routines.yaml`).
+
 ### [2026-09-20] Alertas de Dead-Letter para o Operador (Notificação de Falha Crítica no Gateway)
 
 - **Contexto:** Quando um agendamento atinge estado definitivo de erro / Dead-Letter no scheduler (`due-tick`) — seja por erro permanente do gateway HTTP (ex: 401/422) ou após esgotamento de retentativas transientes (`_MAX_RETRIES = 3`) —, o operador precisa ser notificado proativamente via mensageiro sem depender de abrir a UI web ou inspecionar logs no VictoriaLogs.

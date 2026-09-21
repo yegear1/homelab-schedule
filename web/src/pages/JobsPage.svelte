@@ -4,6 +4,7 @@
   import { toast } from '../lib/toast.svelte';
   import type { Contact, Job, JobListItem, JobListFilter, JobKind, JobRun, MessageTemplate } from '../lib/types';
   import RescheduleModal from '../components/RescheduleModal.svelte';
+  import SnoozeModal from '../components/SnoozeModal.svelte';
   import ContactPickerModal from '../components/ContactPickerModal.svelte';
   import JobTimelineView from '../components/JobTimelineView.svelte';
   import JobCalendarView from '../components/JobCalendarView.svelte';
@@ -155,6 +156,8 @@
   let createPayloadMode = $state<'direct' | 'template'>('direct');
   let createContent = $state('');
   let createTemplateId = $state('');
+  let createUntil = $state('');
+  let createMaxRuns = $state<number | null>(null);
   let creatingJob = $state(false);
 
   let createCustomVars = $state<Array<{ key: string; value: string }>>([]);
@@ -177,6 +180,9 @@
   // Aux Modals
   let rescheduleModalOpen = $state(false);
   let rescheduleJobId = $state('');
+  let snoozeModalOpen = $state(false);
+  let snoozeJobId = $state<string | null>(null);
+  let snoozeGroupId = $state<string | null>(null);
   let contactPickerOpen = $state(false);
   let contactPickerTargetField = $state<'to' | 'created_by'>('to');
 
@@ -418,6 +424,88 @@
     }
   }
 
+  async function handlePause(jobItem: JobListItem | Job) {
+    if (jobItem.source === 'yaml') {
+      toast.error('HTTP 409 Conflict: Recados YAML são imutáveis via API.');
+      return;
+    }
+    try {
+      await api.pauseJob(jobItem.id);
+      toast.success(`Recado ${jobItem.id} pausado.`);
+      await loadJobs();
+      if (selectedJob?.id === jobItem.id) {
+        selectedJob = await api.getJob(jobItem.id);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao pausar';
+      toast.error(msg);
+    }
+  }
+
+  async function handleResume(jobItem: JobListItem | Job) {
+    if (jobItem.source === 'yaml') {
+      toast.error('HTTP 409 Conflict: Recados YAML são imutáveis via API.');
+      return;
+    }
+    try {
+      await api.resumeJob(jobItem.id);
+      toast.success(`Recado ${jobItem.id} retomado.`);
+      await loadJobs();
+      if (selectedJob?.id === jobItem.id) {
+        selectedJob = await api.getJob(jobItem.id);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao retomar';
+      toast.error(msg);
+    }
+  }
+
+  async function handlePauseGroup(groupId: string) {
+    try {
+      const res = await api.pauseGroup(groupId);
+      toast.success(`Grupo ${groupId}: ${res.affected} recados pausados.`);
+      await loadJobs();
+      if (selectedJob?.group_id === groupId) {
+        await loadGroupMembers(groupId);
+        selectedJob = await api.getJob(selectedJob.id);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao pausar grupo';
+      toast.error(msg);
+    }
+  }
+
+  async function handleResumeGroup(groupId: string) {
+    try {
+      const res = await api.resumeGroup(groupId);
+      toast.success(`Grupo ${groupId}: ${res.affected} recados retomados.`);
+      await loadJobs();
+      if (selectedJob?.group_id === groupId) {
+        await loadGroupMembers(groupId);
+        selectedJob = await api.getJob(selectedJob.id);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao retomar grupo';
+      toast.error(msg);
+    }
+  }
+
+  function openSnoozeJob(jobId: string, source: string) {
+    if (source === 'yaml') {
+      toast.error('HTTP 409 Conflict: Recados YAML são declarativos e imutáveis via API.');
+      return;
+    }
+    snoozeJobId = jobId;
+    snoozeGroupId = null;
+    snoozeModalOpen = true;
+  }
+
+  function openSnoozeGroup(groupId: string) {
+    snoozeJobId = null;
+    snoozeGroupId = groupId;
+    snoozeModalOpen = true;
+  }
+
   $effect(() => {
     function handleKeydown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -425,6 +513,8 @@
           createModalOpen = false;
         } else if (rescheduleModalOpen) {
           rescheduleModalOpen = false;
+        } else if (snoozeModalOpen) {
+          snoozeModalOpen = false;
         } else if (contactPickerOpen) {
           contactPickerOpen = false;
         } else if (selectedJob) {
@@ -450,7 +540,6 @@
         return status;
     }
   }
-
 
   function openReschedule(jobId: string, source: string) {
     if (source === 'yaml') {
@@ -533,6 +622,9 @@
         ? Object.fromEntries(createCustomVars.map((v) => [v.key, v.value]))
         : undefined;
 
+      const untilPayload = createUntil ? new Date(createUntil).toISOString() : null;
+      const maxRunsPayload = createMaxRuns && createMaxRuns > 0 ? Number(createMaxRuns) : null;
+
       if (createRecipients.length > 1) {
         const batchRes = await api.createBatchJobs({
           title: createTitle.trim(),
@@ -540,6 +632,8 @@
           kind: createKind,
           run_at: createKind === 'once' && createRunAt ? new Date(createRunAt).toISOString() : null,
           cron_expr: createKind === 'cron' ? createCronExpr.trim() : null,
+          until: untilPayload,
+          max_runs: maxRunsPayload,
           content: payloadContent,
           template_id: payloadTemplateId,
           created_by: createCreatedBy.trim() || null,
@@ -553,6 +647,8 @@
           kind: createKind,
           run_at: createKind === 'once' && createRunAt ? new Date(createRunAt).toISOString() : null,
           cron_expr: createKind === 'cron' ? createCronExpr.trim() : null,
+          until: untilPayload,
+          max_runs: maxRunsPayload,
           content: payloadContent,
           template_id: payloadTemplateId,
           created_by: createCreatedBy.trim() || null,
@@ -567,6 +663,8 @@
       createTemplateId = '';
       createRunAt = '';
       createCronExpr = '';
+      createUntil = '';
+      createMaxRuns = null;
       createRecipients = ['eu'];
       recipientInput = '';
       createCustomVars = [];
@@ -955,6 +1053,16 @@
                       <div class="text-on-surface-variant font-label-code-sm text-label-code-sm mt-0.5">
                         {job.next_run_at ? new Date(job.next_run_at).toLocaleString('pt-BR') : job.run_at ? new Date(job.run_at).toLocaleString('pt-BR') : '—'}
                       </div>
+                      {#if job.until}
+                        <div class="text-outline text-[11px] mt-0.5" title="Data limite para repetições (until)">
+                          Até: {new Date(job.until).toLocaleDateString('pt-BR')}
+                        </div>
+                      {/if}
+                      {#if job.max_runs}
+                        <div class="text-outline text-[11px] mt-0.5" title="Contador de execuções (run_count / max_runs)">
+                          Runs: {job.run_count || 0}/{job.max_runs}
+                        </div>
+                      {/if}
                     </td>
 
                     <td class="py-2.5 px-space-sm whitespace-nowrap w-[110px]">
@@ -969,7 +1077,7 @@
                       </div>
                     </td>
 
-                    <td class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
+                    <td class="py-2.5 px-space-sm text-right w-[240px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
                       <div class="flex items-center justify-end gap-1.5 flex-nowrap">
                         {#if job.source !== 'yaml' && job.status === 'error'}
                           <button
@@ -983,7 +1091,7 @@
                           </button>
                         {/if}
                         <button
-                          class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
+                          class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                           onclick={() => handleRun(job.id)}
                           title="POST /jobs/{job.id}/run"
                           type="button"
@@ -992,8 +1100,38 @@
                         </button>
 
                         {#if job.source !== 'yaml'}
+                          {#if job.status === 'paused'}
+                            <button
+                              class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary hover:text-on-secondary text-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
+                              onclick={() => handleResume(job)}
+                              title="Retomar Recado (POST /jobs/{job.id}/resume)"
+                              type="button"
+                            >
+                              Retomar
+                            </button>
+                          {:else if job.status === 'scheduled'}
+                            <button
+                              class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
+                              onclick={() => handlePause(job)}
+                              title="Pausar Recado (POST /jobs/{job.id}/pause)"
+                              type="button"
+                            >
+                              Pausar
+                            </button>
+                          {/if}
+                          {#if job.status === 'scheduled' || job.status === 'paused'}
+                            <button
+                              class="p-1 rounded bg-surface-container-lowest hover:bg-primary/20 text-primary transition-all cursor-pointer flex items-center"
+                              onclick={() => openSnoozeJob(job.id, job.source)}
+                              title="Adiar Recado (Snooze)"
+                              aria-label="Adiar Recado"
+                              type="button"
+                            >
+                              <span class="material-symbols-outlined text-[16px]">snooze</span>
+                            </button>
+                          {/if}
                           <button
-                            class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
+                            class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                             onclick={() => openReschedule(job.id, job.source)}
                             title="Reagendar"
                             type="button"
@@ -1001,7 +1139,7 @@
                             Editar
                           </button>
                           <button
-                            class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all"
+                            class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all cursor-pointer"
                             onclick={() => handleCancel(job)}
                             title="Cancelar Recado"
                             aria-label="Cancelar Recado"
@@ -1132,7 +1270,7 @@
                         {/if}
 
                         <button
-                          class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary text-secondary hover:text-on-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1"
+                          class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary text-secondary hover:text-on-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1 cursor-pointer"
                           onclick={() => handleRunGroup(row.groupId)}
                           title="Disparar todos os recados deste grupo"
                           type="button"
@@ -1142,8 +1280,37 @@
                         </button>
 
                         {#if row.source !== 'yaml'}
+                          {#if row.statusSummary.scheduled > 0}
+                            <button
+                              class="px-2 py-1 rounded bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
+                              onclick={() => handlePauseGroup(row.groupId)}
+                              title="Pausar todos os recados deste grupo"
+                              type="button"
+                            >
+                              Pausar
+                            </button>
+                          {/if}
+                          {#if row.statusSummary.paused > 0}
+                            <button
+                              class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary hover:text-on-secondary text-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
+                              onclick={() => handleResumeGroup(row.groupId)}
+                              title="Retomar todos os recados deste grupo"
+                              type="button"
+                            >
+                              Retomar
+                            </button>
+                          {/if}
                           <button
-                            class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all flex items-center gap-1 font-label-ui text-label-ui uppercase tracking-wider"
+                            class="p-1 rounded bg-surface-container-lowest hover:bg-primary/20 text-primary transition-all cursor-pointer flex items-center"
+                            onclick={() => openSnoozeGroup(row.groupId)}
+                            title="Adiar todos os recados deste grupo (Snooze)"
+                            aria-label="Adiar Grupo"
+                            type="button"
+                          >
+                            <span class="material-symbols-outlined text-[16px]">snooze</span>
+                          </button>
+                          <button
+                            class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all flex items-center gap-1 font-label-ui text-label-ui uppercase tracking-wider cursor-pointer"
                             onclick={() => handleCancelGroup(row.groupId)}
                             title="Cancelar todos os recados deste grupo"
                             aria-label="Cancelar Grupo"
@@ -1247,7 +1414,7 @@
                         </td>
 
                         <!-- Sub-ações individuais (Alinhamento e altura idênticos) -->
-                        <td class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
+                        <td class="py-2.5 px-space-sm text-right w-[240px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
                           <div class="flex items-center justify-end gap-1.5 flex-nowrap">
                             {#if memberJob.source !== 'yaml' && memberJob.status === 'error'}
                               <button
@@ -1261,7 +1428,7 @@
                               </button>
                             {/if}
                             <button
-                              class="px-2 py-1 rounded bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
+                              class="px-2 py-1 rounded bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                               onclick={() => handleRun(memberJob.id)}
                               title="Disparar apenas este destinatário"
                               type="button"
@@ -1270,8 +1437,38 @@
                             </button>
 
                             {#if memberJob.source !== 'yaml'}
+                              {#if memberJob.status === 'paused'}
+                                <button
+                                  class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary hover:text-on-secondary text-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
+                                  onclick={() => handleResume(memberJob)}
+                                  title="Retomar Recado"
+                                  type="button"
+                                >
+                                  Retomar
+                                </button>
+                              {:else if memberJob.status === 'scheduled'}
+                                <button
+                                  class="px-2 py-1 rounded bg-surface-container hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
+                                  onclick={() => handlePause(memberJob)}
+                                  title="Pausar Recado"
+                                  type="button"
+                                >
+                                  Pausar
+                                </button>
+                              {/if}
+                              {#if memberJob.status === 'scheduled' || memberJob.status === 'paused'}
+                                <button
+                                  class="p-1 rounded bg-surface-container hover:bg-primary/20 text-primary transition-all cursor-pointer flex items-center"
+                                  onclick={() => openSnoozeJob(memberJob.id, memberJob.source)}
+                                  title="Adiar Recado (Snooze)"
+                                  aria-label="Adiar Recado"
+                                  type="button"
+                                >
+                                  <span class="material-symbols-outlined text-[16px]">snooze</span>
+                                </button>
+                              {/if}
                               <button
-                                class="px-2 py-1 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold"
+                                class="px-2 py-1 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                                 onclick={() => openReschedule(memberJob.id, memberJob.source)}
                                 title="Reagendar este destinatário"
                                 type="button"
@@ -1279,7 +1476,7 @@
                                 Editar
                               </button>
                               <button
-                                class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all"
+                                class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all cursor-pointer"
                                 onclick={() => handleCancel(memberJob)}
                                 title="Cancelar apenas este destinatário"
                                 aria-label="Cancelar Recado"
@@ -1478,6 +1675,14 @@
             <span class="font-label-ui text-label-ui uppercase text-outline block">Expressão / Run At</span>
             <span class="font-label-code text-label-code text-on-surface font-mono" id="detail-schedule">{selectedJob.cron_expr || selectedJob.run_at || '—'}</span>
           </div>
+          <div>
+            <span class="font-label-ui text-label-ui uppercase text-outline block">Limite (until)</span>
+            <span class="font-label-code text-label-code text-on-surface font-mono" id="detail-until">{selectedJob.until ? new Date(selectedJob.until).toLocaleString('pt-BR') : 'Sem limite'}</span>
+          </div>
+          <div>
+            <span class="font-label-ui text-label-ui uppercase text-outline block">Execuções (run_count / max)</span>
+            <span class="font-label-code text-label-code text-on-surface font-mono" id="detail-runs">{selectedJob.run_count ?? 0}{selectedJob.max_runs ? ` / ${selectedJob.max_runs}` : ' (ilimitado)'}</span>
+          </div>
         </div>
 
         <!-- Histórico e Telemetria -->
@@ -1624,6 +1829,36 @@
               {#if selectedJob.source !== 'yaml'}
                 <button
                   type="button"
+                  class="px-2 py-1 rounded bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer font-semibold"
+                  id="btn-group-pause-all"
+                  onclick={() => handlePauseGroup(selectedJob!.group_id!)}
+                  title="POST /jobs/group/{selectedJob.group_id}/pause"
+                >
+                  <span class="material-symbols-outlined text-[14px]">pause</span>
+                  <span>Pausar Grupo</span>
+                </button>
+                <button
+                  type="button"
+                  class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary hover:text-on-secondary text-secondary font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer font-semibold"
+                  id="btn-group-resume-all"
+                  onclick={() => handleResumeGroup(selectedJob!.group_id!)}
+                  title="POST /jobs/group/{selectedJob.group_id}/resume"
+                >
+                  <span class="material-symbols-outlined text-[14px]">play_arrow</span>
+                  <span>Retomar Grupo</span>
+                </button>
+                <button
+                  type="button"
+                  class="px-2 py-1 rounded bg-surface-container-highest hover:bg-primary/20 text-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer font-semibold"
+                  id="btn-group-snooze-all"
+                  onclick={() => openSnoozeGroup(selectedJob!.group_id!)}
+                  title="POST /jobs/group/{selectedJob.group_id}/snooze"
+                >
+                  <span class="material-symbols-outlined text-[14px]">snooze</span>
+                  <span>Adiar Grupo</span>
+                </button>
+                <button
+                  type="button"
                   class="px-2 py-1 rounded bg-error-container/20 hover:bg-error-container text-error hover:text-on-error font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer"
                   id="btn-group-cancel-all"
                   onclick={() => handleCancelGroup(selectedJob!.group_id!)}
@@ -1674,7 +1909,7 @@
         <!-- Comandos do Operador -->
         <div class="pt-space-xs flex flex-col gap-space-xs border-t border-outline-variant/10">
           <span class="font-label-ui text-label-ui uppercase text-outline">Comandos do Operador</span>
-          <div class="grid {selectedJob.source !== 'yaml' && selectedJob.status === 'error' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'} gap-space-xs">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-space-xs">
             {#if selectedJob.source !== 'yaml' && selectedJob.status === 'error'}
               <button
                 class="px-space-sm py-2 rounded bg-error text-on-error font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm hover:brightness-110 active:brightness-95 transition-all font-semibold cursor-pointer"
@@ -1688,7 +1923,7 @@
             {/if}
 
             <button
-              class="px-space-sm py-2 rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm hover:brightness-110 active:brightness-95 transition-all font-semibold"
+              class="px-space-sm py-2 rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm hover:brightness-110 active:brightness-95 transition-all font-semibold cursor-pointer"
               id="btn-detail-run"
               onclick={() => handleRun(selectedJob!.id)}
               type="button"
@@ -1698,8 +1933,42 @@
             </button>
 
             {#if selectedJob.source !== 'yaml'}
+              {#if selectedJob.status === 'paused'}
+                <button
+                  class="px-space-sm py-2 rounded bg-secondary/20 hover:bg-secondary hover:text-on-secondary text-secondary font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer font-semibold"
+                  id="btn-detail-resume"
+                  onclick={() => handleResume(selectedJob!)}
+                  type="button"
+                >
+                  <span class="material-symbols-outlined text-[16px]">play_arrow</span>
+                  <span>Retomar</span>
+                </button>
+              {:else if selectedJob.status === 'scheduled'}
+                <button
+                  class="px-space-sm py-2 rounded bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer font-semibold"
+                  id="btn-detail-pause"
+                  onclick={() => handlePause(selectedJob!)}
+                  type="button"
+                >
+                  <span class="material-symbols-outlined text-[16px]">pause</span>
+                  <span>Pausar</span>
+                </button>
+              {/if}
+
+              {#if selectedJob.status === 'scheduled' || selectedJob.status === 'paused'}
+                <button
+                  class="px-space-sm py-2 rounded bg-surface-container-highest hover:bg-primary/20 text-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer font-semibold"
+                  id="btn-detail-snooze"
+                  onclick={() => openSnoozeJob(selectedJob!.id, selectedJob!.source)}
+                  type="button"
+                >
+                  <span class="material-symbols-outlined text-[16px]">snooze</span>
+                  <span>Adiar</span>
+                </button>
+              {/if}
+
               <button
-                class="px-space-sm py-2 rounded bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
+                class="px-space-sm py-2 rounded bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer"
                 id="btn-detail-reschedule"
                 onclick={() => openReschedule(selectedJob!.id, selectedJob!.source)}
                 type="button"
@@ -1708,7 +1977,7 @@
                 <span>Reagendar</span>
               </button>
               <button
-                class="px-space-sm py-2 rounded bg-error-container/20 hover:bg-error-container text-error hover:text-on-error font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
+                class="px-space-sm py-2 rounded bg-error-container/20 hover:bg-error-container text-error hover:text-on-error font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer"
                 id="btn-detail-cancel"
                 onclick={() => handleCancel(selectedJob!)}
                 type="button"
@@ -1820,6 +2089,38 @@
                 <span class="font-label-code-sm text-label-code-sm text-outline">Formato: minuto hora dia mês dia_semana</span>
               </div>
             {/if}
+          </div>
+
+          <!-- Ciclo de Vida e Limites (until, max_runs) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-space-md p-space-sm bg-surface-container-lowest rounded border border-outline-variant/10">
+            <div class="flex flex-col gap-1">
+              <label class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold" for="create-until">
+                Data Limite (until) <span class="text-outline text-label-code-sm font-normal">(opcional)</span>
+              </label>
+              <input
+                class="w-full bg-surface-container text-on-surface font-label-code-sm text-label-code-sm rounded px-space-sm py-2 focus:outline-none focus:ring-1 focus:ring-primary"
+                id="create-until"
+                name="until"
+                type="datetime-local"
+                bind:value={createUntil}
+              />
+              <span class="font-label-code-sm text-label-code-sm text-outline">Encerrar recorrência após esta data</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold" for="create-max-runs">
+                Máximo de Execuções (max_runs) <span class="text-outline text-label-code-sm font-normal">(opcional)</span>
+              </label>
+              <input
+                class="w-full bg-surface-container text-on-surface font-label-code text-label-code rounded px-space-sm py-2 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                id="create-max-runs"
+                name="max_runs"
+                placeholder="ex: 10"
+                type="number"
+                min="1"
+                bind:value={createMaxRuns}
+              />
+              <span class="font-label-code-sm text-label-code-sm text-outline">Parar após atingir número de disparos</span>
+            </div>
           </div>
 
           <!-- Destinatários (to / batch) e Criador (created_by) -->
@@ -2091,4 +2392,12 @@
   open={contactPickerOpen}
   onselect={onContactPicked}
   onclose={() => (contactPickerOpen = false)}
+/>
+
+<SnoozeModal
+  open={snoozeModalOpen}
+  jobId={snoozeJobId}
+  groupId={snoozeGroupId}
+  onclose={() => (snoozeModalOpen = false)}
+  onsuccess={() => loadJobs()}
 />

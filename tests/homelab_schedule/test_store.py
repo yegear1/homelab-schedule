@@ -669,9 +669,69 @@ def test_migration_v8_to_v9_adds_variables(tmp_path: Path) -> None:
     assert job is not None
     assert job.variables == {}
 
-    # Check user_version is 9
+    # Check user_version is 10 (latest)
     row = migrated.execute("PRAGMA user_version").fetchone()
-    assert row[0] == 9
+    assert row[0] == 10
+    migrated.close()
+
+
+def test_migration_v9_to_v10_adds_lifecycle(tmp_path: Path) -> None:
+    import sqlite3
+
+    db = tmp_path / "v9.sqlite"
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute(
+        """
+        CREATE TABLE jobs (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            "to" TEXT NOT NULL,
+            target_number TEXT NOT NULL DEFAULT '',
+            kind TEXT NOT NULL,
+            run_at TEXT,
+            cron_expr TEXT,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL,
+            next_run_at TEXT,
+            last_run_at TEXT,
+            last_status TEXT,
+            last_error TEXT,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT NOT NULL DEFAULT '',
+            template_id TEXT,
+            group_id TEXT,
+            variables TEXT NOT NULL DEFAULT '{}'
+        )
+        """
+    )
+    conn.execute("PRAGMA user_version=9")
+    conn.execute(
+        """
+        INSERT INTO jobs (
+            id, title, content, "to", target_number, kind, cron_expr, enabled, source, status
+        ) VALUES (
+            'j9', 'v9 recurring', 'hello v9', 'eu', '5511999998888@c.us', 'cron',
+            '0 9 * * *', 1, 'sqlite', 'scheduled'
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    migrated = connect(str(db))
+    repo = JobRepository(migrated)
+    job = repo.get("j9")
+    assert job is not None
+    assert job.until is None
+    assert job.max_runs is None
+    assert job.run_count == 0
+
+    # Verify user_version is 10
+    row = migrated.execute("PRAGMA user_version").fetchone()
+    assert row[0] == 10
     migrated.close()
 
 

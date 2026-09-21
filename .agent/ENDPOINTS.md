@@ -38,6 +38,9 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 | `template_id` | string \| null | Catálogo; no disparo o `body` atual vence o snapshot |
 | `group_id` | string \| null | Identificador do lote para agendamentos com múltiplos destinatários |
 | `variables` | object (dict[str, str]) | Dicionário de variáveis contextuais para interpolação em templates e mensagens |
+| `until` | string ISO-8601 UTC \| null | Data limite para encerramento automático de repetições |
+| `max_runs` | int \| null | Limite máximo acumulado de execuções |
+| `run_count` | int | Contador acumulado de execuções realizadas |
 
 ### `GET /jobs`
 
@@ -150,9 +153,29 @@ Histórico de execuções/disparos de um agendamento específico. Query: `limit`
 
 Sqlite: pontual → remove ou `status=done` cancelado; cron → `enabled=false` / `paused`. YAML: `409` com mensagem para editar o arquivo. `404`. `204` ou `200` com Job.
 
-### `POST /jobs/group/{group_id}/cancel`
+### `POST /jobs/{id}/pause`
 
-Cancela todos os recados sqlite ativos vinculados ao `group_id`. `200` → `{ "group_id": "...", "affected": N, "status": "cancelled" }`.
+Pausa temporariamente um agendamento (`status=paused`, `enabled=false`). Não apaga nem cancela definitivamente. `409` se já pausado ou concluído (`done`). `409` se YAML. `200` + Job.
+
+### `POST /jobs/group/{group_id}/pause`
+
+Pausa todos os agendamentos ativos vinculados ao `group_id`. `200` → `{ "group_id": "...", "affected": N, "status": "paused" }`.
+
+### `POST /jobs/{id}/resume`
+
+Retoma um agendamento pausado (`status=scheduled`, `enabled=true`), recalculando a próxima execução com base no horário atual. `409` se não estiver pausado. `409` se YAML. `200` + Job.
+
+### `POST /jobs/group/{group_id}/resume`
+
+Retoma todos os agendamentos pausados vinculados ao `group_id`. `200` → `{ "group_id": "...", "affected": N, "status": "scheduled" }`.
+
+### `POST /jobs/{id}/snooze`
+
+Posterga a próxima execução (`next_run_at`) sem alterar a expressão mestre `cron_expr`. Aceita `until` (ISO-8601), `duration_minutes` ou `when` (linguagem natural / ISO). `409` se YAML ou concluído. `422` se data inválida ou no passado. `200` + Job.
+
+### `POST /jobs/group/{group_id}/snooze`
+
+Posterga a próxima execução de todos os recados ativos vinculados ao `group_id`. `200` → `{ "group_id": "...", "affected": N, "status": "snoozed" }`.
 
 ### `POST /jobs/{id}/retry`
 

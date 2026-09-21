@@ -626,3 +626,118 @@ def test_tick_loop_sends_dead_letter_alert_to_admin(tmp_path: Path, api_key: str
         assert "Job Que Vai Falhar" in dispatcher.calls[1][1]
 
 
+@pytest.mark.anyio
+async def test_fire_due_stops_at_max_runs(tmp_path: Path) -> None:
+    conn = connect(str(tmp_path / "schedule.sqlite"))
+    repo = JobRepository(conn)
+    overdue = datetime(2026, 9, 14, 8, 0, tzinfo=UTC)
+    repo.insert(
+        Job(
+            id="cron-limited-runs",
+            title="Lembrete 2x",
+            content="Aviso",
+            to="eu",
+            kind=JobKind.CRON,
+            cron_expr="0 8 * * *",
+            next_run_at=overdue,
+            status=JobStatus.SCHEDULED,
+            max_runs=2,
+            run_count=0,
+        )
+    )
+    dispatcher = RecordingDispatcher()
+    now1 = datetime(2026, 9, 14, 9, 0, tzinfo=UTC)
+    await fire_due(repo, dispatcher, {"eu": "5511999998888@c.us"}, now1)
+
+    assert len(dispatcher.calls) == 1
+    stored = repo.get("cron-limited-runs")
+    assert stored is not None
+    assert stored.run_count == 1
+    assert stored.status is JobStatus.SCHEDULED
+    assert stored.enabled is True
+    assert stored.next_run_at is not None
+
+    # Simulate next day overdue
+    next_overdue = stored.next_run_at
+    now2 = next_overdue + timedelta(hours=1)
+    await fire_due(repo, dispatcher, {"eu": "5511999998888@c.us"}, now2)
+
+    assert len(dispatcher.calls) == 2
+    stored2 = repo.get("cron-limited-runs")
+    assert stored2 is not None
+    assert stored2.run_count == 2
+    assert stored2.status is JobStatus.DONE
+    assert stored2.enabled is False
+    assert stored2.next_run_at is None
+    conn.close()
+
+
+@pytest.mark.anyio
+async def test_fire_due_stops_when_until_reached(tmp_path: Path) -> None:
+    conn = connect(str(tmp_path / "schedule.sqlite"))
+    repo = JobRepository(conn)
+    overdue = datetime(2026, 9, 14, 8, 0, tzinfo=UTC)
+    # until is today at 18:00; next run would be next Monday (after until)
+    until = datetime(2026, 9, 14, 18, 0, tzinfo=UTC)
+    repo.insert(
+        Job(
+            id="cron-until-reached",
+            title="Semanal com limite",
+            content="Aviso",
+            to="eu",
+            kind=JobKind.CRON,
+            cron_expr="0 9 * * 1",
+            next_run_at=overdue,
+            status=JobStatus.SCHEDULED,
+            until=until,
+        )
+    )
+    dispatcher = RecordingDispatcher()
+    now = datetime(2026, 9, 14, 15, 0, tzinfo=UTC)
+    await fire_due(repo, dispatcher, {"eu": "5511999998888@c.us"}, now)
+
+    assert len(dispatcher.calls) == 1
+    stored = repo.get("cron-until-reached")
+    assert stored is not None
+    assert stored.run_count == 1
+    assert stored.status is JobStatus.DONE
+    assert stored.enabled is False
+    assert stored.next_run_at is None
+    conn.close()
+
+
+@pytest.mark.anyio
+async def test_fire_due_expires_before_dispatch_if_until_passed(tmp_path: Path) -> None:
+    conn = connect(str(tmp_path / "schedule.sqlite"))
+    repo = JobRepository(conn)
+    overdue = datetime(2026, 9, 14, 8, 0, tzinfo=UTC)
+    # until was in the past (yesterday)
+    until = datetime(2026, 9, 13, 18, 0, tzinfo=UTC)
+    repo.insert(
+        Job(
+            id="cron-expired-already",
+            title="Já expirado",
+            content="Aviso",
+            to="eu",
+            kind=JobKind.CRON,
+            cron_expr="0 8 * * *",
+            next_run_at=overdue,
+            status=JobStatus.SCHEDULED,
+            until=until,
+        )
+    )
+    dispatcher = RecordingDispatcher()
+    now = datetime(2026, 9, 14, 9, 0, tzinfo=UTC)
+    await fire_due(repo, dispatcher, {"eu": "5511999998888@c.us"}, now)
+
+    # Must NOT have dispatched
+    assert len(dispatcher.calls) == 0
+    stored = repo.get("cron-expired-already")
+    assert stored is not None
+    assert stored.status is JobStatus.DONE
+    assert stored.enabled is False
+    assert stored.next_run_at is None
+    conn.close()
+
+
+
