@@ -1,7 +1,7 @@
 services:
   homelab-schedule:
     build: .
-    image: homelab-schedule:local
+    image: ghcr.io/yegear1/homelab-schedule:${HOMELAB_SCHEDULE_VERSION:-latest}
     container_name: homelab-schedule
     restart: unless-stopped
     env_file:

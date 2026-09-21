@@ -34,6 +34,18 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-21] CI/CD de Build e Publicação Docker no GHCR (GitHub Actions)
+
+- **Contexto:** Necessidade de empacotar o container da aplicação de forma automatizada e reproduzível na nuvem sem sobrecarregar o host Proxmox/VMs locais com builds mecânicos pesados (I/O em HDD e exaustão de partições BuildKit), permitindo que o homelab consuma imagens versionadas via GHCR.
+- **Decisão:**
+  - **Workflow `.github/workflows/docker-publish.yml`:**
+    - Disparos: `push` na branch `main`, tags `v*.*.*` e `workflow_dispatch`.
+    - Permissões mínimas explícitas: `contents: read` e `packages: write` (autenticação com `${{ secrets.GITHUB_TOKEN }}`).
+    - BuildKit Cache: tipo `gha` (`mode=max`) para otimização de tempo de compilação multi-stage (Node.js 22 alpine + Python 3.13 slim).
+    - Metadados e Tags Imutáveis: tags SemVer (`{{version}}`, `{{major}}.{{minor}}`), branch, SHA curto (`sha-XXXXXXX`) e tag mutável `latest` habilitada condicionalmente apenas na branch `main`.
+  - **Orquestração Compose:** `docker-compose.yml` parametrizado para consumir `ghcr.io/yegear1/homelab-schedule:${HOMELAB_SCHEDULE_VERSION:-latest}`, mantendo `build: .` como alternativa para desenvolvimento local.
+  - **Ambiente:** `HOMELAB_SCHEDULE_VERSION=latest` adicionado a `.env.example`.
+
 ### [2026-09-20] Ciclo de Vida Avançado para Recorrentes (until, max_runs, Pausa Temporária e Snooze, SQLite v10)
 
 - **Contexto:** Agendamentos recorrentes no homelab frequentemente exigem limites de validade temporal (ex: "repetir até 31 de dezembro"), quotas máximas de execução (ex: "executar 10 vezes e parar"), suspensão temporária sem perda da configuração (pausa/retomada) e postergação pontual de disparos imediatos (snooze) sem alterar a regra mestra do cron.

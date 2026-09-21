@@ -18,6 +18,7 @@
 
 Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
+- [00.5] CI/CD de Build e Publicação Docker no GHCR (GitHub Actions)
 - [02.11] Ciclo de Vida Avançado para Recorrentes (`until`, `max_runs` e Pausa Temporária/Snooze)
 - [02.10] Alertas de Dead-Letter para o Operador (Notificação de Falha Crítica no Gateway)
 - [02.9] Variáveis Customizadas em Jobs e Templates (`variables` em Jobs e Interpolação Segura)
