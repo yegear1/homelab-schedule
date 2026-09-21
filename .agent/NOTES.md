@@ -34,6 +34,18 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-20] Alertas de Dead-Letter para o Operador (Notificação de Falha Crítica no Gateway)
+
+- **Contexto:** Quando um agendamento atinge estado definitivo de erro / Dead-Letter no scheduler (`due-tick`) — seja por erro permanente do gateway HTTP (ex: 401/422) ou após esgotamento de retentativas transientes (`_MAX_RETRIES = 3`) —, o operador precisa ser notificado proativamente via mensageiro sem depender de abrir a UI web ou inspecionar logs no VictoriaLogs.
+- **Decisão:**
+  - **Configuração (`WHATSAPP_ADMIN_NUMBER`):** Variável de ambiente adicionada em `Settings` (`config.py` e `.env.example`). Aceita número normalizado, telefone com ou sem sufixo, ou alias (ex: `eu`, `admin`), resolvido via catálogo de contatos e `WHATSAPP_ALIASES`. Se vazia ou não configurada, o mecanismo de alerta permanece desativado (zero overhead).
+  - **Gatilho Estrito no `due-tick`:** Disparado apenas em falhas terminais no background (`result.permanent or job.retry_count >= _MAX_RETRIES`). Disparos manuais interativos (`POST /jobs/{id}/run`) continuam retornando `502 Bad Gateway` direto para o chamador, evitando notificações redundantes.
+  - **Isolamento e Resiliência Operacional:**
+    - O envio do alerta utiliza `dispatcher.send(phone_number=admin_dest, content=...)` diretamente, sem inserção no SQLite e sem acionar `asyncio.Event` (`notebook_changed`), prevenindo loops recursivos de dead-letter.
+    - Captura de falhas no envio do alerta com logs estruturados NDJSON (`dead_letter_alert_sent`, `dead_letter_alert_failed`, `dead_letter_alert_exception`). Falha na entrega do alerta ao operador não interrompe o loop do scheduler nem afeta os demais jobs devidos.
+    - Privacidade preservada: destinos (`phone_number`), conteúdo do job e payloads não são expostos como stream fields nos logs.
+  - **Mensagem do Alerta:** Identifica claramente o evento com título do job, ID, destinatário original, tipo (pontual/recorrente), código de status HTTP, mensagem do erro e total de tentativas realizadas.
+
 ### [2026-09-20] Variáveis Customizadas em Jobs e Templates (SQLite v9)
 
 - **Contexto:** Chamadores da API, rotinas YAML, agentes no MCP e operadores na interface web precisavam associar pares de variáveis chave-valor arbitrárias (`variables: dict[str, str]`) a cada job no momento do agendamento (ex: `protocolo`, `nome_cliente`, `link_rastreio`, `servidor`), interpolando-as de forma segura no template ou mensagem sem a complexidade ou riscos de segurança do Jinja2.

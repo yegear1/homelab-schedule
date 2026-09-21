@@ -7,10 +7,10 @@
 
 ## Tarefa Ativa
 
-- **ID:** `[02.10]`
-- **Título:** Alertas de Dead-Letter para o Operador (Notificação de Falha Crítica no Gateway)
+- **ID:** `[02.11]`
+- **Título:** Ciclo de Vida Avançado para Recorrentes (`until`, `max_runs` e Pausa Temporária/Snooze)
 - **Status:** `PRONTO PARA PLANEJAMENTO`
-- **Contexto:** Notificar o operador (`WHATSAPP_ADMIN_NUMBER` ou alias configurável) quando um job atingir estado definitivo de erro / dead-letter após falhas repetidas no gateway de envio.
+- **Contexto:** Suporte a condições de encerramento automático para jobs recorrentes (`until` em timestamp UTC e `max_runs` em contador de ocorrências) e capacidade de pausa temporária/adiamento (snooze) sem cancelamento definitivo.
 
 ---
 
@@ -18,6 +18,7 @@
 
 Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
+- [02.10] Alertas de Dead-Letter para o Operador (Notificação de Falha Crítica no Gateway)
 - [02.9] Variáveis Customizadas em Jobs e Templates (`variables` em Jobs e Interpolação Segura)
 - [02.7] Importação / Exportação e Backup do SQLite
 - [02.6] Visão em Calendário / Linha do Tempo na UI
@@ -31,7 +32,6 @@ Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Próximas, em ordem)
 
-- [ ] **[02.11]** Ciclo de Vida Avançado para Recorrentes (`until`, `max_runs` e Pausa Temporária/Snooze)
 - [ ] **[02.12]** Síntese Matinal e Prevenção de Conflitos no MCP (`daily_digest` e aviso preventivo)
 
 ---

@@ -36,6 +36,8 @@ async def run_tick(
     retention_days: int = 365,
     dest_name: Callable[[str], str | None] | None = None,
     template_body: Callable[[str], str | None] | None = None,
+    admin_recipient: str | None = None,
+    admin_resolver: Callable[[str], str] | None = None,
 ) -> None:
     last_routines_mtime: float | None = _get_mtime(routines_path)
     last_housekeeping: datetime | None = None
@@ -74,6 +76,8 @@ async def run_tick(
             current_now,
             dest_name=dest_name,
             template_body=template_body,
+            admin_recipient=admin_recipient,
+            admin_resolver=admin_resolver,
         )
         delay = _next_delay(repo, current_now, cap_seconds, failed)
         try:
@@ -99,8 +103,11 @@ async def fire_due(
     now: datetime,
     dest_name: Callable[[str], str | None] | None = None,
     template_body: Callable[[str], str | None] | None = None,
+    admin_recipient: str | None = None,
+    admin_resolver: Callable[[str], str] | None = None,
 ) -> bool:
     failed = False
+    clean_admin = admin_recipient.strip() if admin_recipient else ""
     for job in repo.list_due(now):
         dest = job.target_number or resolve_destination(job.to, aliases)
         catalog: str | None = None
@@ -130,8 +137,78 @@ async def fire_due(
             repo.update(_after_success(job, now))
             continue
         failed = True
+        is_dead_letter = result.permanent or job.retry_count >= _MAX_RETRIES
         repo.update(_after_failure(job, result.last_error, result.permanent, now))
+        if is_dead_letter and clean_admin:
+            admin_dest = (
+                admin_resolver(clean_admin)
+                if admin_resolver is not None
+                else resolve_destination(clean_admin, aliases)
+            )
+            if admin_dest:
+                await _send_dead_letter_alert(
+                    dispatcher=dispatcher,
+                    admin_dest=admin_dest,
+                    job=job,
+                    error_message=result.last_error,
+                    status_code=result.status_code,
+                    retry_count=job.retry_count,
+                    permanent=result.permanent,
+                )
     return failed
+
+
+async def _send_dead_letter_alert(
+    *,
+    dispatcher: Dispatcher,
+    admin_dest: str,
+    job: Job,
+    error_message: str | None,
+    status_code: int,
+    retry_count: int,
+    permanent: bool,
+) -> None:
+    job_kind_str = "pontual" if job.kind is JobKind.ONCE else "recorrente"
+    action_str = (
+        "Job desativado no SQLite (Dead-Letter)."
+        if job.kind is JobKind.ONCE
+        else "Ocorrência descartada; próximo ciclo agendado."
+    )
+    attempts_str = "1 (erro permanente)" if permanent else f"{retry_count + 1}"
+    alert_content = (
+        "🚨 *[Alerta Dead-Letter]* Falha definitiva no disparo da agenda.\n"
+        f"• *Job:* {job.title} (`{job.id}`)\n"
+        f"• *Destino original:* {job.to}\n"
+        f"• *Tipo:* {job_kind_str}\n"
+        f"• *Erro:* {error_message or 'desconhecido'} (HTTP {status_code})\n"
+        f"• *Tentativas:* {attempts_str}\n"
+        f"• *Ação:* {action_str}"
+    )
+    try:
+        alert_res = await dispatcher.send(phone_number=admin_dest, content=alert_content)
+        if alert_res.ok:
+            _LOG.info(
+                "dead_letter_alert_sent",
+                extra={"event": "dead_letter_alert_sent", "job_id": job.id},
+            )
+        else:
+            _LOG.error(
+                "dead_letter_alert_failed",
+                extra={
+                    "event": "dead_letter_alert_failed",
+                    "job_id": job.id,
+                    "status_code": alert_res.status_code,
+                },
+            )
+    except Exception as exc:
+        _LOG.error(
+            "dead_letter_alert_exception",
+            extra={
+                "event": "dead_letter_alert_exception",
+                "job_id": job.id,
+                "error": str(exc),
+            },
+        )
 
 
 def _next_delay(

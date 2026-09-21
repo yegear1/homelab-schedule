@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from homelab_schedule.aliases import parse_aliases
+from homelab_schedule.aliases import parse_aliases, resolve_destination
 from homelab_schedule.backup_router import router as backup_router
 from homelab_schedule.backup_service import BackupService
 from homelab_schedule.clock import SystemClock
@@ -121,6 +121,10 @@ def create_app(
                 retention_days=resolved.job_retention_days,
                 dest_name=contact_service.name_for_phone,
                 template_body=templates_repo.body_for,
+                admin_recipient=resolved.whatsapp_admin_number.strip() or None,
+                admin_resolver=lambda to: (
+                    contact_service.resolve_to(to) or resolve_destination(to, aliases)
+                ),
             )
         )
         yield
