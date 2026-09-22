@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-22
+
+### Added
+- **CI/CD GHCR:** GitHub Actions workflow builds, caches (BuildKit `gha`), and publishes multi-stage Docker image to `ghcr.io/yegear1/homelab-schedule` on `main` push, SemVer tags, and `workflow_dispatch`.
+- **Advanced Job Lifecycle (`until`, `max_runs`, pause/resume, snooze):** Recurrent jobs auto-stop on expiry date or execution quota; `pause`/`resume` endpoints suspend/reactivate without data loss; `snooze` postpones the next fire without mutating `cron_expr`. Group-level variants for all three actions.
+- **Operator Dead-Letter Alerts:** Critical gateway failures (permanent HTTP error or retries exhausted) notify the operator via `WHATSAPP_ADMIN_NUMBER` without side-effects on the scheduler loop.
+- **Custom Job Variables (`variables: dict[str, str]`):** Arbitrary key-value pairs on each job, persisted as JSON, safely interpolated in templates; supported across HTTP API, MCP `schedule`/`preview`, `routines.yaml`, web UI, and backup export/import.
+- **SQLite Backup & Portability:** Online `GET /backup/database` (binary snapshot), structured `GET /backup/export` (JSON bundle), atomic `POST /backup/import` (merge or replace), and `GET /backup/integrity` audit endpoint; operator `BackupModal.svelte` with four action tabs.
+- **Calendar & Timeline UI Views:** Segmented view switcher on the jobs list — classic table, vertical chronological timeline (upcoming + history with relative timestamps), and interactive monthly calendar with daily event chips.
+- **Execution History (`job_runs`):** Persistent audit log of every dispatch attempt (trigger, status, HTTP code, duration in ms, error message) with `GET /jobs/{id}/runs` and `GET /jobs/runs`; displayed in the job detail drawer.
+- **Dead-Letter Retry:** `POST /jobs/{id}/retry` and `POST /jobs/group/{group_id}/retry` requeue error jobs; `GET /jobs` now includes `last_error` and `retry_count`; operator UI shows dead-letter banner with retry and run-now actions.
+- **Contextual Greetings & Dynamic Template Tags:** `{{greeting}}`, `{{greeting_lower}}`, `{{saudacao}}`, `{{period}}`, `{{day}}`, `{{month}}`, `{{hour}}`, `{{minute}}` resolved at dispatch time in `America/Sao_Paulo`.
+- **MCP `preview` Tool (dry-run):** Resolves recipient, calculates `next_run_at`, renders all template variables in memory without touching SQLite or the gateway.
+- **Advanced MCP Filters (`list_agenda`):** New optional params `to` (alias/phone), `query` (full-text search on title/content), and `period` (relative window: `hoje`, `esta semana`, `próximos 7 dias`, ISO date ranges).
+
+### Changed
+- `docker-compose.yml` hardened with `security_opt: no-new-privileges`, liveness `healthcheck` on `GET /health`, and `deploy.resources` limits (0.5 CPU / 256 MB RAM).
+
 ## [0.3.0] - 2026-09-19
 
 ### Added
