@@ -1,154 +1,248 @@
-# Diretrizes e Regras do Agente
+# Agent Guidelines and Rules
 
-Você é o engenheiro sênior responsável pelo desenvolvimento deste projeto: **homelab-schedule**.
+You are the lead software engineer developing this project: **homelab-schedule**.
 
-Agenda leve em um container: jobs pontuais e recorrentes que disparam `POST /send` num gateway HTTP configurável. Canetas neste repo: MCP, HTTP, YAML. Repo: `yegear1/homelab-schedule`.
-
----
-
-## Protocolo de Execução
-
-1. Antes de alterar arquivos, leia `AGENTS.md`, `.agent/TASK.md` e `.agent/NOTES.md`.
-2. **Planejamento primeiro:** `Status` → `EM PLANEJAMENTO`; apresente o plano; espere aprovação; então `EM EXECUÇÃO`.
-3. Uma tarefa por vez.
-4. **DoD:** código tipado (sem `Any`); `feat` com testes; validação 100%; commit Conventional Commits em inglês; log no `TASK.md` + promoção da próxima; decisões/armadilhas no `NOTES.md`.
+Lightweight agenda in a single container: one-off and recurring jobs that trigger `POST /send` on a configurable HTTP gateway. Pens in this repo: MCP, HTTP, YAML, Web UI. Repo: `yegear1/homelab-schedule`.
 
 ---
 
-## Numeração de Tarefas (`[XX.Y]`)
+## ⚖️ Rule Precedence Hierarchy
 
-Formato `[Épico].[Sequencial]` com épico de **dois dígitos**. Subtarefas: `[XX.Y.Z]`. Só **uma** tarefa `EM EXECUÇÃO`. IDs imutáveis dentro da release. Após tag Git: arquivar no `ARCHIVE.md`, reiniciar em `[00.1]`/`[01.1]` e corrigir o ID da tarefa ativa. Backlog Futuro: `[99.1] Preparar Release (Tag Git) e Sanitizar Contexto` — **NUNCA** iniciar sem permissão explícita.
+When directives or requirements conflict, the agent MUST resolve them using the following strict priority:
+1. **Security & Secrets Isolation:** NEVER expose tokens, passwords, or commit unscrubbed credentials or `.env` files.
+2. **Payload & Schema Invariants:** NEVER break established data contracts recorded in `.agent/NOTES.md`, `.agent/ENDPOINTS.md`, or schemas.
+3. **Strict Typing:** Code MUST pass typechecking in strict mode with zero unchecked `any`/`Any` declarations.
+4. **Architectural Separation:** Domain logic MUST reside in the service layer, NOT in routes, controllers, or MCP tools.
+5. **Code Style & Metrics:** Functions MUST NOT exceed ~40 LOC; linters and formatters MUST pass with exit code 0.
 
-| Prefixo | Fase | Foco |
+When a conflict cannot be resolved using this hierarchy, the agent MUST halt execution and request explicit human clarification.
+
+---
+
+## Modular Context Triggers
+
+The agent MUST minimize default token load by following progressive disclosure:
+- **Default Context (Loaded on start):** `AGENTS.md`, `.agent/TASK.md`, `.agent/NOTES.md`.
+- **Architectural Decisions (`.agent/adr/`):** MUST load when creating new services or changing system boundaries.
+- **Domain Skills (`.agent/skills/<name>/SKILL.md`):** MUST load only when the active task touches that skill's trigger.
+- **API & UI Contracts (`.agent/ENDPOINTS.md`, `.agent/INTERFACE.md`):** MUST load when modifying HTTP routes, gateway dispatch, or Web UI components.
+
+---
+
+## Execution Protocol
+
+1. Read `AGENTS.md`, `.agent/TASK.md`, and `.agent/NOTES.md` before editing any files.
+2. **Plan first:** Set `Status` in `.agent/TASK.md` to `PLANNING`; present plan; await approval; then set to `RUNNING`.
+3. Work on exactly ONE active task at a time.
+4. **Falsifiable Definition of Done (DoD):**
+   A task MUST NOT be marked done based on subjective appraisal. It MUST satisfy:
+   - [ ] Strict Typing: `uv run mypy .` exits with code 0.
+   - [ ] Automated Tests: `uv run pytest -v` exits with code 0.
+   - [ ] Linters: `uv run ruff check .` exits with code 0.
+   - [ ] Git Cleanliness: `git diff --check` exits with code 0.
+   - [ ] Atomic Commit: Conventional Commits in English (`feat(scope): ...`, `fix(scope): ...`).
+   - [ ] Task Log: Active task logged in `.agent/TASK.md` with commit hash; next task promoted.
+   - [ ] Notes Log: Key architectural decisions or traps documented in `.agent/NOTES.md`.
+
+---
+
+## Fail-Stop Protocol & Escalation Hierarchy (Circuit Breaker)
+
+If an automated command (test, build, typecheck, lint) fails **2 consecutive times** with the same root cause:
+1. The agent MUST STOP execution immediately.
+2. The agent MUST NOT attempt unapproved speculative refactorings.
+3. The agent MUST escalate to the user with a structured diagnostic block:
+   ```yaml
+   failure_stage: "test | typecheck | lint | build"
+   error_signature: "exact error message"
+   consecutive_failures: 2
+   root_cause_analysis: "technical description"
+   attempted_fixes:
+     - "fix 1 description"
+     - "fix 2 description"
+   pending_decision: "question or proposed options for user"
+   ```
+
+---
+
+## Task Numbering (`[XX.Y]`)
+
+Format: `[Epic].[Sequence]` with two-digit epics. Subtasks: `[XX.Y.Z]`. Exactly **one** task active in `RUNNING` status. IDs are immutable within a release cycle. After Git tag: archive to `ARCHIVE.md`, restart at `[00.1]`/`[01.1]`, and update active task ID. Future Backlog: `[99.1] Prepare Release (Git Tag) and Sanitize Context` — **NEVER** start without explicit user permission.
+
+**Next ID:** Derived solely from Active Task + Log of current cycle. Ignore Future Backlog and closing sections. Same epic → `Y+1`. New epic → `[XX+1.1]`. Never jump to `90.x`/`99.x` unless performing refactoring/release explicitly requested by user.
+
+| Prefix | Phase | Focus |
 | :---: | :--- | :--- |
-| **`00.x`** | Bootstrap & Setup | `pyproject`, linters, layout `src/`, Compose |
-| **`01.x`** | Fundação | Job store SQLite, HTTP, tick `next_run_at`, cliente HTTP `/send` |
-| **`02.x`** | Canetas | YAML de rotinas, MCP stdio, skill de anotação |
-| **`90.x`** | Refatoração | Performance e dívida técnica |
-| **`99.x`** | Hardening & Release | Auditoria e tag — só com permissão humana |
+| **`00.x`** | Bootstrap & Setup | `pyproject`, linters, layout `src/`, Compose, CI/CD, governance |
+| **`01.x`** | Foundation | SQLite job store, HTTP core, `next_run_at` tick, HTTP `/send` client |
+| **`02.x`** | Pens & Capabilities | YAML routines, MCP stdio, agenda skills, Web UI, lifecycle |
+| **`90.x`** | Refactoring | Performance and technical debt |
+| **`99.x`** | Hardening & Release | Audit and release tag — human approval required |
 
 ---
 
-## Higiene Pós-Release (gatilho: tag Git, qualquer fase)
+## Post-Release Hygiene (Trigger: Git tag on any phase)
 
-Não está preso à fase `99.x`. Ao publicar `vX.Y.Z`:
+Not restricted to phase `99.x`. When releasing `vX.Y.Z`:
 
-1. **Arquivar:** log do ciclo de `TASK.md` → `ARCHIVE.md` sob `## [vX.Y.Z] - AAAA-MM-DD`.
-2. **Consolidar:** decisões definitivas → ADRs; apagar dumps e notas efêmeras no `NOTES.md`.
-3. **Borda:** `.env.example` e `README.md` sincronizados com a tag.
-4. **Reset:** reiniciar numeração; corrigir ID da tarefa ativa; promover a próxima (`PRONTO PARA PLANEJAMENTO`); manter `[99.1]` no Backlog Futuro.
+1. **Archive:** Move completed log from `TASK.md` to `ARCHIVE.md` under `## [vX.Y.Z] - YYYY-MM-DD`.
+2. **Consolidate:** Promote definitive architectural decisions to ADRs; prune ephemeral scratch notes in `NOTES.md`.
+3. **Perimeter:** Sync `.env.example` and `README.md` to the release tag.
+4. **Reset:** Reset task numbering; correct active task ID; promote next milestone to `READY FOR PLANNING`; restore closing checklist in `TASK.md`.
 
 ---
 
 ## Stack
 
-- **OS / shell:** Linux (WSL2) / Bash — use essa sintaxe no terminal.
-- **Arquitetura:** monólito modular, **um processo / um container**: FastAPI (HTTP) + tick asyncio (disparos) + sqlite3 WAL + merge de `routines.yaml`.
-- **Linguagem:** Python 3.13+.
-- **Gerenciador:** **UV** — proibido `pip` direto. Use `uv add`, `uv sync`, `uv run`.
-- **Frameworks:** FastAPI, Pydantic v2, Pydantic-Settings, httpx. Logs NDJSON com `logging` stdlib (skill `victorialogs-integration`, Padrão 2 Opção B — sem Loguru).
-- **Schema SQLite:** `CREATE TABLE IF NOT EXISTS` no connect. Sem Alembic. Sem APScheduler.
-- **Linter / tipos / testes:** Ruff, mypy (estrito), pytest.
-- **Persistência:** SQLite 3 WAL em volume (`DATABASE_PATH`). Sem Redis neste repo — fila de envio, se houver, vive no gateway.
-- **Gateway de envio:** HTTP `POST {WHATSAPP_API_URL}/send` com header `x-api-key`. `202 Accepted` = sucesso; não polling, não reenvio imediato. Nomes `WHATSAPP_*` são históricos.
-- **Importações:** explícitas, sem `__init__.py` barrel. Schemas globais em `src/schemas/`. Helpers internos de feature prefixo `_`.
+- **OS / shell:** Linux (WSL2) / Bash — use this syntax in terminal commands.
+- **Architecture:** Modular monolith, **one process / one container**: FastAPI (HTTP & Web) + asyncio tick (dispatch) + sqlite3 WAL + routines.yaml merge.
+- **Language:** Python 3.13+.
+- **Package Manager:** **UV** — `pip` directly is PROHIBITED. Use `uv add`, `uv sync`, `uv run`.
+- **Frameworks:** FastAPI, Pydantic v2, Pydantic-Settings, httpx. Logs NDJSON with standard library `logging` (skill `victorialogs-integration`, Pattern 2 Option B — without Loguru).
+- **SQLite Schema:** `CREATE TABLE IF NOT EXISTS` and versioned migration on connect (`PRAGMA user_version`). No Alembic. No APScheduler.
+- **Linter / Types / Tests:** Ruff, mypy (strict mode), pytest.
+- **Persistence:** SQLite 3 WAL on volume (`DATABASE_PATH`). No Redis in this repo — dispatch queue, if any, lives in the gateway.
+- **Dispatch Gateway:** HTTP `POST {WHATSAPP_API_URL}/send` with header `x-api-key`. `202 Accepted` = success; no polling, no immediate re-dispatch. Names `WHATSAPP_*` are historic.
+- **Imports:** Explicit imports; no `__init__.py` barrel files. Global schemas in `src/schemas/`. Internal feature helpers prefixed with `_`.
 
 ---
 
 ## Docker
 
-Compose é o ambiente de execução diária no homelab. Validação rápida de código: `uv run` no host. Compose quando a tarefa for imagem, volume, rede ou disparo real.
+Compose is the daily runtime environment in the homelab. Fast code validation: `uv run` on the host. Compose when the task involves container image, volume, network, or real dispatch.
 
-Permitido: `up -d`, `logs`, `build`, `restart`, `exec`, `down` (sem `-v`).
+Allowed: `up -d`, `logs`, `build`, `restart`, `exec`, `down` (without `-v`).
 
-**NUNCA:** `system/builder prune`; `down -v` / `volume rm`; `rmi` de imagens alheias; senha em YAML/Dockerfile; commit de `.env` real. Rebuild só se mudou dependência/`Dockerfile`/arquivos copiados no build; com bind mount, `restart` basta.
+**MUST NOT:**
+- Execute `system prune`, `builder prune`, `volume rm`, or `rmi` on external images.
+- Execute `down -v` (destroys data volumes).
+- Commit plaintext credentials or real `.env` files.
 
-Todo serviço de aplicação no compose **deve**: `container_name` estável; `LOG_FORMAT=json`; `NO_COLOR=1`; `ENV`/`ENVIRONMENT`; `SERVICE_NAME=homelab-schedule`; `APP=homelab-schedule`; driver `json-file` `max-size: 10m`, `max-file: 3`. Imagem: uvicorn `--no-access-log` (`GET /health` o Vector pode descartar no perfil HDD). Skill global `victorialogs-integration` ao tocar logs ou compose.
+Every application service in compose **MUST**: stable `container_name`; `LOG_FORMAT=json`; `NO_COLOR=1`; `ENV`/`ENVIRONMENT`; `SERVICE_NAME=homelab-schedule`; `APP=homelab-schedule`; logging driver `json-file` with `max-size: 10m`, `max-file: 3`. Image: uvicorn `--no-access-log` (`GET /health` discarded by Vector on HDD profiles). Apply global skill `victorialogs-integration` when modifying logs or compose.
 
-Para composes/imagens ainda sem versão fixada: ao fixar versão, pesquisar e adotar a **última versão estável** lançada (evitar versões arbitrárias ou tags instáveis como `latest` sem critério).
+For composes/images without a pinned version: adopt the latest stable release.
 
 ---
 
-## MCP
+## MCP (Model Context Protocol)
 
-| Servidor | Papel |
+| Server | Role |
 | :--- | :--- |
-| **`homelab-schedule`** (deste repo, stdio) | Caneta do agente: `schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`. Fala com a HTTP local (`uv run homelab-schedule-mcp`). |
-| **`victorialogs`** (global) | Diagnóstico de runtime. Não substitui `list_agenda`. |
+| **`homelab-schedule`** (this repo, stdio) | Agent pen: `schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`, `pause`, `resume`, `snooze`. Communicates via local HTTP (`uv run homelab-schedule-mcp`). |
+| **`victorialogs`** (global) | Runtime diagnostics. Does NOT replace `list_agenda`. |
 
-Prefira MCP a curl ad-hoc depois que o servidor existir. Mutação em produção via MCP só com consentimento. Não logue tokens. `mcp.json` do Cursor é local — **não** versione.
+Prefer MCP over ad-hoc curl once the server exists. Direct production mutation via MCP requires user consent. NEVER log auth tokens. `mcp.json` in editor profiles is local — **do not** version control.
 
-Tools do MCP deste projeto: superfície fechada (ver [ADR-005](./.agent/adr/005-mcp-superficie-fechada.md)). Sem CRUD genérico, sem `PATCH` solto.
+MCP tools in this project: closed surface (see [ADR-005](./.agent/adr/005-mcp-superficie-fechada.md)). No generic CRUD, no unbounded `PATCH`.
 
 ---
 
 ## Skills
 
-Leia `.agent/skills/<nome>/SKILL.md` quando a tarefa cair no domínio. Fluxo repetitivo (>3 passos) → nova skill a partir de `.agent/skills/000-template.md`. Infra de host (VictoriaLogs, hypervisor) é skill **global**.
+Read `.agent/skills/<name>/SKILL.md` when a task touches that skill's domain. For repetitive workflows (>3 steps), create a new skill from `.agent/skills/000-template.md`. Host infrastructure belongs in **global** skills.
 
-Skills globais obrigatórias quando couber:
+Global skills (mandatory when applicable):
+- `victorialogs-integration` — logs, compose, stdout (stdlib NDJSON).
+- `victorialogs-troubleshooting` — investigate errors via VictoriaLogs MCP.
+- `github-bug-issue` — record deferred defects as GitHub issues.
 
-- `victorialogs-integration` — logs, compose, stdout; neste repo é stdlib NDJSON (não Loguru).
-- `victorialogs-troubleshooting` — investigar erros via MCP VictoriaLogs.
-- `github-bug-issue` — anotar bug para depois (issue no GitHub; não usar `TASK.md` como fila).
-
-| Skill do repo | Quando |
+Repo Domain Skills:
+| Skill | Trigger |
 | :--- | :--- |
-| `database-migration` | Mudança de schema sqlite3 (`CREATE`/`ALTER` no connect) |
-| `api-endpoint` | Rotas HTTP: router fino → service → repository |
-| `mcp-tool` | Tools MCP stdio (schema, tokens, sem CRUD genérico) |
-| `anotar-agenda` | Humano pede para anotar/lembrar/listar/cancelar (MCP, não `/send`) |
-| `agenda-job` | Contrato de campos do job (when/to/content) |
-| `whatsapp-dispatch` | Cliente HTTP `POST /send`; 202 = sucesso |
+| `database-migration` | sqlite3 schema changes on connect (`CREATE`/`ALTER`) |
+| `api-endpoint` | HTTP routes: thin router $\rightarrow$ service $\rightarrow$ repository |
+| `mcp-tool` | Stdio MCP tools (closed schema, tokens, no generic CRUD) |
+| `anotar-agenda` | Human requests to record/remind/list/cancel agenda |
+| `agenda-job` | Job fields contract (when/to/content) |
+| `whatsapp-dispatch` | HTTP client `POST /send`; 202 = success |
 | `due-tick` | Loop `next_run_at` + Event; catch-up once/cron |
 
 ---
 
-## Validação
+## Validation Commands
 
-Na raiz do repo:
+Run at repository root:
+- **Dependencies:** `uv sync`
+- **Add package (explicit approval required):** `uv add <package>`
+- **Tests:** `uv run pytest -v` (Exit code MUST be 0)
+- **Lint:** `uv run ruff check .` (Exit code MUST be 0)
+- **Types:** `uv run mypy .` (Exit code MUST be 0)
+- **Git diff check:** `git diff --check` (Exit code MUST be 0)
+- **Local dev server:** `uv run uvicorn homelab_schedule.main:create_app --factory --reload --port 8003`
 
-- **Deps:** `uv sync`
-- **Add (só com permissão):** `uv add <pacote>`
-- **Testes:** `uv run pytest -v`
-- **Lint:** `uv run ruff check .`
-- **Tipos:** `uv run mypy .`
-- **Dev:** `uv run uvicorn homelab_schedule.main:create_app --factory --reload --port 8003`
-
-**Circuit breaker:** 2 falhas seguidas com a mesma causa-raiz → pare e pergunte. Nova dependência só com permissão.
-
----
-
-## Regras de Ouro
-
-- **NUNCA** tipagem frouxa (`Any`).
-- **NUNCA** instale dependência ou use `pip` sem permissão.
-- **NUNCA** quebre contratos de payload (`.agent/NOTES.md`, `.agent/ENDPOINTS.md`, skill `whatsapp-dispatch`).
-- **NUNCA** use campos `to`, `body`, `message`, `Authorization: Bearer` no `POST /send` — só `phone_number`, `content`, `x-api-key`.
-- **NUNCA** trate `202` do `/send` como falha nem reenvie na hora.
-- **NUNCA** coloque destino (`phone_number`/JID), texto da mensagem ou `request_id` como stream field de log.
-- **NUNCA** entregue mock, syntax error ou `TODO` como tarefa concluída.
-- **NUNCA** coloque regra de negócio em rota/controller; use camada de serviço.
-- **NUNCA** apague arquivos ou refatore fora do escopo.
-- **NUNCA** mute schema SQLite via MCP; altere o SQL versionado no connect (`database-migration`).
-- **NUNCA** adicione APScheduler/Alembic/Loguru sem o humano pedir.
-- **NUNCA** invente parâmetro/endpoint sem docs deste repo ou skill `whatsapp-dispatch`.
-- **NUNCA** ignore a skill do domínio da tarefa.
-- **NUNCA** leia/altere arquivos fora deste projeto nem chaves SSH/credenciais do host.
-- **NUNCA** implemente bot ou comandos de chat neste repo — callers usam a HTTP `/jobs`; este serviço só agenda e dispara.
+Adding new dependencies REQUIRES explicit user approval.
 
 ---
 
-## Código
+## Golden Rules
 
-Funções curtas (máx. ~40 linhas). Erros explícitos, validação Pydantic, logs NDJSON. Testes em `tests/` espelhando `src/`. Contratos globais em `src/schemas/`. Import explícito; prefixo `_` em helpers internos de feature.
-
-NDJSON: um objeto por linha, sem pretty-print; `level` minúsculo (`WARNING`→`warn`); traceback no mesmo evento (`stack_trace`); extras não canônicos em `context`.
-
-Fuso default: `America/Sao_Paulo` (`TZ`). Timestamps de log: ISO-8601 UTC.
+- **MUST NOT** use loose typing (`any`/`Any`). All functions and schemas MUST be strictly typed.
+- **MUST NOT** install dependencies or use `pip` directly without explicit user permission.
+- **MUST NOT** break payload contracts (`.agent/NOTES.md`, `.agent/ENDPOINTS.md`, skill `whatsapp-dispatch`).
+- **MUST NOT** use fields `to`, `body`, `message`, or `Authorization: Bearer` on `POST /send` — use ONLY `phone_number`, `content`, `x-api-key`.
+- **MUST NOT** treat `202 Accepted` from `/send` as a failure or retry immediately.
+- **MUST NOT** place recipient phone numbers/JIDs, message text, or `request_id` as log stream fields.
+- **MUST NOT** deliver mocks, syntax errors, or unresolved `TODO` comments as completed tasks.
+- **MUST NOT** put business or persistence logic in routes/controllers; use service and repository layers.
+- **MUST NOT** delete files or execute out-of-scope refactorings.
+- **MUST NOT** mutate SQLite schema via MCP; use versioned Python migration on connect (`database-migration`).
+- **MUST NOT** add APScheduler, Alembic, or Loguru without explicit user request.
+- **MUST NOT** invent API parameters or endpoints without documentation or skill references.
+- **MUST NOT** ignore domain skills relevant to the active task.
+- **MUST NOT** read or modify files outside this project directory or inspect host credentials/SSH keys.
+- **MUST NOT** implement chat bots or conversational command parsers in this repo — callers use HTTP `/jobs` or MCP.
 
 ---
 
-## Git
+## Code Quality & Contrast Pairs
 
-Commits atômicos, Conventional Commits em inglês: `feat|fix|refactor|test|chore|docs(scope): …`. Trunk-based na `main`. Push só se o usuário pedir; **NUNCA** `--force` em `main` sem autorização.
+Functions MUST NOT exceed ~40 lines of code. All errors MUST be handled explicitly with structured exceptions or result types. Pydantic v2 schemas in `src/schemas/`. Internal feature helpers prefixed with `_`.
+
+NDJSON logging: one JSON object per line, no pretty-printing; lowercase `level` (`WARNING` $\rightarrow$ `warn`); tracebacks on the same event in `stack_trace`; non-canonical extras in `context`.
+
+Default timezone: `America/Sao_Paulo` (`TZ`). Log timestamps: ISO-8601 UTC.
+
+### Contrast Pairs (DO / DON'T)
+
+```python
+# BAD: Loose typing, business logic in router, direct SQL execution
+@router.post("/jobs")
+async def create_job(request: dict[str, Any]):
+    db = sqlite3.connect("data/schedule.db")
+    cursor = db.cursor()
+    cursor.execute(f"INSERT INTO jobs VALUES ('{request.get('id')}', '{request.get('name')}')")
+    db.commit()
+    return {"status": "ok"}
+
+# GOOD: Strictly typed Pydantic schema, thin router, delegated service call
+@router.post("/jobs", status_code=status.HTTP_201_CREATED, response_model=JobResponse)
+async def create_job(
+    payload: JobCreateRequest,
+    service: JobService = Depends(get_job_service),
+) -> JobResponse:
+    job = await service.schedule_job(payload)
+    return JobResponse.model_validate(job)
+```
+
+```markdown
+# BAD: Vague commit message with multiple concerns and past tense
+git commit -m "fixed stuff, updated yaml and changed tests"
+
+# GOOD: Atomic Conventional Commit in English imperative
+git commit -m "feat(scheduler): enforce until expiration limit on recurring jobs"
+```
+
+---
+
+## Git Conventions
+
+- **Atomic Commits:** Each commit MUST represent a single logical change.
+- **Conventional Commits:** MUST follow `<type>(<scope>): <summary in English imperative>`.
+  - `feat`: new capability with automated test
+  - `fix`: bug fix with regression test
+  - `refactor`: structural cleanup without behavior change
+  - `test`: test additions or adjustments
+  - `chore`: maintenance, dependencies, configuration
+  - `docs`: documentation only
+- **Branch Strategy:** Trunk-based development on `main`.
+- **Safety:** Push only upon explicit user request; **MUST NOT** force-push (`--force`) to primary branches.

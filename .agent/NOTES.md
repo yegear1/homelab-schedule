@@ -34,6 +34,17 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-22] Alinhamento de Governança com o Template Hub (template-agent, Tarefa [00.6])
+
+- **Contexto:** O repositório central `template-agent` (hub de governança ADD) introduziu padrões mais rígidos de previsibilidade, desempate e segurança para agentes autônomos. Era necessário sincronizar as diretrizes do `homelab-schedule` sem quebrar nenhum dos contratos e invariantes de domínio já consolidados.
+- **Decisão:**
+  - **Precedence Hierarchy (RFC 2119):** Adicionada hierarquia de resolução de conflitos em 5 níveis no topo do `AGENTS.md` (1. Isolamento de Segredos > 2. Invariantes de Contratos > 3. Tipagem Estrita > 4. Separação Arquitetural > 5. Estilo/Métricas).
+  - **Circuit Breaker com YAML Estruturado:** Formalizado o Fail-Stop para que, ao atingir 2 falhas consecutivas pela mesma causa, o agente interrompa a execução e apresente obrigatoriamente um bloco YAML padronizado de diagnóstico (`failure_stage`, `error_signature`, `root_cause_analysis`, `attempted_fixes`, `pending_decision`).
+  - **Falsifiable DoD:** Reestruturado o Definition of Done para checagens via comando de exit code 0 (`mypy`, `pytest`, `ruff`, `git diff --check`).
+  - **Modular Context Triggers:** Mapeamento explícito de carregamento progressivo de contexto (`AGENTS.md`/`TASK.md`/`NOTES.md` iniciais, ADRs sob demanda, skills por trigger de tarefa, contratos de API/UI por rota).
+  - **Contrast Pairs:** Adicionados pares de contraste (DO / DON'T) em Python e Conventional Commits orientando o agente com exemplos de implementação aceita vs anti-padrão.
+  - **Technical English:** Marcadores de processo e controle padronizados em Technical English (`READY FOR PLANNING`, `PLANNING`, `RUNNING`, `DONE`).
+
 ### [2026-09-21] CI/CD de Build e Publicação Docker no GHCR (GitHub Actions)
 
 - **Contexto:** Necessidade de empacotar o container da aplicação de forma automatizada e reproduzível na nuvem sem sobrecarregar o host Proxmox/VMs locais com builds mecânicos pesados (I/O em HDD e exaustão de partições BuildKit), permitindo que o homelab consuma imagens versionadas via GHCR.
