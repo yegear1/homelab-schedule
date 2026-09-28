@@ -34,6 +34,14 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-28] Refatoração e Padronização das Skills de IA (.agent/skills/, Tarefa [00.7])
+
+- **Contexto:** As skills locais de domínio do `homelab-schedule` e o template (`000-template.md`) ainda seguiam o formato legado de 7 seções em português informal, carecendo de declaração explícita de raio de alcance (`Scope & Blast Radius`), precedência de resolução de conflitos, protocolo de fail-stop, marcadores RFC 2119 e checklists com asserções falsificáveis de código de saída.
+- **Decisão:**
+  - **Padrão Canônico de 9 Seções:** Todas as 7 skills de domínio (`agenda-job`, `anotar-agenda`, `api-endpoint`, `database-migration`, `due-tick`, `mcp-tool`, `whatsapp-dispatch`) e o `000-template.md` foram reescritos em active imperative Technical English estrito, divididos exatamente nas 9 seções organizacionais.
+  - **Frontmatter e Metadados:** Cada skill possui descrição concisa ($\le 250$ caracteres) especificando o gatilho exato e o resultado operacional esperado.
+  - **Falsificabilidade e Invariantes:** Preservação integral de todos os contratos existentes (superfície fechada MCP do ADR-005, fuso `America/Sao_Paulo`, payload estrito de `POST /send`, WAL mode no SQLite, loop `due-tick` com `notebook_changed`), adicionando pares de contraste `BAD:` vs `GOOD:` e checklists de saída com código 0.
+
 ### [2026-09-22] Alinhamento de Governança com o Template Hub (template-agent, Tarefa [00.6])
 
 - **Contexto:** O repositório central `template-agent` (hub de governança ADD) introduziu padrões mais rígidos de previsibilidade, desempate e segurança para agentes autônomos. Era necessário sincronizar as diretrizes do `homelab-schedule` sem quebrar nenhum dos contratos e invariantes de domínio já consolidados.
