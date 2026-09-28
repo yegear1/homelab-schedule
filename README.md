@@ -1,30 +1,34 @@
+**English** | [Português (Brasil)](./README.pt-br.md)
+
+---
+
 # homelab-schedule
 
-Agenda leve em um container: jobs **pontuais** e **recorrentes** que, no horário, fazem `POST /send` em um gateway HTTP que você configura. Versão **0.3.0** (`homelab-schedule-mcp`). Notas: [CHANGELOG](./CHANGELOG.md) · [GitHub Release](https://github.com/yegear1/homelab-schedule/releases/tag/v0.3.0).
+Lightweight agenda in a single container: **one-off** and **recurrent** jobs that trigger `POST /send` on a configurable HTTP gateway at their scheduled time. Version **0.4.0** (`homelab-schedule-mcp`). Notes: [CHANGELOG](./CHANGELOG.md) · [GitHub Release](https://github.com/yegear1/homelab-schedule/releases/tag/v0.4.0).
 
-Este repositório **não** inclui cliente de WhatsApp, bot nem fila anti-ban. Só agenda e dispara. Qualquer serviço que aceite o payload abaixo serve (`202` = aceito na fila). Este serviço não faz polling e não reenvia na hora. Falha transitória (rede, 5xx) reagenda até 3 vezes com backoff; 401/422 marcam o job como `error` na hora.
+This repository does **not** include a WhatsApp client, a chat bot, or an anti-ban queue. It strictly handles scheduling and dispatching. Any service that accepts the payload below works as a dispatch gateway (`202` = accepted into the queue). This service does not poll and does not immediately re-dispatch. Transient failures (network errors, 5xx) retry up to 3 times with exponential backoff; 401/422 status codes immediately mark the job as `error`.
 
-## Canetas (mesmo caderno)
+## Pens (Shared Notebook)
 
-| Canal | Quem usa | Neste repo |
+| Interface | Consumers | In this repo |
 | :--- | :--- | :--- |
-| **Web UI** (`/`, `/contacts`, `/templates`, `/jobs`) | Operador no navegador (Svelte 5) | Sim |
-| **MCP** (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`) | Agente no Cursor | Sim |
-| **HTTP** (`/jobs`, `/contacts`, `/templates`, `/health`, `/routines/reload`, `/housekeeping/purge`) | Scripts, MCP e callers | Sim |
-| **YAML** (`routines.yaml`) | Rotinas permanentes (reload por mtime ou `POST /routines/reload`) | Sim |
+| **Web UI** (`/`, `/contacts`, `/templates`, `/jobs`) | Browser operator interface (Svelte 5: table, timeline, calendar, and backup) | Yes |
+| **MCP** (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`, `pause`, `resume`, `snooze`, `preview`) | Cursor / AI agents | Yes |
+| **HTTP** (`/jobs`, `/contacts`, `/templates`, `/backup`, `/health`, `/routines/reload`, `/housekeeping/purge`) | Scripts, MCP, and external callers | Yes |
+| **YAML** (`routines.yaml`) | Permanent routines (reloaded on mtime change or `POST /routines/reload`) | Yes |
 
-Você anota em linguagem natural (*“amanhã 14h, pagar condomínio”* ou *“+15m”*). Destinos: contato (nome ou id), alias `WHATSAPP_ALIASES`, ou número. No create, o servidor grava `target_number` e o tick envia para esse valor.
+You can schedule using natural language expressions (*“tomorrow 2pm, pay rent”* or *“+15m”*). Destinations: contact (name or ID), alias in `WHATSAPP_ALIASES`, or raw phone number. On job creation, the server persists `target_number`, and the tick dispatches to this resolved value.
 
 ## Stack
 
-- Python 3.13+, UV, FastAPI, sqlite3 WAL, tick `next_run_at` (sem APScheduler/Alembic)
-- Um processo: API HTTP + scheduler
-- Logs NDJSON (VictoriaLogs / Vector)
-- Compose no homelab; `TZ=America/Sao_Paulo`; HTTP padrão **8003**
+- Python 3.13+, UV, FastAPI, sqlite3 WAL, `next_run_at` tick (no APScheduler/Alembic)
+- Single process: HTTP API + integrated scheduler
+- NDJSON logs (VictoriaLogs / Vector)
+- Homelab Compose; `TZ=America/Sao_Paulo`; default HTTP port **8003**
 
-Detalhe para agentes: [`AGENTS.md`](./AGENTS.md), [`.agent/NOTES.md`](./.agent/NOTES.md), [`.agent/TASK.md`](./.agent/TASK.md). Contrato HTTP: [`.agent/ENDPOINTS.md`](./.agent/ENDPOINTS.md).
+Details for agents: [`AGENTS.md`](./AGENTS.md), [`.agent/NOTES.md`](./.agent/NOTES.md), [`.agent/TASK.md`](./.agent/TASK.md). HTTP contract: [`.agent/ENDPOINTS.md`](./.agent/ENDPOINTS.md).
 
-## Desenvolvimento
+## Development
 
 ```bash
 cp .env.example .env
@@ -43,66 +47,89 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-O SQLite vive no volume `schedule-data`. Segredos ficam no `.env`, não no YAML. `WHATSAPP_API_URL` é a URL **do gateway de envio** (nome histórico da variável; não implica um repositório específico) e precisa ser alcançável a partir do container. Auth **desta** API: header `x-api-key` = `SCHEDULE_API_KEY` (exceto `GET /health`).
+SQLite persists in the `schedule-data` volume. Secrets belong in `.env`, not in YAML. `WHATSAPP_API_URL` is the URL **of the dispatch gateway** (historical variable name; does not imply a specific repository) and must be reachable from the container. API authentication: header `x-api-key` = `SCHEDULE_API_KEY` (except `GET /health`).
 
-## MCP (Cursor)
+## MCP (Cursor & Agents)
 
-Não versione `.cursor/mcp.json`. Com a API no ar:
+Do not commit `.cursor/mcp.json`. With the API running:
 
 ```bash
 uv run homelab-schedule-mcp
 ```
 
-No `mcp.json` local, `command`/`args` apontam para esse script (`uv run --directory <repo> homelab-schedule-mcp`) com `SCHEDULE_API_URL` e `SCHEDULE_API_KEY` no `env` do servidor. O MCP só encapsula a HTTP; não abre o SQLite.
+In local `mcp.json`, `command`/`args` point to this script (`uv run --directory <repo> homelab-schedule-mcp`) with `SCHEDULE_API_URL` and `SCHEDULE_API_KEY` in the server's `env`. MCP strictly wraps the HTTP API and never queries SQLite directly.
 
-`list_agenda` aceita `status` (`upcoming` / `done` / `error` / `paused` / `all`) e `limit` (teto 50). `reschedule` só vale para recados sqlite (YAML → edite `routines.yaml`).
+Available MCP tools:
+- `schedule`: create one-off or recurrent schedules (`when`, `to`, `content`, `variables`, `until`, `max_runs`).
+- `list_agenda`: query jobs by status (`upcoming`, `done`, `error`, `paused`, `all`), relative window (`period`), query search (`query`), and recipient (`to`).
+- `get_item`: inspect full job details by `id`.
+- `cancel`: cancel a scheduled job in SQLite.
+- `reschedule`: update `run_at` or `cron_expr` of a scheduled job.
+- `pause` / `resume`: temporarily suspend or reactivate a job.
+- `snooze`: postpone the next fire time without mutating the master cron rule.
+- `preview`: in-memory dry-run calculating fire times, resolving recipients, and rendering template variables.
 
-## HTTP (resumo)
+## HTTP API Summary
 
-- Lista: `GET /jobs?status=upcoming|done|error|paused|all&limit=…&phone=…`. Query `to` é **fim de intervalo de data**. `phone` une destino e criador.
-- Detalhe: `GET /jobs/{id}` (inclui `content` e `target_number`).
-- Criar / cancelar / disparar agora: `POST /jobs`, `POST /jobs/{id}/cancel`, `POST /jobs/{id}/run` (`run` não substitui o agendamento).
-- Adiar recado sqlite: `POST /jobs/{id}/reschedule`.
-- Contatos: `GET/POST /contacts`, `GET/PATCH/DELETE /contacts/{id}` (DELETE `409` se houver job `scheduled` para o telefone).
-- Templates: `GET/POST /templates`, `GET/PATCH/DELETE /templates/{id}` (DELETE `409` se houver job `scheduled` com aquele `template_id`). `POST /jobs` aceita `template_id` **ou** `content`. No disparo: `{{name}}` do contato destino + tags de data/hora.
-- Rotinas YAML e expurgo: `POST /routines/reload`, `POST /housekeeping/purge`.
+- **Jobs:**
+  - List: `GET /jobs?status=upcoming|done|error|paused|all&limit=…&phone=…&query=…`. Query `to` specifies the **end of a date range**. `phone` matches destination or creator.
+  - Detail: `GET /jobs/{id}` (includes `content`, `target_number`, `variables`, `until`, `max_runs`).
+  - Create / Cancel / Run now: `POST /jobs`, `POST /jobs/{id}/cancel`, `POST /jobs/{id}/run` (`run` triggers immediately without modifying the schedule).
+  - Batch: `POST /jobs/batch`, `POST /jobs/group/{group_id}/cancel`, `POST /jobs/group/{group_id}/run`.
+  - Lifecycle: `POST /jobs/{id}/reschedule`, `POST /jobs/{id}/pause`, `POST /jobs/{id}/resume`, `POST /jobs/{id}/snooze`, `POST /jobs/{id}/retry`.
+  - Execution History: `GET /jobs/{id}/runs`, `GET /jobs/runs`.
+  - Dry-Run Preview: `POST /jobs/preview`.
+- **Contacts:** `GET/POST /contacts`, `GET/PATCH/DELETE /contacts/{id}` (DELETE returns `409` if a `scheduled` job references the phone number).
+- **Templates:** `GET/POST /templates`, `GET/PATCH/DELETE /templates/{id}` (DELETE returns `409` if a `scheduled` job references the `template_id`). `POST /jobs` accepts `template_id` **or** `content`.
+- **Backup & Integrity:** `GET /backup/database` (SQLite WAL snapshot), `GET /backup/export` (JSON bundle), `POST /backup/import` (merge or replace), `GET /backup/integrity`.
+- **Routines & Maintenance:** `POST /routines/reload`, `POST /housekeeping/purge`.
 
-## Gateway de envio
+## Dispatch Gateway
 
-No tick (e em `POST /jobs/{id}/run`), o serviço chama:
+During tick execution (and on `POST /jobs/{id}/run`), the service calls:
 
 `POST {WHATSAPP_API_URL}/send`
 
-| Peça | Valor |
+| Item | Value |
 | :--- | :--- |
 | Header | `x-api-key: {WHATSAPP_API_KEY}` |
-| JSON | `phone_number`, `content` (opcionalmente `quote_id`) |
-| Sucesso | **`202 Accepted`** — mensagem aceita pelo gateway; não significa entrega ao destinatário |
+| JSON | `phone_number`, `content` (optionally `quote_id`) |
+| Success | **`202 Accepted`** — message accepted by the gateway; does not imply delivery to recipient |
 
-`phone_number` é o `target_number` do job (E.164, id de chat, ou o que o seu gateway esperar). Um backend de WhatsApp é um caso de uso, não uma dependência deste código.
+`phone_number` is the job's `target_number` (E.164, chat ID, or whatever your gateway expects). A WhatsApp backend is an example use case, not a direct dependency of this project.
 
-## Housekeeping & Retenção
+## Housekeeping & Retention
 
-- **Expurgo automático diário:** o tick remove jobs `done`/`error` com `source = sqlite` mais velhos que `JOB_RETENTION_DAYS` (padrão 365; `0` desativa).
-- **Expurgo manual:** `POST /housekeeping/purge?days=365` (`x-api-key`). Jobs `scheduled` e rotinas `yaml` são preservados.
+- **Automatic daily purge:** the tick removes `done`/`error` jobs where `source = sqlite` older than `JOB_RETENTION_DAYS` (default 365; `0` disables) and purges old `job_runs` records.
+- **Manual purge:** `POST /housekeeping/purge?days=365` (`x-api-key`). Jobs with status `scheduled` and `yaml` routines are preserved.
+- **Dead-Letter alerts:** terminal gateway errors or exhausted retries notify the operator via `WHATSAPP_ADMIN_NUMBER`.
 
-## Templates dinâmicos de mensagem
+## Dynamic Message Templates
 
-No disparo, placeholders de data/hora no `content` são interpolados no `TZ` (padrão `America/Sao_Paulo`). O texto gravado no job/YAML **não** é reescrito — rotinas `cron` interpolam de novo a cada ciclo.
+At dispatch time, date/time placeholders in `content` are interpolated in the configured `TZ` (default `America/Sao_Paulo`). The text stored in the job or YAML is **not** rewritten — `cron` routines re-interpolate on each cycle.
 
-| Placeholder | Exemplo | Descrição |
+| Placeholder | Example | Description |
 | :--- | :--- | :--- |
-| `{{date}}` | `11/09/2026` | Data `DD/MM/YYYY` |
-| `{{date_iso}}` | `2026-09-11` | Data `YYYY-MM-DD` |
-| `{{time}}` | `08:00` | Horário `HH:MM` |
-| `{{weekday}}` | `sex` | Dia da semana curto (pt) |
-| `{{day_name}}` | `sexta-feira` | Dia da semana por extenso |
-| `{{month_name}}` | `setembro` | Mês por extenso |
-| `{{year}}` | `2026` | Ano com 4 dígitos |
-| `{{name}}` | `Maria` | Nome do contato de destino cadastrado na agenda |
+| `{{date}}` | `11/09/2026` | Date formatted as `DD/MM/YYYY` |
+| `{{date_iso}}` | `2026-09-11` | Date formatted as `YYYY-MM-DD` |
+| `{{time}}` | `08:00` | Time formatted as `HH:MM` |
+| `{{weekday}}` | `sex` | Short weekday name (Portuguese) |
+| `{{day_name}}` | `sexta-feira` | Full weekday name |
+| `{{month_name}}` | `setembro` | Full month name |
+| `{{year}}` | `2026` | 4-digit year |
+| `{{day}}` | `11` | 2-digit day of the month |
+| `{{month}}` | `09` | 2-digit month |
+| `{{hour}}` | `08` | 2-digit hour |
+| `{{minute}}` | `00` | 2-digit minute |
+| `{{greeting}}` | `Bom dia` | Contextual greeting based on local time |
+| `{{greeting_lower}}` | `bom dia` | Contextual greeting in lowercase |
+| `{{saudacao}}` | `Bom dia` | Alias for greeting |
+| `{{period}}` | `manhã` | Period of the day (`manhã`, `tarde`, `noite`) |
+| `{{name}}` | `Maria` | Destination contact name registered in the notebook |
+| `{{your_variable}}` | `12345` | Custom variable defined in the job's `variables` dictionary |
 
-Jobs podem referenciar `template_id` do catálogo persistido (`/templates`) ou conter mensagem direta. No disparo, `{{name}}` é mesclado com os placeholders temporais.
+Jobs can reference a persisted `template_id` (`/templates`) or contain inline content. At dispatch time, `{{name}}` and custom variables are merged alongside temporal placeholders.
 
-## Repositório
+## Repository
 
 GitHub: [`yegear1/homelab-schedule`](https://github.com/yegear1/homelab-schedule).
