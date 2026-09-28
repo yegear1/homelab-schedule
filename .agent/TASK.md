@@ -29,6 +29,7 @@
 
 Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
+- [00.8] Separação do README em versão padrão (en) e versão pt-br | [`f4004ea`] | 2026-09-28
 - [00.7] Refatoração e Padronização das Skills de IA (.agent/skills/) com agent-doc-refactor | [`2bf28b0`] | 2026-09-28
 - [00.6] Alinhamento de Governança com Padrões do Template Hub (template-agent) | [`0d93985`] | 2026-09-22
 - [00.5] CI/CD de Build e Publicação Docker no GHCR (GitHub Actions)

@@ -34,6 +34,14 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-28] Separação Bilíngue da Documentação do Repositório (README, Tarefa [00.8])
+
+- **Contexto:** O `README.md` original estava exclusivamente em português brasileiro, dificultando a visibilidade no ecossistema open-source internacional e criando assimetria com as dependências do `pyproject.toml` (`readme = "README.md"`) e do `Dockerfile`.
+- **Decisão:**
+  - **`README.md` (Default English):** Tradução técnica em inglês mantendo a referência primária do projeto, pacote e container.
+  - **`README.pt-br.md` (Localizado):** Versão integral em português do Brasil sincronizada com a release `v0.4.0` (incluindo ciclo de vida avançado, canetas, backup e templates dinâmicos).
+  - **Navegação Bilateral:** Inclusão de cabeçalho de alternância rápida de idioma no topo de ambos os arquivos (`English | Português (Brasil)`).
+
 ### [2026-09-28] Refatoração e Padronização das Skills de IA (.agent/skills/, Tarefa [00.7])
 
 - **Contexto:** As skills locais de domínio do `homelab-schedule` e o template (`000-template.md`) ainda seguiam o formato legado de 7 seções em português informal, carecendo de declaração explícita de raio de alcance (`Scope & Blast Radius`), precedência de resolução de conflitos, protocolo de fail-stop, marcadores RFC 2119 e checklists com asserções falsificáveis de código de saída.
