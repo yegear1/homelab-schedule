@@ -1,58 +1,88 @@
 ---
-name: [nome-da-skill-em-kebab-case]
-description: [Descrição concisa e clara em uma frase: o que esta skill faz e quando o agente deve ativá-la]
+name: [skill-name-in-kebab-case]
+description: [Imperative sentence specifying exact trigger and operational outcome. Max 250 characters.]
 ---
 
-# [Nome da Skill em Título Legível]
+# [Skill Name in Human-Readable Title]
 
-## 1. Contexto e Objetivo
-[Descreva brevemente o propósito desta habilidade, qual problema ela resolve e qual padrão do projeto ela padroniza.]
+Canonical specification for [skill-name].
 
----
+## 1. Scope & Blast Radius
 
-## 2. Quando Utilizar (Gatilhos)
-Ative as orientações desta skill sempre que a tarefa envolver:
-- [Gatilho ou tipo de tarefa 1, ex: criação de um novo endpoint REST]
-- [Gatilho ou tipo de tarefa 2, ex: integração de mensageria com eventos de domínio]
-- [Gatilho ou tipo de tarefa 3, ex: investigação de erros usando logs estruturados]
+- **MUTABLE PATHS:** `[Declared output paths, e.g., src/**, .agent/**]`
+- **IMMUTABLE PATHS:** `[Protected paths, e.g., data/schedule.db, .env, *.lock]`
+- **FORBIDDEN ACTIONS:**
+  - `[Negative constraint 1, e.g., MUST NOT execute destructive schema mutations directly]`
+  - `[Negative constraint 2, e.g., MUST NOT log credentials or secrets]`
 
----
+## 2. When to Use (Triggers)
 
-## 3. Ferramentas e Servidores MCP Relacionados
-- **MCP(s) Utilizados:** [ex: `postgres-mcp`, `victorialogs-mcp` ou `Nenhum (código local)`]
-- **Ferramentas de CLI / Scripts:** [ex: `uv run pytest`, `pnpm run generate`]
+The agent MUST activate this skill when:
+- [Trigger 1: Exact technical condition or explicit user instruction]
+- [Trigger 2: Invariant domain condition]
 
----
+The agent MUST NOT activate this skill when:
+- [Anti-trigger 1: Condition delegated to another named skill]
+- [Anti-trigger 2: Condition out of scope]
 
-## 4. Procedimento Operacional Passo a Passo
+## 3. Required Tools & Prerequisites
 
-### Passo 1: [Preparação / Consulta Prévia]
-[O que verificar ou inspecionar antes de iniciar a alteração.]
+- **Tools / MCPs:** `[e.g., uv, pytest, ruff, mypy, homelab-schedule MCP, none]`
+- **Pre-Conditions:** `[Verifiable binary criteria, e.g., git status is clean, database connection is valid]`
 
-### Passo 2: [Implementação do Padrão]
-[Passo a passo com a lógica esperada. Indique quais camadas tocar e em qual ordem.]
+## 4. Conflict Resolution & Precedence
 
-### Passo 3: [Validação e Testes]
-[Como validar que a implementação seguiu o padrão esperado.]
+Precedence order when rules conflict:
+1. Security, Credentials & Blast Radius (Immutable Paths)
+2. Falsifiable Invariants & Automated Verification
+3. Task Specifications & Performance
+4. Style & Formatting Conventions
 
----
+If an unresolvable rule conflict occurs, the agent MUST halt execution and request human clarification.
 
-## 5. Padrões de Código e Exemplos Canônicos
+## 5. Operational Procedure
 
-### Exemplo de Implementação Padrão
-```[linguagem]
-// Exemplo canônico de código com tipagem estrita seguindo a convenção do projeto
+### Step 1: Pre-Flight Verification
+1. Verify [exact invariant with automated command].
+2. Assert [binary condition or state].
+
+### Step 2: Execution
+1. Execute [actionable technical instruction].
+2. Enforce [domain constraints and error contracts].
+
+### Step 3: Validation
+1. Run [validation command or test suite].
+2. Assert exit code == 0 and [expected output condition].
+
+## 6. Fail-Stop & Escalation Protocol
+
+- **Retry Limit:** If any step fails 2 consecutive times with the same error, STOP execution immediately.
+- **Escalation Payload:** Report MUST state:
+  1. Identified root cause
+  2. Exact commands executed and raw error output
+  3. Current workspace state and git diff
+- **Forbidden Action:** The agent MUST NOT attempt undocumented ad-hoc workarounds or bypass safety checks once the retry limit is reached.
+
+## 7. Git & Environment Safety
+
+- **Forbidden Git Commands:** NEVER run `git push --force`, `git reset --hard`, or `git clean -fd` without explicit human instruction.
+- **Secret Protection:** NEVER print, log, or transmit secrets, `.env` file contents, API tokens, or private keys in command outputs or agent responses.
+
+## 8. Contrast Pairs
+
+```[language]
+// BAD: [Prohibited implementation pattern]
+[bad_code_example]
+
+// GOOD: [Required compliant pattern]
+[good_code_example]
 ```
 
----
+*(Safety Rule: For security-sensitive constraints, OMIT the BAD example; state constraint as MUST NOT plus a single GOOD example).*
 
-## 6. Armadilhas Conhecidas e Anti-Padrões
-- ⚠️ **NÃO FAÇA:** [Exemplo de erro comum ou anti-padrão a evitar]
-- 💡 **FAÇA:** [A forma correta esperada pelo projeto]
+## 9. Verification Checklist
 
----
-
-## 7. Checklist de Conclusão da Skill
-- [ ] [Verificação de contrato ou schema atendido]
-- [ ] [Testes unitários ou de integração cobrindo o fluxo]
-- [ ] [Validação de linter e tipagem estrita]
+- [ ] Command `[verification-command]` exits with status code 0
+- [ ] Output conforms strictly to `[declared contract/schema]`
+- [ ] Zero unverified changes in immutable paths
+- [ ] No secrets, credentials, or tokens exposed

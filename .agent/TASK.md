@@ -7,21 +7,23 @@
 
 ## Active Task
 
-### 📌 Task [02.12]: Síntese Matinal e Prevenção de Conflitos no MCP (`daily_digest` e aviso preventivo)
+### 📌 Task [00.7]: Refatoração e Padronização das Skills de IA (.agent/skills/) com agent-doc-refactor
 
-- **Description:** Tool MCP de consolidação de agenda diária (`daily_digest`) e detecção/alerta preventivo de potenciais conflitos de horários e sobreposição de mensagens para o mesmo destinatário.
-- **Systems Involved:** `mcp`, `scheduler`, `api`
+- **Description:** Auditoria e refatoração de todas as skills de domínio em `.agent/skills/` (incluindo `000-template.md`) segundo a taxonomia de 7 pilares (`agent-doc-refactor`) e a arquitetura canônica de 9 seções, garantindo falsificabilidade, RFC 2119 e densidade de tokens.
+- **Systems Involved:** `governance`, `skills`, `agent-directives`
 - **Action Type:**
-  - [ ] Read-only / Documentation
-  - [x] Source code changes
-- **Status:** READY FOR PLANNING
+  - [x] Read-only / Documentation
+  - [ ] Source code changes
+- **Status:** RUNNING
   *(Workflow: `READY FOR PLANNING` → `PLANNING` on presenting plan → approval → `RUNNING`)*
 
 ### Acceptance Criteria
-- [ ] Tool `daily_digest` implementada e exposta no servidor MCP stdio.
-- [ ] Detecção/alerta de conflitos de horário para o mesmo destinatário/canal.
-- [ ] Testes automatizados cobrindo ferramentas novas e validações.
-- [ ] Validações (types, lint, test, git diff) saindo com código 0.
+- [ ] Todas as 7 skills de domínio e `000-template.md` reescritas na estrutura canônica de 9 seções.
+- [ ] Frontmatter com `name` válido e `description` restrita a $\le 250$ caracteres em active imperative English.
+- [ ] Invariantes estritos expressos via marcadores RFC 2119 (`MUST`, `MUST NOT`, `REQUIRED`).
+- [ ] Seção 1 (Scope & Blast Radius) com `MUTABLE PATHS`, `IMMUTABLE PATHS` e `FORBIDDEN ACTIONS`.
+- [ ] Seção 9 (Verification Checklist) com asserções binárias e checagem de exit code.
+- [ ] Validações do repositório (`uv run pytest -v`, `uv run ruff check .`, `uv run mypy .`, `git diff --check`) saindo com código 0.
 
 ---
 
@@ -46,7 +48,7 @@ Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Upcoming, in priority order)
 
-(Vazio no ciclo atual)
+- [ ] **[02.12]** Síntese Matinal e Prevenção de Conflitos no MCP (`daily_digest` e aviso preventivo)
 
 ---
 

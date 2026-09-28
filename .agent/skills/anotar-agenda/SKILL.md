@@ -1,105 +1,117 @@
 ---
 name: anotar-agenda
-description: >
-  Use when the human asks to annotate, remind, schedule, list, cancel, or
-  reschedule a reminder (anota, me lembra, agenda, o que tem marcado,
-  cancela, adia, remarca). Call MCP homelab-schedule tools; never POST /send or invent crontab.
+description: Annotate, list, cancel, snooze, or reschedule reminders via homelab-schedule MCP stdio tools, ensuring strict closed-surface compliance.
 ---
 
-# Anotar na agenda via MCP (`anotar-agenda`)
+# Agenda Annotation via MCP (`anotar-agenda`)
 
-## 1. Contexto e Objetivo
+Canonical specification for operating the closed-surface homelab-schedule MCP stdio server tools to manage agenda items.
 
-O humano fala em português. O caderno é estruturado. Esta skill é a **caneta do agente no Cursor**: gravar, listar, cancelar e remarcar pelo MCP `homelab-schedule`, sem curl ad-hoc e sem `POST /send`.
+## 1. Scope & Blast Radius
 
-Contrato de campos: skill [`agenda-job`](../agenda-job/SKILL.md). Canais: [CHANNELS.md](../CHANNELS.md). Tools: [ADR-005](../adr/005-mcp-superficie-fechada.md).
+- **MUTABLE PATHS:** Agenda entries managed through MCP tools (`schedule`, `reschedule`, `snooze`, `pause`, `resume`, `cancel`).
+- **IMMUTABLE PATHS:** Direct SQLite database files (`data/schedule.db`), `.cursor/mcp.json` (must not be committed), `.env`.
+- **FORBIDDEN ACTIONS:**
+  - MUST NOT execute ad-hoc curl commands or direct `POST /send` when MCP tools are available.
+  - MUST NOT expose or invoke generic CRUD or arbitrary `PATCH` endpoints.
+  - MUST NOT bypass HTTP service validation via direct database access.
+  - MUST NOT attempt to mutate or cancel YAML routines (`source: yaml`) through SQLite MCP tools; instruct operator to edit `routines.yaml`.
 
----
+## 2. When to Use (Triggers)
 
-## 2. Quando Utilizar (Gatilhos)
+The agent MUST activate this skill when:
+- Processing conversational requests to annotate or schedule reminders ("anota", "me lembra", "agenda", "marcar um recado").
+- Querying active or historical agenda entries ("o que tem marcado", "o que tem na agenda", "listar lembretes").
+- Rescheduling, postponing, or snoozing an existing reminder ("adia o recado", "remarca para mais tarde", "snooze").
+- Pausing, resuming, or cancelling reminders ("desmarca", "cancela", "pausa").
 
-Ative sempre que o humano (ou a tarefa) pedir para:
+The agent MUST NOT activate this skill when:
+- Implementing or extending MCP server tool definitions (activate `mcp-tool`).
+- Altering the underlying SQLite persistence schema (activate `database-migration`).
+- Dispatching immediate messages without scheduling (activate `whatsapp-dispatch`).
+- Editing permanent declarative routines (modify `routines.yaml` directly).
 
-- anotar, me lembra, agenda, marcar um recado
-- o que tem marcado, o que tem na agenda, listar lembretes
-- cancela o lembrete, desmarca, não precisa mais
-- adia o recado, remarca, muda o horário para mais tarde
+## 3. Required Tools & Prerequisites
 
-**Não** use para: implementar o servidor MCP (`mcp-tool`); alterar schema SQLite; enviar a mensagem na hora (`whatsapp-dispatch`); bug de outro app (`github-bug-issue`); rotina permanente (aí é YAML).
+- **Tools / MCPs:** `homelab-schedule` stdio MCP server exposing closed tool surface: `schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`, `pause`, `resume`, `snooze`, `preview`.
+- **Pre-Conditions:** Local HTTP API service must be active (`uv run uvicorn homelab_schedule.main:create_app --factory --port 8003`); valid `SCHEDULE_API_KEY` configured.
 
----
+## 4. Conflict Resolution & Precedence
 
-## 3. Ferramentas e Servidores MCP Relacionados
+Precedence order when rules conflict:
+1. Security, Credentials & Blast Radius (Closed MCP surface, zero unscrubbed keys, zero direct SQL)
+2. Falsifiable Invariants & Automated Verification (Strict tool input schemas, deterministic datetime parsing)
+3. Task Specifications & Performance (Compact list responses without message body dumps)
+4. Style & Formatting Conventions (Confirmation response format in BRT and UTC)
 
-- **MCP:** `homelab-schedule` stdio — `schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`. A API HTTP tem de estar no ar (`uv run uvicorn …` ou Compose). `.cursor/mcp.json` é local, não versionado.
-- **HTTP:** só se o MCP não estiver configurado no Cursor — mesmos campos, [ENDPOINTS.md](../ENDPOINTS.md), header `x-api-key: SCHEDULE_API_KEY`.
-- **Nunca:** `WHATSAPP_API_KEY`, `POST /send`, SQLite direto, `PATCH`.
+If an unresolvable rule conflict occurs, the agent MUST halt execution and request human clarification.
 
-Mutação em produção via MCP só com consentimento do humano (`AGENTS.md`).
+## 5. Operational Procedure
 
----
+### Step 1: Tool Selection
+1. Map user intent to the appropriate closed MCP tool:
+   - Create reminder: `schedule(when, content, to, title, until?, max_runs?, variables?)`
+   - Dry-run validation: `preview(when, content, to, title?, variables?)`
+   - Query agenda: `list_agenda(status?, limit?, to?, query?, period?)`
+   - Inspect single job: `get_item(id)`
+   - Postpone immediate run: `snooze(id, duration_minutes?, until?, when?)`
+   - Re-schedule base rule: `reschedule(id, when)`
+   - Suspend/Resume: `pause(id)` / `resume(id)`
+   - Cancel reminder: `cancel(id)`
+2. For permanent policies, instruct operator to edit `routines.yaml` with a stable identifier.
 
-## 4. Procedimento Operacional Passo a Passo
+### Step 2: Parameter Resolution
+1. Resolve `when`: Accept ISO-8601, 5-field cron, relative intervals (`+15m`, `2h`, `em 10 minutos`), or natural Portuguese datetime expressions (`amanhã 14h`, `hoje 18:00`, `segunda 9h`). Default timezone: `America/Sao_Paulo`.
+2. Resolve `to`: Default to `eu` unless a registered contact or alias is specified. Do NOT ask for raw phone number if alias is known.
+3. If parameters remain ambiguous, ask exactly one clarifying question before executing.
 
-### Passo 1: Escolher a caneta
+### Step 3: Tool Execution & Operator Confirmation
+1. Invoke the target MCP tool.
+2. If tool returns `API homelab-schedule indisponível`, verify API server status; do NOT fabricate fake IDs or mock persistence.
+3. Return operator confirmation containing:
+   - Assigned job `id`
+   - Scheduled local time (`America/Sao_Paulo` / BRT) and UTC timestamp
+   - Recipient `to`
+   - Title and content preview
 
-| Pedido | Caneta |
-| :--- | :--- |
-| Recado pontual ou cron ad-hoc (“amanhã 14h”, “toda segunda 9h”) | MCP `schedule` |
-| Adiar ou remarcar recado pontual (“adia em 2h”, “remarca para amanhã 10h”) | MCP `reschedule` |
-| Política permanente (backup, status semanal no git) | Editar `routines.yaml` (id estável); não SQLite |
+## 6. Fail-Stop & Escalation Protocol
 
-### Passo 2: Extrair quatro campos
+- **Retry Limit:** If tool invocation fails 2 consecutive times with the same error, STOP execution immediately.
+- **Escalation Payload:** Report MUST state:
+  1. Identified root cause (e.g., HTTP 401 Unauthorized, HTTP 409 YamlJobImmutable, API connection refused)
+  2. Exact tool call and arguments
+  3. Raw error string returned by MCP server
+- **Forbidden Action:** The agent MUST NOT attempt undocumented ad-hoc workarounds or bypass safety checks once the retry limit is reached.
 
-1. **when** — ISO-8601 (fuso default `America/Sao_Paulo`), cron de **cinco** campos, intervalo relativo (`+15m`, `2h`, `em 10 minutos`) ou data/horário amigável (`amanhã 14h`, `hoje 18:00`, `segunda 9h`). Se estiver ambíguo, **uma** pergunta; não grave.
-2. **content** — texto da mensagem.
-3. **to** — default `eu`; alias conhecido ou destino normalizado. Não peça id cru se o alias existir.
-4. **title** — uma linha; se faltar, o servidor deriva do content.
+## 7. Git & Environment Safety
 
-### Passo 3: Chamar a tool e confirmar
+- **Forbidden Git Commands:** NEVER run `git push --force`, `git reset --hard`, or `git clean -fd` without explicit human instruction.
+- **Secret Protection:** NEVER expose `SCHEDULE_API_KEY` or credentials in tool calls, logs, or chat messages.
 
-- Criar: `schedule` (`when`, `content`, `to`, `title` opcional).
-- Listar: `list_agenda` (lista curta, sem `content`; aceita `status: upcoming|done|error|paused|all`, `limit`, `to` por alias/contato/telefone, `query` textual em título/conteúdo e `period` relativo: 'hoje', 'amanhã', 'esta semana', 'próxima semana', '7d', etc.).
-- Detalhe: `get_item` com o `id`.
-- Cancelar sqlite: `cancel` + `id`. YAML → diga para editar `routines.yaml`.
-- Remarcar/adiar sqlite: `reschedule` (`job_id`, `when`). YAML → edite `routines.yaml`.
-
-**A tarefa só acaba** quando você devolver ao humano: `id`, próximo disparo em BRT **e** UTC, `to`, `title`/`content`.
-
-Se a tool responder `API homelab-schedule indisponível`, suba a API; não invente o job.
-
----
-
-## 5. Padrões de Código e Exemplos Canônicos
-
-Humano: *“Amanhã 14h me manda pagar condomínio.”*
-
-MCP `schedule`:
+## 8. Contrast Pairs
 
 ```json
+// BAD: Arbitrary PATCH request attempting direct status mutation
 {
-  "when": "2026-09-12T14:00:00-03:00",
-  "to": "eu",
-  "title": "condomínio",
-  "content": "Pagar condomínio."
+  "method": "PATCH",
+  "path": "/jobs/job-123",
+  "body": { "status": "snoozed", "next_run_at": "2026-09-12T16:00:00Z" }
+}
+
+// GOOD: Closed-surface MCP tool call
+{
+  "tool": "snooze",
+  "arguments": {
+    "id": "job-123",
+    "duration_minutes": 120
+  }
 }
 ```
 
-Resposta ao humano: gravado `<id>`, dispara sábado 12/09 14:00 BRT (17:00 UTC), destino `eu`, texto “Pagar condomínio.”
+## 9. Verification Checklist
 
----
-
-## 6. Armadilhas Conhecidas e Anti-Padrões
-
-- ⚠️ **NÃO FAÇA:** `POST /send` “para ver se funciona”; payload `phone_number` no MCP; cron `* * * * *` de teste em produção; `PATCH`; curl se o MCP estiver no ar.
-- ⚠️ **NÃO FAÇA:** copiar rotina YAML para o SQLite e esquecer o arquivo.
-- 💡 **FAÇA:** quatro tools só; confirmação com `next_run_at`; YAML imutável via HTTP/MCP → edite o arquivo.
-
----
-
-## 7. Checklist de Conclusão da Skill
-
-- [ ] Caneta certa (MCP sqlite vs `routines.yaml`)
-- [ ] `when` / `to` / `content` resolvidos (ou uma pergunta)
-- [ ] Confirmação: id + próximo disparo BRT e UTC + destino + texto
-- [ ] Sem `POST /send` e sem token nos logs
+- [ ] Command `uv run pytest tests/test_mcp.py` exits with status code 0
+- [ ] Tool call utilizes only operations from the closed MCP surface (ADR-005)
+- [ ] Response confirmation presents job ID, BRT time, UTC time, target, and content
+- [ ] No raw database queries or direct `POST /send` executed
+- [ ] Zero API keys or tokens leaked in conversation output
