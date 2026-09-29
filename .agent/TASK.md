@@ -27,22 +27,12 @@
 
 ## Completed Tasks Log
 
-Ciclos `v0.1.0`, `v0.2.0` e `v0.3.0` arquivados em `ARCHIVE.md`.
+Ciclos `v0.1.0`, `v0.2.0`, `v0.3.0` e `v0.4.0` arquivados em `ARCHIVE.md`.
 
+- [00.9] Higiene Pós-Release v0.4.0 e Arquivamento de Contexto | [`5ca7d08`] | 2026-09-29
 - [00.8] Separação do README em versão padrão (en) e versão pt-br | [`f4004ea`] | 2026-09-28
 - [00.7] Refatoração e Padronização das Skills de IA (.agent/skills/) com agent-doc-refactor | [`2bf28b0`] | 2026-09-28
 - [00.6] Alinhamento de Governança com Padrões do Template Hub (template-agent) | [`0d93985`] | 2026-09-22
-- [00.5] CI/CD de Build e Publicação Docker no GHCR (GitHub Actions)
-- [02.11] Ciclo de Vida Avançado para Recorrentes (`until`, `max_runs` e Pausa Temporária/Snooze)
-- [02.10] Alertas de Dead-Letter para o Operador (Notificação de Falha Crítica no Gateway)
-- [02.9] Variáveis Customizadas em Jobs e Templates (`variables` em Jobs e Interpolação Segura)
-- [02.7] Importação / Exportação e Backup do SQLite
-- [02.6] Visão em Calendário / Linha do Timeline na UI
-- [02.5] Histórico de Execuções (job_runs / auditoria de disparos)
-- [02.4] Dead-Letter e Ação Rápida de Re-enfileiramento (Retry Manual na UI e API)
-- [02.3] Saudações e Variáveis Dinâmicas Seguras em Templates ({{greeting}}, {{time}}, {{date}})
-- [02.2] Tool de Preview / Dry-Run de Agendamento (renderização de variáveis e cálculo de next_run_at)
-- [02.1] Filtros Avançados e Busca na Caneta MCP (contato, texto, período relativo)
 
 ---
 

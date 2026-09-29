@@ -34,6 +34,13 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-29] Higiene Pós-Release v0.4.0 e Arquivamento de Contexto (Tarefa [00.9])
+
+- **Contexto:** A release `v0.4.0` (commit `f870cc3`) havia sido publicada com seus artefatos atualizados (`CHANGELOG.md`, `README.md`, `README.pt-br.md`, `.env.example`), mas o log de tarefas concluídas correspondente continuava residente em `TASK.md`, inflando desnecessariamente a janela de contexto das novas iterações.
+- **Decisão:**
+  - **Arquivamento em `ARCHIVE.md`:** Transferência das 12 tarefas concluídas na release `v0.4.0` ([99.1], [00.5], [02.1] a [02.11]) para o arquivo histórico sob cabeçalho canônico `## [v0.4.0] - 2026-09-22`.
+  - **Sincronização de Contexto:** `TASK.md` purgado para manter apenas tarefas do ciclo vigente pós-tag ([00.6] a [00.9]), mantendo o arquivo token-dense e promovendo a tarefa [02.12] (`daily_digest` e prevenção de conflitos) de volta para o topo do fluxo ativo.
+
 ### [2026-09-28] Separação Bilíngue da Documentação do Repositório (README, Tarefa [00.8])
 
 - **Contexto:** O `README.md` original estava exclusivamente em português brasileiro, dificultando a visibilidade no ecossistema open-source internacional e criando assimetria com as dependências do `pyproject.toml` (`readme = "README.md"`) e do `Dockerfile`.
