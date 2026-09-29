@@ -20,7 +20,8 @@ Implementação neste repo: `uv run homelab-schedule-mcp` (stdio). Chama a HTTP 
 | `resume` | Retoma um recado pausado (`status=scheduled`, `enabled=true`). YAML → erro |
 | `snooze` | Adia a próxima execução (`next_run_at`) sem alterar a regra cron (`when` relativo ou timestamp) |
 | `reschedule` | Reativa/adia recado (`when` novo: ISO, cron, intervalo relativo `+2h` ou amigável `amanhã 10h`) com mesmo id |
-| `preview` | Dry-run / simulação sem persistência: resolução de destinatário, cálculo de `next_run_at` (UTC e local), renderização prévia de variáveis e validação de `until`/`max_runs` |
+| `preview` | Dry-run / simulação sem persistência: resolução de destinatário, cálculo de `next_run_at` (UTC e local), renderização prévia de variáveis e validação de `until`/`max_runs` (inclui alerta preventivo de conflitos) |
+| `daily_digest` | Consolidação matinal e síntese de agenda diária: lista agendamentos do dia, calcula totais e detecta conflitos/sobreposições ($\le 5$ min) para o mesmo destinatário (`date` default `hoje`, filtro opcional `to`) |
 
 Skill do operador no Cursor: [`anotar-agenda`](skills/anotar-agenda/SKILL.md). Contrato de campos: [`agenda-job`](skills/agenda-job/SKILL.md).
 

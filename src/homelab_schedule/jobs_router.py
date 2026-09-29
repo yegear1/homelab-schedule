@@ -9,6 +9,7 @@ from schemas.api import (
     CreateBatchJobsRequest,
     CreateBatchJobsResponse,
     CreateJobRequest,
+    DailyDigestResponse,
     GroupActionResponse,
     JobListFilter,
     JobListResponse,
@@ -129,6 +130,30 @@ def list_all_runs(
 ) -> JobRunListResponse:
     runs = _service(request).list_all_runs(limit=limit, status=status_filter)
     return JobRunListResponse(runs=runs)
+
+
+@router.get("/digest", response_model=DailyDigestResponse)
+def get_daily_digest(
+    request: Request,
+    _: Auth,
+    date_str: Annotated[
+        str | None,
+        Query(
+            alias="date",
+            description="Data de referência ('hoje', 'amanhã', YYYY-MM-DD)",
+        ),
+    ] = None,
+    phone: Annotated[
+        str | None,
+        Query(description="Filtro opcional por destinatário (alias ou telefone)"),
+    ] = None,
+) -> DailyDigestResponse:
+    try:
+        return _service(request).daily_digest(date_str=date_str, phone=phone)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
 
 
 @router.get("/{job_id}", response_model=Job)

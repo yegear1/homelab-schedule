@@ -168,6 +168,18 @@ class AgendaApi:
         response = self._request("POST", "/jobs/preview", json=payload)
         return _json_object(response)
 
+    def daily_digest(
+        self,
+        date: str = "hoje",
+        to: str | None = None,
+    ) -> dict[str, object]:
+        params: dict[str, str] = {"date": date}
+        if to and to.strip():
+            params["phone"] = to.strip()
+        response = self._request("GET", "/jobs/digest", params=params)
+        return _json_object(response)
+
+
     def _request(
         self,
         method: str,

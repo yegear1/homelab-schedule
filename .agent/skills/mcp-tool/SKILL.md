@@ -21,7 +21,7 @@ Canonical specification for implementing and evolving stdio MCP tools within hom
 
 The agent MUST activate this skill when:
 - Creating, modifying, or deprecating tools exposed on the stdio MCP server (`homelab-schedule-mcp`).
-- Updating JSON input schemas or return contracts for existing tools (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`, `pause`, `resume`, `snooze`, `preview`).
+- Updating JSON input schemas or return contracts for existing tools (`schedule`, `list_agenda`, `get_item`, `cancel`, `reschedule`, `pause`, `resume`, `snooze`, `preview`, `daily_digest`).
 - Mapping MCP tool calls to internal FastAPI HTTP routes.
 
 The agent MUST NOT activate this skill when:
@@ -56,6 +56,7 @@ If an unresolvable rule conflict occurs, the agent MUST halt execution and reque
    - `reschedule`: Modify base recurrence or execution time
    - `pause` / `resume`: Suspend and re-activate recurring jobs
    - `snooze`: Temporarily postpone next run without mutating cron
+   - `daily_digest`: Consolidate daily agenda and detect schedule conflicts / overlaps
 2. Any addition beyond this set requires explicit architectural justification and ADR update.
 
 ### Step 2: Input Schema Definition

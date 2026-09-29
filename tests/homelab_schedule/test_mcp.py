@@ -9,6 +9,7 @@ from homelab_schedule.mcp_http import AgendaApi
 from homelab_schedule.mcp_stdio import build_mcp
 from homelab_schedule.mcp_tools import (
     handle_cancel,
+    handle_daily_digest,
     handle_get_item,
     handle_list_agenda,
     handle_pause,
@@ -645,4 +646,136 @@ def test_handle_schedule_with_until_and_max_runs() -> None:
     assert seen_payload["until"] == "2026-10-01T00:00:00+00:00"
     assert seen_payload["max_runs"] == 10
 
+
+def test_build_mcp_registers_daily_digest_tool() -> None:
+    api = _api(lambda req: httpx.Response(200))
+    server = build_mcp(api)
+    assert "daily_digest" in server._tool_manager._tools
+    tool = server._tool_manager._tools["daily_digest"]
+    assert "date" in tool.parameters["properties"]
+    assert "to" in tool.parameters["properties"]
+
+
+def test_handle_daily_digest_success() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "date": "2026-09-29",
+                "total_jobs": 2,
+                "jobs": [
+                    {
+                        "id": "j1",
+                        "title": "Remédio",
+                        "to": "eu",
+                        "target_number": "5511999998888@c.us",
+                        "time_local": "09:00",
+                        "next_run_at": "2026-09-29T12:00:00+00:00",
+                        "status": "scheduled",
+                        "kind": "once",
+                    },
+                    {
+                        "id": "j2",
+                        "title": "Aviso rápido",
+                        "to": "eu",
+                        "target_number": "5511999998888@c.us",
+                        "time_local": "09:02",
+                        "next_run_at": "2026-09-29T12:02:00+00:00",
+                        "status": "scheduled",
+                        "kind": "once",
+                    },
+                ],
+                "conflicts": [
+                    {
+                        "job_ids": ["j1", "j2"],
+                        "titles": ["Remédio", "Aviso rápido"],
+                        "target_number": "5511999998888@c.us",
+                        "to": "eu",
+                        "scheduled_at": "2026-09-29T12:00:00+00:00",
+                        "time_local": "09:00",
+                        "delta_minutes": 2,
+                        "details": (
+                            "2 mensagens agendadas para o mesmo destinatário com intervalo de 2 min"
+                        ),
+                    }
+                ],
+                "summary": (
+                    "Síntese de 2026-09-29: 2 agendamento(s) encontrado(s) "
+                    "(1 conflito(s) detectado(s))."
+                ),
+            },
+        )
+
+    api = _api(handler)
+    res = handle_daily_digest(api, date="hoje", to="eu")
+    data = json.loads(res)
+    assert data["date"] == "2026-09-29"
+    assert data["total_jobs"] == 2
+    assert len(data["jobs"]) == 2
+    assert len(data["conflicts"]) == 1
+    assert data["conflicts"][0]["delta_minutes"] == 2
+    assert len(seen) == 1
+    assert seen[0].url.path == "/jobs/digest"
+    assert seen[0].url.params["date"] == "hoje"
+    assert seen[0].url.params["phone"] == "eu"
+
+
+def test_handle_daily_digest_error() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            422,
+            json={"detail": "Data inválida"},
+        )
+
+    api = _api(handler)
+    res = handle_daily_digest(api, date="data_invalida")
+    data = json.loads(res)
+    assert data == {"error": "Data inválida"}
+
+
+def test_handle_preview_includes_conflicts() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "title": "Novo aluguel",
+                "to": "eu",
+                "target_number": "5511999998888@c.us",
+                "recipient_name": "Yegear",
+                "kind": "once",
+                "next_run_at": "2026-09-29T14:00:00+00:00",
+                "next_run_at_local": "2026-09-29 11:00:00 -03:00",
+                "template_id": None,
+                "raw_content": "Pagar aluguel",
+                "rendered_content": "Pagar aluguel",
+                "variables": {},
+                "until": None,
+                "max_runs": None,
+                "conflicts": [
+                    {
+                        "job_ids": ["existing-1"],
+                        "titles": ["Outro lembrete"],
+                        "target_number": "5511999998888@c.us",
+                        "to": "eu",
+                        "scheduled_at": "2026-09-29T14:01:00+00:00",
+                        "time_local": "11:01",
+                        "delta_minutes": 1,
+                        "details": (
+                            "Conflito preventivo: agendamento existente 'Outro lembrete' "
+                            "(11:01) a 1 min"
+                        ),
+                    }
+                ],
+            },
+        )
+
+    api = _api(handler)
+    res = handle_preview(api, when="hoje 11:00", content="Pagar aluguel", to="eu")
+    data = json.loads(res)
+    assert "conflicts" in data
+    assert len(data["conflicts"]) == 1
+    assert data["conflicts"][0]["delta_minutes"] == 1
 

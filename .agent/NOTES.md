@@ -34,6 +34,16 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-09-29] Síntese Matinal e Prevenção de Conflitos no MCP (daily_digest e aviso preventivo, Tarefa [02.12])
+
+- **Contexto:** Agentes operando no MCP e chamadores da API precisavam de uma visão diária consolidada da agenda ("síntese matinal") sem ter que iterar sobre dezenas de itens ou inspecionar campos verbosos, além de um mecanismo preventivo contra colisões de disparos ou sobreposição de mensagens destinadas ao mesmo contato.
+- **Decisão:**
+  - **Tool MCP `daily_digest` (ADR-005):** Inclusão formal da 10ª ferramenta da superfície fechada stdio chamando `GET /jobs/digest`. Aceita `date` (default "hoje", "amanhã", ISO `YYYY-MM-DD` ou frases em `parse_period`) e filtro opcional `to` (alias ou número normalizado). Retorna JSON compacto de uma única linha contendo `date`, `total_jobs`, `jobs` (resumo curto com horários locais pt-BR), `conflicts` e `summary`.
+  - **Critério Canônico de Conflito de Horário:** Dois ou mais agendamentos entram em conflito quando compartilham o mesmo destinatário resolvido (`target_number` ou `to`), estão com status `scheduled` e ativos (`enabled = True`), e seus horários de disparo (`next_run_at`) estão a uma distância $\le 5$ minutos ($\le 300$ segundos).
+  - **Aviso Preventivo Duplo:**
+    - **No `daily_digest`:** Agrupa potenciais colisões entre agendamentos do dia solicitado no campo `conflicts: list[JobConflict]`.
+    - **No `preview` (dry-run):** Inspeciona a vizinhança temporal de $\pm 5$ minutos do horário simulado para aquele destinatário antes da persistência, retornando alertas de conflitos preventivos.
+
 ### [2026-09-29] Higiene Pós-Release v0.4.0 e Arquivamento de Contexto (Tarefa [00.9])
 
 - **Contexto:** A release `v0.4.0` (commit `f870cc3`) havia sido publicada com seus artefatos atualizados (`CHANGELOG.md`, `README.md`, `README.pt-br.md`, `.env.example`), mas o log de tarefas concluídas correspondente continuava residente em `TASK.md`, inflando desnecessariamente a janela de contexto das novas iterações.

@@ -2,7 +2,7 @@
 
 - **Status:** Aprovado
 - **Data:** 2026-09-11
-- **Atualizado:** 2026-09-12 (`reschedule` entrou na superfície), 2026-09-19 (`preview` adicionada para dry-run), 2026-09-20 (`pause`, `resume`, `snooze` adicionados para ciclo de vida)
+- **Atualizado:** 2026-09-12 (`reschedule` entrou na superfície), 2026-09-19 (`preview` adicionada para dry-run), 2026-09-20 (`pause`, `resume`, `snooze` adicionados para ciclo de vida), 2026-09-29 (`daily_digest` adicionada para síntese diária e detecção de conflitos)
 - **Autor(es):** yegear / chat de desenho
 
 ---
@@ -24,6 +24,7 @@ Servidor MCP **stdio**, Python, chamando a HTTP local (não abre SQLite direto).
 7. `snooze` (sqlite; adia próximo disparo sem mutar cron)
 8. `reschedule` (sqlite; YAML → erro para editar `routines.yaml`)
 9. `preview` (dry-run sem efeitos colaterais: testa resolução de destinatário, cálculo de `next_run_at` e interpolação de variáveis)
+10. `daily_digest` (consolidação matinal/diária da agenda e detecção de conflitos/sobreposição de horários para o mesmo destinatário)
 
 Sem `PATCH`, sem `delete` genérico, sem CRUD de contato/template no MCP. `list_agenda` não devolve `content` completo. Config Cursor (`.cursor/mcp.json`) **não** versionada. Mutação em produção via MCP exige consentimento humano nas regras do `AGENTS.md`.
 

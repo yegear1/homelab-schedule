@@ -175,3 +175,15 @@ def handle_preview(
         return compact_json(preview)
     except AgendaToolError as exc:
         return compact_json({"error": exc.message})
+
+
+def handle_daily_digest(
+    api: AgendaApi,
+    date: str = "hoje",
+    to: str | None = None,
+) -> str:
+    try:
+        digest = api.daily_digest(date=date, to=to)
+        return compact_json(digest)
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})

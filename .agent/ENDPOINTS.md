@@ -127,7 +127,45 @@ Aceita `when` (linguagem natural / ISO / cron) ou combinação explícita `kind`
   }
 }
 ```
-`401` chave inválida. `404` template não encontrado. `422` validação de campos.
+`401` chave inválida. `404` template não encontrado. `422` validação de campos. Inclui alerta preventivo no campo `conflicts` caso detecte colisão ($\le 5$ min) para o mesmo destinatário.
+
+### `GET /jobs/digest`
+
+Síntese matinal e consolidação de agenda diária. Query: `date` (`hoje`, `amanhã`, data ISO `YYYY-MM-DD`, default `hoje`), `phone` (filtro opcional por destinatário ou alias).
+
+`200` →
+```json
+{
+  "date": "2026-09-29",
+  "total_jobs": 2,
+  "jobs": [
+    {
+      "id": "abc-1",
+      "title": "Remédio",
+      "to": "eu",
+      "target_number": "5511999998888@c.us",
+      "time_local": "09:00",
+      "next_run_at": "2026-09-29T12:00:00+00:00",
+      "status": "scheduled",
+      "kind": "once"
+    }
+  ],
+  "conflicts": [
+    {
+      "job_ids": ["abc-1", "abc-2"],
+      "titles": ["Remédio", "Aviso urgente"],
+      "target_number": "5511999998888@c.us",
+      "to": "eu",
+      "scheduled_at": "2026-09-29T12:00:00+00:00",
+      "time_local": "09:00",
+      "delta_minutes": 0,
+      "details": "2 mensagens agendadas para o mesmo destinatário no mesmo horário"
+    }
+  ],
+  "summary": "Síntese de 2026-09-29: 2 agendamento(s) encontrado(s) (1 conflito(s) detectado(s))."
+}
+```
+`401` chave inválida. `422` data inválida.
 
 ### `POST /jobs/{id}/run`
 

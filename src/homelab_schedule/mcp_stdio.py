@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from homelab_schedule.mcp_http import AgendaApi
 from homelab_schedule.mcp_tools import (
     handle_cancel,
+    handle_daily_digest,
     handle_get_item,
     handle_list_agenda,
     handle_pause,
@@ -127,6 +128,18 @@ def build_mcp(api: AgendaApi) -> MCPServer:
             until=until,
             max_runs=max_runs,
         )
+
+    @mcp.tool()
+    def daily_digest(
+        date: str = "hoje",
+        to: str | None = None,
+    ) -> str:
+        """Consolidate the daily agenda and detect schedule conflicts / overlapping messages.
+        date is 'hoje' (default), 'amanhã', or ISO YYYY-MM-DD.
+        to is an optional recipient filter (e.g. 'eu', alias, or phone number).
+        Returns a compact summary with scheduled items, counts, and conflict alerts.
+        """
+        return handle_daily_digest(api, date=date, to=to)
 
     return mcp
 

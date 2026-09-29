@@ -221,6 +221,36 @@ class PreviewJobRequest(BaseModel):
         return self
 
 
+class JobConflict(BaseModel):
+    job_ids: list[str]
+    titles: list[str]
+    target_number: str
+    to: str
+    scheduled_at: datetime
+    time_local: str
+    delta_minutes: int
+    details: str
+
+
+class DailyDigestJobItem(BaseModel):
+    id: str
+    title: str
+    to: str
+    target_number: str
+    time_local: str
+    next_run_at: datetime
+    status: JobStatus
+    kind: JobKind
+
+
+class DailyDigestResponse(BaseModel):
+    date: str
+    total_jobs: int
+    jobs: list[DailyDigestJobItem]
+    conflicts: list[JobConflict] = Field(default_factory=list)
+    summary: str
+
+
 class PreviewJobResponse(BaseModel):
     title: str
     to: str
@@ -237,4 +267,5 @@ class PreviewJobResponse(BaseModel):
     variables: dict[str, str] = Field(default_factory=dict)
     until: datetime | None = None
     max_runs: int | None = None
+    conflicts: list[JobConflict] = Field(default_factory=list)
 

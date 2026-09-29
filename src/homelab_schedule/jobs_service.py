@@ -4,6 +4,7 @@ import asyncio
 import uuid
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from homelab_schedule.aliases import normalize_whatsapp_phone, resolve_destination
 from homelab_schedule.contacts_service import ContactService
@@ -15,7 +16,7 @@ from homelab_schedule.errors import (
     GatekeeperError,
     YamlJobImmutable,
 )
-from homelab_schedule.mcp_when import default_title, parse_when
+from homelab_schedule.mcp_when import default_title, parse_period, parse_when
 from homelab_schedule.repository import JobRepository
 from homelab_schedule.store import APP_TZ
 from homelab_schedule.templates import extract_template_variables, render_outbound_message
@@ -24,7 +25,10 @@ from schemas.api import (
     CreateBatchJobsRequest,
     CreateBatchJobsResponse,
     CreateJobRequest,
+    DailyDigestJobItem,
+    DailyDigestResponse,
     GroupActionResponse,
+    JobConflict,
     JobListFilter,
     JobListItem,
     PreviewJobRequest,
@@ -157,6 +161,12 @@ class JobService:
             eval_when, dest_name, custom_variables=payload.variables
         )
 
+        conflicts = (
+            self._preview_conflicts(dest, payload.to, next_run_at)
+            if next_run_at
+            else []
+        )
+
         return PreviewJobResponse(
             title=title,
             to=payload.to,
@@ -173,7 +183,48 @@ class JobService:
             variables=variables,
             until=payload.until,
             max_runs=payload.max_runs,
+            conflicts=conflicts,
         )
+
+    def _preview_conflicts(
+        self, target: str, raw_to: str, next_run_at: datetime, window_seconds: int = 300
+    ) -> list[JobConflict]:
+        range_from = next_run_at - timedelta(seconds=window_seconds)
+        range_to = next_run_at + timedelta(seconds=window_seconds)
+        existing = self._repo.list_jobs(
+            status_filter=JobListFilter.UPCOMING,
+            range_from=range_from,
+            range_to=range_to,
+            phone=target,
+            raw_to=raw_to,
+        )
+        conflicts: list[JobConflict] = []
+        for ej in existing:
+            if not ej.enabled or ej.status is not JobStatus.SCHEDULED or ej.next_run_at is None:
+                continue
+            diff_sec = abs((next_run_at - ej.next_run_at).total_seconds())
+            if diff_sec <= window_seconds:
+                diff_min = int(round(diff_sec / 60))
+                time_loc = ej.next_run_at.astimezone(APP_TZ).strftime("%H:%M")
+                conflicts.append(
+                    JobConflict(
+                        job_ids=[ej.id],
+                        titles=[ej.title],
+                        target_number=target,
+                        to=raw_to,
+                        scheduled_at=ej.next_run_at,
+                        time_local=time_loc,
+                        delta_minutes=diff_min,
+                        details=(
+                            f"Conflito preventivo: agendamento existente '{ej.title}' "
+                            f"({time_loc}) a {diff_min} min"
+                            if diff_min > 0
+                            else f"Conflito preventivo: agendamento existente '{ej.title}' "
+                            f"no mesmo horário ({time_loc})"
+                        ),
+                    )
+                )
+        return conflicts
 
     def _preview_content(self, payload: PreviewJobRequest) -> tuple[str, str | None]:
         if payload.template_id:
@@ -675,6 +726,121 @@ class JobService:
             catalog_body=catalog_body,
             custom_variables=job.variables,
         )
+
+    def daily_digest(
+        self, date_str: str | None = None, phone: str | None = None
+    ) -> DailyDigestResponse:
+        ref_date = date_str.strip() if date_str and date_str.strip() else "hoje"
+        start_local, end_local = parse_period(ref_date, now=self._now(), tz=APP_TZ)
+        start_utc = start_local.astimezone(ZoneInfo("UTC"))
+        end_utc = end_local.astimezone(ZoneInfo("UTC"))
+        date_iso = start_local.strftime("%Y-%m-%d")
+
+        resolved_phone = self._resolve_to(phone) if phone else None
+        jobs = self._repo.list_jobs(
+            status_filter=JobListFilter.ALL,
+            range_from=start_utc,
+            range_to=end_utc,
+            phone=resolved_phone,
+            raw_to=phone,
+        )
+        items: list[DailyDigestJobItem] = []
+        for j in jobs:
+            if j.next_run_at is None:
+                continue
+            time_local = j.next_run_at.astimezone(APP_TZ).strftime("%H:%M")
+            items.append(
+                DailyDigestJobItem(
+                    id=j.id,
+                    title=j.title,
+                    to=j.to,
+                    target_number=j.target_number,
+                    time_local=time_local,
+                    next_run_at=j.next_run_at,
+                    status=j.status,
+                    kind=j.kind,
+                )
+            )
+
+        conflicts = _detect_conflicts(jobs)
+        conflict_msg = (
+            f"{len(conflicts)} conflito(s) detectado(s)"
+            if conflicts
+            else "sem conflitos de horário"
+        )
+        summary = (
+            f"Síntese de {date_iso}: {len(items)} agendamento(s) encontrado(s) ({conflict_msg})."
+        )
+        return DailyDigestResponse(
+            date=date_iso,
+            total_jobs=len(items),
+            jobs=items,
+            conflicts=conflicts,
+            summary=summary,
+        )
+
+
+def _detect_conflicts(jobs: list[Job], window_seconds: int = 300) -> list[JobConflict]:
+    active = [
+        j
+        for j in jobs
+        if j.status == JobStatus.SCHEDULED and j.enabled and j.next_run_at is not None
+    ]
+    by_target: dict[str, list[Job]] = {}
+    for job in active:
+        target = job.target_number or job.to
+        by_target.setdefault(target, []).append(job)
+
+    conflicts: list[JobConflict] = []
+    for target, group in by_target.items():
+        if len(group) < 2:
+            continue
+        sorted_group = sorted(group, key=lambda j: j.next_run_at or datetime.min)
+        i = 0
+        while i < len(sorted_group) - 1:
+            j1 = sorted_group[i]
+            cluster = [j1]
+            while i + 1 < len(sorted_group):
+                j_next = sorted_group[i + 1]
+                prev_dt = cluster[-1].next_run_at
+                if prev_dt is not None and j_next.next_run_at is not None:
+                    diff = abs((j_next.next_run_at - prev_dt).total_seconds())
+                    if diff <= window_seconds:
+                        cluster.append(j_next)
+                        i += 1
+                        continue
+                break
+            if len(cluster) > 1:
+                assert cluster[0].next_run_at is not None
+                assert cluster[-1].next_run_at is not None
+                delta_min = int(
+                    round(
+                        abs((cluster[-1].next_run_at - cluster[0].next_run_at).total_seconds())
+                        / 60
+                    )
+                )
+                sched_at = cluster[0].next_run_at
+                time_loc = sched_at.astimezone(APP_TZ).strftime("%H:%M")
+                conflicts.append(
+                    JobConflict(
+                        job_ids=[j.id for j in cluster],
+                        titles=[j.title for j in cluster],
+                        target_number=target,
+                        to=cluster[0].to,
+                        scheduled_at=sched_at,
+                        time_local=time_loc,
+                        delta_minutes=delta_min,
+                        details=(
+                            f"{len(cluster)} mensagens agendadas para o mesmo destinatário "
+                            f"com intervalo de {delta_min} min"
+                            if delta_min > 0
+                            else f"{len(cluster)} mensagens agendadas para o mesmo destinatário "
+                            f"no mesmo horário"
+                        ),
+                    )
+                )
+            i += 1
+    return conflicts
 
 
 def _cancelled(job: Job) -> Job:
