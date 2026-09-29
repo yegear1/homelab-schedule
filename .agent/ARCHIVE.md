@@ -5,6 +5,23 @@
 
 ---
 
+## [v0.4.0] - 2026-09-22
+
+| Tarefa | Título | Commit(s) | Data |
+|---|---|---|---|
+| [99.1] | Preparar Release v0.4.0 (Tag Git) | [`f870cc3`] | 2026-09-22 |
+| [00.5] | CI/CD de Build e Publicação Docker no GHCR (GitHub Actions) | [`454d213`] | 2026-09-21 |
+| [02.11] | Ciclo de Vida Avançado para Recorrentes (`until`, `max_runs` e Pausa Temporária/Snooze) | [`ad13ef9`] | 2026-09-20 |
+| [02.10] | Alertas de Dead-Letter para o Operador (Notificação de Falha Crítica no Gateway) | [`171548a`] | 2026-09-20 |
+| [02.9] | Variáveis Customizadas em Jobs e Templates (`variables` em Jobs e Interpolação Segura) | [`8ec6a86`] | 2026-09-20 |
+| [02.7] | Importação / Exportação e Backup do SQLite | [`f846e1f`] | 2026-09-19 |
+| [02.6] | Visão em Calendário / Linha do Timeline na UI | [`5a9d149`] | 2026-09-19 |
+| [02.5] | Histórico de Execuções (job_runs / auditoria de disparos) | [`849678f`] | 2026-09-19 |
+| [02.4] | Dead-Letter e Ação Rápida de Re-enfileiramento (Retry Manual na UI e API) | [`304d02e`] | 2026-09-19 |
+| [02.3] | Saudações e Variáveis Dinâmicas Seguras em Templates ({{greeting}}, {{time}}, {{date}}) | [`86c149e`] | 2026-09-19 |
+| [02.2] | Tool de Preview / Dry-Run de Agendamento (renderização de variáveis e cálculo de next_run_at) | [`3d87db7`] | 2026-09-19 |
+| [02.1] | Filtros Avançados e Busca na Caneta MCP (contato, texto, período relativo) | [`70ff58b`] | 2026-09-19 |
+
 ## [v0.3.0] - 2026-09-19
 
 | Tarefa | Título | Commit(s) | Data |
