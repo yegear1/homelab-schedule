@@ -7,21 +7,7 @@
 
 ## Active Task
 
-### 📌 Task [02.12]: Síntese Matinal e Prevenção de Conflitos no MCP (`daily_digest` e aviso preventivo)
-
-- **Description:** Tool MCP de consolidação de agenda diária (`daily_digest`) e detecção/alerta preventivo de potenciais conflitos de horários e sobreposição de mensagens para o mesmo destinatário.
-- **Systems Involved:** `mcp`, `scheduler`, `api`
-- **Action Type:**
-  - [ ] Read-only / Documentation
-  - [x] Source code changes
-- **Status:** READY FOR PLANNING
-  *(Workflow: `READY FOR PLANNING` → `PLANNING` on presenting plan → approval → `RUNNING`)*
-
-### Acceptance Criteria
-- [ ] Tool `daily_digest` implementada e exposta no servidor MCP stdio.
-- [ ] Detecção/alerta de conflitos de horário para o mesmo destinatário/canal.
-- [ ] Testes automatizados cobrindo ferramentas novas e validações.
-- [ ] Validações (types, lint, test, git diff) saindo com código 0.
+(Nenhuma tarefa ativa no momento — backlog do ciclo atual concluído, aguardando definição do operador)
 
 ---
 
@@ -29,6 +15,7 @@
 
 Ciclos `v0.1.0`, `v0.2.0`, `v0.3.0` e `v0.4.0` arquivados em `ARCHIVE.md`.
 
+- [02.12] Síntese Matinal e Prevenção de Conflitos no MCP (`daily_digest` e aviso preventivo) | [`0fd5685`] | 2026-09-29
 - [00.9] Higiene Pós-Release v0.4.0 e Arquivamento de Contexto | [`5ca7d08`] | 2026-09-29
 - [00.8] Separação do README em versão padrão (en) e versão pt-br | [`f4004ea`] | 2026-09-28
 - [00.7] Refatoração e Padronização das Skills de IA (.agent/skills/) com agent-doc-refactor | [`2bf28b0`] | 2026-09-28
