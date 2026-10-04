@@ -189,6 +189,12 @@ class AgendaApi:
         response = self._request("GET", "/jobs/digest", params=params)
         return _json_object(response)
 
+    def get_upcoming_runs(self, job_id: str, limit: int = 5) -> dict[str, object]:
+        params = {"limit": str(max(1, min(limit, 50)))}
+        response = self._request("GET", f"/jobs/{job_id}/upcoming", params=params)
+        return _json_object(response)
+
+
 
     def _request(
         self,

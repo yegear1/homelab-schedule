@@ -1358,3 +1358,101 @@ def test_jobs_tags_create_list_filter_and_tags_endpoint(
         "tags": ["saude", "sprint", "trabalho", "urgente"]
     }
 
+
+def test_get_upcoming_runs_cron_and_once(
+    client: TestClient, api_key: str
+) -> None:
+    # 1. Nonexistent job -> 404
+    r_404 = client.get("/jobs/nonexistent-id/upcoming", headers=_auth(api_key))
+    assert r_404.status_code == 404
+
+    # 2. Invalid limit -> 422
+    r_422 = client.get("/jobs/any-id/upcoming?limit=0", headers=_auth(api_key))
+    assert r_422.status_code == 422
+
+    # 3. Create cron job
+    r_cron = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "Recorrente Matinal",
+            "content": "Bom dia",
+            "to": "eu",
+            "kind": "cron",
+            "cron_expr": "0 9 * * *",
+        },
+    )
+    assert r_cron.status_code == 201
+    cron_id = r_cron.json()["id"]
+
+    # Consult upcoming runs (default limit 5)
+    r_up = client.get(f"/jobs/{cron_id}/upcoming", headers=_auth(api_key))
+    assert r_up.status_code == 200
+    up_data = r_up.json()
+    assert up_data["job_id"] == cron_id
+    assert up_data["kind"] == "cron"
+    assert up_data["cron_expr"] == "0 9 * * *"
+    assert up_data["status"] == "scheduled"
+    assert up_data["enabled"] is True
+    assert up_data["total_projected"] == 5
+    assert len(up_data["runs"]) == 5
+    first_run = up_data["runs"][0]
+    assert "run_at" in first_run
+    assert "run_at_local" in first_run
+    assert first_run["time_local"] == "09:00"
+    assert "formatted_date" in first_run
+
+    # 4. Limit parameter works
+    r_up3 = client.get(f"/jobs/{cron_id}/upcoming?limit=3", headers=_auth(api_key))
+    assert r_up3.status_code == 200
+    assert r_up3.json()["total_projected"] == 3
+
+    # 5. Respect max_runs and run_count
+    client.post(f"/jobs/{cron_id}/run", headers=_auth(api_key))  # run_count becomes 1
+    # Update job with max_runs = 3
+    # Let's test with a new job with max_runs
+    r_limited = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "Limitado",
+            "content": "Apenas 2 vezes",
+            "to": "eu",
+            "kind": "cron",
+            "cron_expr": "0 10 * * *",
+            "max_runs": 2,
+        },
+    )
+    limited_id = r_limited.json()["id"]
+    r_lim_up = client.get(f"/jobs/{limited_id}/upcoming?limit=10", headers=_auth(api_key))
+    assert r_lim_up.json()["total_projected"] == 2
+
+    # Run once
+    client.post(f"/jobs/{limited_id}/run", headers=_auth(api_key))
+    r_lim_up_after = client.get(f"/jobs/{limited_id}/upcoming?limit=10", headers=_auth(api_key))
+    assert r_lim_up_after.json()["total_projected"] == 1
+    assert r_lim_up_after.json()["run_count"] == 1
+
+    # Run second time -> completes job
+    client.post(f"/jobs/{limited_id}/run", headers=_auth(api_key))
+    r_lim_done = client.get(f"/jobs/{limited_id}/upcoming", headers=_auth(api_key))
+    assert r_lim_done.json()["total_projected"] == 0
+    assert r_lim_done.json()["status"] == "done"
+
+    # 6. Job ONCE in future
+    r_once = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "Pontual Futuro",
+            "content": "Consulta",
+            "to": "eu",
+            "kind": "once",
+            "run_at": "2028-01-01T10:00:00-03:00",
+        },
+    )
+    once_id = r_once.json()["id"]
+    r_once_up = client.get(f"/jobs/{once_id}/upcoming", headers=_auth(api_key))
+    assert r_once_up.status_code == 200
+    assert r_once_up.json()["total_projected"] == 1
+    assert r_once_up.json()["runs"][0]["time_local"] == "10:00"

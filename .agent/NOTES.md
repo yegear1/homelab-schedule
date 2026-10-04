@@ -34,6 +34,15 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-10-04] Previsão de Próximos Disparos (Upcoming Runs na API, MCP e Web UI, Tarefa [02.14])
+
+- **Contexto:** Operadores humanos e agentes de IA precisavam visualizar a projeção futura de execuções de agendamentos e rotinas recorrentes (`kind="cron"`), inspecionando com exatidão datas e horários dos próximos disparos em horário local (`America/Sao_Paulo`) e UTC, respeitando limites de ciclo de vida (`until`, `max_runs`, `run_count`) e postergações temporárias (`snooze`).
+- **Decisão:**
+  - **Projeção Cron Determinística (`cron.py`):** Adicionada função `upcoming_cron_runs_utc(expr, after, limit, tz, until)` iterando deterministamente sobre a regra cron a partir do cursor temporal, interrompendo caso atinja o limite ou exceda a data final `until`.
+  - **Endpoint `GET /jobs/{id}/upcoming`:** Endpoint autenticado (`x-api-key`) que calcula a projeção de execuções futuras com query `limit` (1 a 50, default 5). Retorna `UpcomingRunsResponse` contendo lista de `UpcomingRunItem` (`run_at` UTC, `run_at_local` ISO local, `time_local` HH:MM e `formatted_date` DD/MM/YYYY HH:MM). Para `once`, retorna a próxima execução se estiver no futuro. Para jobs concluídos (`done`), retorna lista vazia. Para jobs com `max_runs`, limita a projeção ao saldo restante (`max_runs - run_count`).
+  - **Superfície MCP Fechada (ADR-005):** Inclusão formal da 11ª tool `upcoming_runs(job_id, limit=5)` retornando JSON compacto de uma única linha. Enriquecimento de `get_item` com campo `upcoming_runs: list[str]` contendo até 5 próximos horários formatados para jobs recorrentes ativos.
+  - **Web UI (Svelte 5):** Cartão `#detail-upcoming-card` no drawer de detalhes da agenda (`#wdg-job-detail`), exibindo badges ordenados com `#1`, `#2`, data/hora e tempo local, botão de atualização manual e estados vazios informativos.
+
 ### [2026-10-04] Tags e Categorias de Agenda (tags: list[str] no SQLite v11, API, MCP e Web UI, Tarefa [02.13])
 
 - **Contexto:** Operadores humanos e agentes de IA precisavam categorizar e segmentar recados e rotinas por assunto, contexto ou prioridade (ex: `alerta`, `financeiro`, `lembrete`, `plantao`), permitindo filtragem precisa e autocomplete tanto na interface Web quanto em ferramentas do MCP.

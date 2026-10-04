@@ -20,6 +20,27 @@ export interface JobRunListResponse {
   runs: JobRun[];
 }
 
+export interface UpcomingRunItem {
+  run_at: string;
+  run_at_local: string;
+  time_local: string;
+  formatted_date: string;
+}
+
+export interface UpcomingRunsResponse {
+  job_id: string;
+  kind: JobKind;
+  cron_expr?: string | null;
+  status: JobStatus;
+  enabled: boolean;
+  until?: string | null;
+  max_runs?: number | null;
+  run_count?: number;
+  total_projected: number;
+  runs: UpcomingRunItem[];
+}
+
+
 export interface Job {
   id: string;
   title: string;

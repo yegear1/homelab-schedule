@@ -85,6 +85,18 @@ def handle_get_item(api: AgendaApi, job_id: str) -> str:
             "max_runs": job.get("max_runs"),
             "run_count": job.get("run_count", 0),
         }
+        if job.get("kind") == "cron" and job.get("status") != "done":
+            try:
+                up = api.get_upcoming_runs(job_id, limit=5)
+                raw_runs = up.get("runs")
+                if isinstance(raw_runs, list):
+                    result["upcoming_runs"] = [
+                        r.get("run_at_local") or r.get("run_at")
+                        for r in raw_runs
+                        if isinstance(r, dict)
+                    ]
+            except Exception:
+                pass
         return compact_json(result)
     except AgendaToolError as exc:
         return compact_json({"error": exc.message})
@@ -194,5 +206,17 @@ def handle_daily_digest(
     try:
         digest = api.daily_digest(date=date, to=to)
         return compact_json(digest)
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})
+
+
+def handle_upcoming_runs(
+    api: AgendaApi,
+    job_id: str,
+    limit: int = 5,
+) -> str:
+    try:
+        data = api.get_upcoming_runs(job_id=job_id, limit=limit)
+        return compact_json(data)
     except AgendaToolError as exc:
         return compact_json({"error": exc.message})

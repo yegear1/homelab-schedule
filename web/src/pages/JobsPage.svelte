@@ -2,7 +2,7 @@
   import { api, ApiClientError } from '../lib/api';
   import { router } from '../lib/router.svelte';
   import { toast } from '../lib/toast.svelte';
-  import type { Contact, Job, JobListItem, JobListFilter, JobKind, JobRun, MessageTemplate } from '../lib/types';
+  import type { Contact, Job, JobListItem, JobListFilter, JobKind, JobRun, MessageTemplate, UpcomingRunItem } from '../lib/types';
   import RescheduleModal from '../components/RescheduleModal.svelte';
   import SnoozeModal from '../components/SnoozeModal.svelte';
   import ContactPickerModal from '../components/ContactPickerModal.svelte';
@@ -18,6 +18,9 @@
   let selectedJob = $state<Job | null>(null);
   let selectedJobRuns = $state<JobRun[]>([]);
   let loadingJobRuns = $state(false);
+  let selectedJobUpcoming = $state<UpcomingRunItem[]>([]);
+  let loadingUpcoming = $state(false);
+
   let templates = $state<MessageTemplate[]>([]);
   let contacts = $state<Contact[]>([]);
   let contactsByPhone = $derived(
@@ -294,9 +297,13 @@
       if (jobs.length > 0) {
         if (!selectedJob || !jobs.find((j) => j.id === selectedJob?.id)) {
           await inspectJob(jobs[0].id);
+        } else {
+          await inspectJob(selectedJob.id);
         }
       } else {
         selectedJob = null;
+        selectedJobRuns = [];
+        selectedJobUpcoming = [];
       }
     } catch (err: unknown) {
       if (err instanceof ApiClientError && err.status === 401) {
@@ -320,10 +327,25 @@
     }
   }
 
+  async function loadJobUpcoming(jobId: string, limit: number = 5) {
+    loadingUpcoming = true;
+    try {
+      const res = await api.getUpcomingRuns(jobId, limit);
+      selectedJobUpcoming = res.runs;
+    } catch {
+      selectedJobUpcoming = [];
+    } finally {
+      loadingUpcoming = false;
+    }
+  }
+
   async function inspectJob(id: string) {
     try {
       selectedJob = await api.getJob(id);
-      await loadJobRuns(id);
+      await Promise.all([
+        loadJobRuns(id),
+        loadJobUpcoming(id),
+      ]);
       if (selectedJob?.group_id) {
         await loadGroupMembers(selectedJob.group_id);
       } else {
@@ -333,6 +355,7 @@
       toast.error('Falha ao carregar detalhe do job.');
     }
   }
+
 
   async function loadGroupMembers(groupId: string) {
     loadingGroupMembers = true;
@@ -1778,6 +1801,56 @@
             <div class="flex flex-col gap-1 text-outline pt-1 border-t border-outline-variant/10">
               <span class="text-error font-semibold">Último Erro (last_error):</span>
               <span class="text-error font-label-code-sm text-label-code-sm break-words whitespace-pre-wrap leading-relaxed bg-error-container/10 p-space-xs rounded font-mono" id="detail-last-error">{selectedJob.last_error}</span>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Previsão de Próximos Disparos (Upcoming Runs) -->
+        <div class="flex flex-col gap-1.5" id="detail-upcoming-card">
+          <div class="flex items-center justify-between">
+            <span class="font-label-ui text-label-ui uppercase text-on-surface-variant flex items-center gap-1 font-semibold">
+              <span class="material-symbols-outlined text-[15px] text-primary">event_upcoming</span>
+              <span>Próximos Disparos ({selectedJobUpcoming.length})</span>
+            </span>
+            <button
+              type="button"
+              class="text-outline hover:text-on-surface font-label-code-sm text-label-code-sm font-mono flex items-center gap-0.5 cursor-pointer"
+              id="btn-refresh-upcoming"
+              onclick={() => loadJobUpcoming(selectedJob!.id)}
+              title="Atualizar projeção de disparos"
+            >
+              <span class="material-symbols-outlined text-[13px]">refresh</span>
+              <span>Atualizar</span>
+            </button>
+          </div>
+
+          {#if loadingUpcoming}
+            <div class="py-2 text-center text-outline font-label-code-sm font-mono text-xs" id="upcoming-loading">
+              Calculando projeção...
+            </div>
+          {:else if selectedJobUpcoming.length === 0}
+            <div class="p-space-sm rounded bg-surface-container text-outline font-label-code-sm text-xs text-center border border-outline-variant/10" id="upcoming-empty">
+              {selectedJob.status === 'done' ? 'Agendamento concluído (sem próximas execuções).' : 'Nenhuma próxima execução projetada.'}
+            </div>
+          {:else}
+            <div class="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1" id="upcoming-list">
+              {#each selectedJobUpcoming as run, idx (run.run_at)}
+                <div class="p-space-xs rounded bg-surface-container font-mono text-xs border border-primary/20 flex items-center justify-between" id="upcoming-item-{idx}">
+                  <div class="flex items-center gap-2">
+                    <span class="px-1.5 py-0.5 rounded bg-primary/15 text-primary font-bold text-[11px]">
+                      #{idx + 1}
+                    </span>
+                    <span class="text-on-surface text-[12px] font-semibold">
+                      {run.formatted_date}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-surface-container-lowest text-secondary text-[11px] font-mono border border-outline-variant/20">
+                      {run.time_local}
+                    </span>
+                  </div>
+                </div>
+              {/each}
             </div>
           {/if}
         </div>

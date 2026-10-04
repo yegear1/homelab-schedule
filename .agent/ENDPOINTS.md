@@ -194,6 +194,36 @@ Histórico de execuções/disparos de um agendamento específico. Query: `limit`
 
 `200` → `{ "runs": [ JobRun, ... ] }`. `404` job não encontrado. `401` chave inválida.
 
+### `GET /jobs/{id}/upcoming`
+
+Projeção de próximas ocorrências e disparos futuros para um agendamento (especialmente para rotinas recorrentes `kind="cron"`). Query: `limit` (1-50, default 5).
+Respeita limites de ciclo de vida (`until`, `max_runs`, `run_count`) e ajustes pontuais de adiamento (`snooze`). Se o job for pontual (`once`), projeta a única execução se estiver no futuro.
+
+`200` →
+```json
+{
+  "job_id": "abc-1",
+  "kind": "cron",
+  "cron_expr": "0 9 * * *",
+  "status": "scheduled",
+  "enabled": true,
+  "until": null,
+  "max_runs": null,
+  "run_count": 0,
+  "total_projected": 3,
+  "runs": [
+    {
+      "run_at": "2026-10-05T12:00:00+00:00",
+      "run_at_local": "2026-10-05 09:00:00 -03:00",
+      "time_local": "09:00",
+      "formatted_date": "05/10/2026 09:00"
+    }
+  ]
+}
+```
+`401` chave inválida. `404` job não encontrado. `422` limite inválido.
+
+
 ### `POST /jobs/{id}/cancel`
 
 Sqlite: pontual → remove ou `status=done` cancelado; cron → `enabled=false` / `paused`. YAML: `409` com mensagem para editar o arquivo. `404`. `204` ou `200` com Job.

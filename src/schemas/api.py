@@ -278,3 +278,22 @@ class PreviewJobResponse(BaseModel):
     max_runs: int | None = None
     conflicts: list[JobConflict] = Field(default_factory=list)
 
+
+class UpcomingRunItem(BaseModel):
+    run_at: datetime
+    run_at_local: str
+    time_local: str
+    formatted_date: str
+
+
+class UpcomingRunsResponse(BaseModel):
+    job_id: str
+    kind: JobKind
+    cron_expr: str | None = None
+    status: JobStatus
+    enabled: bool
+    until: datetime | None = None
+    max_runs: int | None = None
+    run_count: int = 0
+    total_projected: int
+    runs: list[UpcomingRunItem]

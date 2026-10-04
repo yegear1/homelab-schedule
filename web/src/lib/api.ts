@@ -21,7 +21,8 @@ import type {
   ImportDataRequest,
   ImportDataResponse,
   IntegrityCheckResponse,
-  TagsResponse
+  TagsResponse,
+  UpcomingRunsResponse,
 } from './types';
 
 export class ApiClientError extends Error {
@@ -362,6 +363,13 @@ class ApiService {
     );
     return res.runs;
   }
+
+  async getUpcomingRuns(id: string, limit: number = 5): Promise<UpcomingRunsResponse> {
+    return this.request<UpcomingRunsResponse>(
+      `/jobs/${encodeURIComponent(id)}/upcoming?limit=${limit}`
+    );
+  }
+
 
   async getAllJobRuns(limit: number = 50, status?: string): Promise<JobRun[]> {
     const params = new URLSearchParams();

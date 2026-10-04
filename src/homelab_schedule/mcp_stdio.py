@@ -14,6 +14,7 @@ from homelab_schedule.mcp_tools import (
     handle_resume,
     handle_schedule,
     handle_snooze,
+    handle_upcoming_runs,
 )
 
 
@@ -149,7 +150,19 @@ def build_mcp(api: AgendaApi) -> MCPServer:
         """
         return handle_daily_digest(api, date=date, to=to)
 
+    @mcp.tool()
+    def upcoming_runs(
+        job_id: str,
+        limit: int = 5,
+    ) -> str:
+        """Project upcoming run times for a recurring or scheduled job.
+        limit is the number of future occurrences to calculate (default 5, max 50).
+        Returns a compact summary with scheduled timestamps in UTC and local time.
+        """
+        return handle_upcoming_runs(api, job_id=job_id, limit=limit)
+
     return mcp
+
 
 
 def main() -> None:

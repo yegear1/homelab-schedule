@@ -21,6 +21,27 @@ def next_cron_utc(expr: str, after: datetime, tz: ZoneInfo = APP_TZ) -> datetime
     raise ValueError("no matching cron occurrence within a year")
 
 
+def upcoming_cron_runs_utc(
+    expr: str,
+    after: datetime,
+    limit: int = 5,
+    tz: ZoneInfo = APP_TZ,
+    until: datetime | None = None,
+) -> list[datetime]:
+    if limit <= 0:
+        return []
+    runs: list[datetime] = []
+    cursor = after
+    for _ in range(limit):
+        nxt = next_cron_utc(expr, cursor, tz=tz)
+        if until is not None and nxt > until:
+            break
+        runs.append(nxt)
+        cursor = nxt
+    return runs
+
+
+
 def _cron_matches(fields: list[str], instant: datetime) -> bool:
     minute, hour, dom, month, dow = fields
     if not _field_matches(minute, instant.minute, 0, 59):

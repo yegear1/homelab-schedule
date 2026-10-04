@@ -20,6 +20,7 @@ from schemas.api import (
     RunNowResponse,
     SnoozeJobRequest,
     TagsResponse,
+    UpcomingRunsResponse,
 )
 from schemas.job import Job
 
@@ -178,6 +179,19 @@ def list_job_runs(
 ) -> JobRunListResponse:
     runs = _service(request).list_job_runs(job_id, limit=limit)
     return JobRunListResponse(runs=runs)
+
+
+@router.get("/{job_id}/upcoming", response_model=UpcomingRunsResponse)
+def get_upcoming_runs(
+    request: Request,
+    _: Auth,
+    job_id: str,
+    limit: Annotated[
+        int, Query(ge=1, le=50, description="Quantidade de próximas execuções a projetar")
+    ] = 5,
+) -> UpcomingRunsResponse:
+    return _service(request).get_upcoming_runs(job_id=job_id, limit=limit)
+
 
 
 @router.post("/{job_id}/cancel", status_code=status.HTTP_204_NO_CONTENT)

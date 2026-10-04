@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from homelab_schedule.aliases import normalize_whatsapp_phone, resolve_destination
 from homelab_schedule.contacts_service import ContactService
-from homelab_schedule.cron import next_cron_utc
+from homelab_schedule.cron import next_cron_utc, upcoming_cron_runs_utc
 from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.errors import (
     Conflict,
@@ -36,6 +36,8 @@ from schemas.api import (
     RescheduleJobRequest,
     RunNowResponse,
     SnoozeJobRequest,
+    UpcomingRunItem,
+    UpcomingRunsResponse,
 )
 from schemas.job import (
     Job,
@@ -59,6 +61,17 @@ def _clean_tags(tags: list[str] | None) -> list[str]:
             seen.add(cleaned.lower())
             res.append(cleaned)
     return res
+
+
+def _to_upcoming_run_item(dt: datetime, tz: ZoneInfo = APP_TZ) -> UpcomingRunItem:
+    local = dt.astimezone(tz)
+    return UpcomingRunItem(
+        run_at=dt,
+        run_at_local=local.strftime("%Y-%m-%d %H:%M:%S %z"),
+        time_local=local.strftime("%H:%M"),
+        formatted_date=local.strftime("%d/%m/%Y %H:%M"),
+    )
+
 
 
 class JobService:
@@ -800,6 +813,63 @@ class JobService:
             conflicts=conflicts,
             summary=summary,
         )
+
+    def get_upcoming_runs(self, job_id: str, limit: int = 5) -> UpcomingRunsResponse:
+        job = self.get(job_id)
+        now_instant = self._now()
+        runs: list[UpcomingRunItem] = []
+
+        if job.kind is JobKind.ONCE:
+            if (
+                job.status is JobStatus.SCHEDULED
+                and job.enabled
+                and job.next_run_at is not None
+                and job.next_run_at >= now_instant
+            ):
+                runs.append(_to_upcoming_run_item(job.next_run_at))
+        elif job.kind is JobKind.CRON and job.cron_expr is not None:
+            if job.status is not JobStatus.DONE:
+                eff_limit = limit
+                if job.max_runs is not None:
+                    remaining = max(0, job.max_runs - job.run_count)
+                    eff_limit = min(eff_limit, remaining)
+
+                if eff_limit > 0:
+                    cursor = now_instant
+                    if (
+                        job.status is JobStatus.SCHEDULED
+                        and job.enabled
+                        and job.next_run_at is not None
+                        and job.next_run_at > now_instant
+                    ):
+                        if job.until is None or job.next_run_at <= job.until:
+                            runs.append(_to_upcoming_run_item(job.next_run_at))
+                            cursor = job.next_run_at
+                            eff_limit -= 1
+
+                    if eff_limit > 0:
+                        projected = upcoming_cron_runs_utc(
+                            job.cron_expr,
+                            after=cursor,
+                            limit=eff_limit,
+                            until=job.until,
+                        )
+                        for p in projected:
+                            runs.append(_to_upcoming_run_item(p))
+
+        return UpcomingRunsResponse(
+            job_id=job.id,
+            kind=job.kind,
+            cron_expr=job.cron_expr,
+            status=job.status,
+            enabled=job.enabled,
+            until=job.until,
+            max_runs=job.max_runs,
+            run_count=job.run_count,
+            total_projected=len(runs),
+            runs=runs,
+        )
+
 
 
 def _detect_conflicts(jobs: list[Job], window_seconds: int = 300) -> list[JobConflict]:

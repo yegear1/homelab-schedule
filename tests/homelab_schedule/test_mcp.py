@@ -18,6 +18,7 @@ from homelab_schedule.mcp_tools import (
     handle_resume,
     handle_schedule,
     handle_snooze,
+    handle_upcoming_runs,
 )
 from homelab_schedule.mcp_when import parse_period, parse_when
 from homelab_schedule.store import APP_TZ
@@ -898,3 +899,98 @@ def test_handle_preview_with_tags() -> None:
     sent = json.loads(seen[0].content)
     assert sent["tags"] == ["saude"]
 
+
+def test_handle_upcoming_runs_returns_compact_json() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        assert request.url.path == "/jobs/j-cron-1/upcoming"
+        assert request.url.params["limit"] == "3"
+        return httpx.Response(
+            200,
+            json={
+                "job_id": "j-cron-1",
+                "kind": "cron",
+                "cron_expr": "0 9 * * *",
+                "status": "scheduled",
+                "enabled": True,
+                "until": None,
+                "max_runs": None,
+                "run_count": 0,
+                "total_projected": 3,
+                "runs": [
+                    {
+                        "run_at": "2026-10-05T12:00:00+00:00",
+                        "run_at_local": "2026-10-05 09:00:00 -0300",
+                        "time_local": "09:00",
+                        "formatted_date": "05/10/2026 09:00",
+                    }
+                ],
+            },
+        )
+
+    api = _api(handler)
+    res = handle_upcoming_runs(api, "j-cron-1", limit=3)
+    data = json.loads(res)
+    assert data["job_id"] == "j-cron-1"
+    assert data["total_projected"] == 3
+    assert len(data["runs"]) == 1
+    assert data["runs"][0]["time_local"] == "09:00"
+
+
+def test_handle_get_item_enriches_cron_with_upcoming_runs() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/jobs/j-cron-1":
+            return httpx.Response(
+                200,
+                json={
+                    "id": "j-cron-1",
+                    "title": "Rotina",
+                    "content": "Aviso",
+                    "to": "eu",
+                    "kind": "cron",
+                    "status": "scheduled",
+                    "next_run_at": "2026-10-05T12:00:00+00:00",
+                    "source": "sqlite",
+                },
+            )
+        if request.url.path == "/jobs/j-cron-1/upcoming":
+            return httpx.Response(
+                200,
+                json={
+                    "job_id": "j-cron-1",
+                    "kind": "cron",
+                    "total_projected": 2,
+                    "runs": [
+                        {
+                            "run_at": "2026-10-05T12:00:00+00:00",
+                            "run_at_local": "2026-10-05 09:00:00 -0300",
+                            "time_local": "09:00",
+                            "formatted_date": "05/10/2026 09:00",
+                        },
+                        {
+                            "run_at": "2026-10-06T12:00:00+00:00",
+                            "run_at_local": "2026-10-06 09:00:00 -0300",
+                            "time_local": "09:00",
+                            "formatted_date": "06/10/2026 09:00",
+                        },
+                    ],
+                },
+            )
+        return httpx.Response(404)
+
+    api = _api(handler)
+    res = handle_get_item(api, "j-cron-1")
+    data = json.loads(res)
+    assert data["id"] == "j-cron-1"
+    assert "upcoming_runs" in data
+    assert len(data["upcoming_runs"]) == 2
+    assert "2026-10-05 09:00:00 -0300" in data["upcoming_runs"][0]
+
+
+def test_build_mcp_registers_upcoming_runs_tool() -> None:
+    api = _api(lambda _: httpx.Response(200, json={}))
+    mcp = build_mcp(api)
+    tool_names = [tool.name for tool in mcp._tool_manager.list_tools()]
+    assert "upcoming_runs" in tool_names
