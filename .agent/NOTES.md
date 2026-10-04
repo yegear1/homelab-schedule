@@ -34,6 +34,17 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-10-04] Tags e Categorias de Agenda (tags: list[str] no SQLite v11, API, MCP e Web UI, Tarefa [02.13])
+
+- **Contexto:** Operadores humanos e agentes de IA precisavam categorizar e segmentar recados e rotinas por assunto, contexto ou prioridade (ex: `alerta`, `financeiro`, `lembrete`, `plantao`), permitindo filtragem precisa e autocomplete tanto na interface Web quanto em ferramentas do MCP.
+- **Decisão:**
+  - **Persistência SQLite v11:** Adicionada coluna `tags TEXT NOT NULL DEFAULT '[]'` na tabela `jobs`. Migração automática com `PRAGMA user_version = 11` via `ALTER TABLE jobs ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'`. Backup / export versionado em 11.
+  - **Filtragem Eficiente com `json_each`:** Consultas por tag (`GET /jobs?tag=...`) utilizam a função embutida do SQLite `EXISTS (SELECT 1 FROM json_each(jobs.tags) WHERE LOWER(value) = LOWER(?))` dispensando tabelas N:N adicionais e garantindo busca case-insensitive eficiente.
+  - **Higienização de Tags:** Função `_clean_tags` remove espaços em branco, descarta strings vazias e deduplica ignorando maiúsculas/minúsculas.
+  - **Autocomplete `GET /jobs/tags`:** Endpoint leve retornando a lista deduplicada e ordenada de tags existentes no banco para uso em datalists e sugestões nos agentes.
+  - **Superfície MCP Fechada (ADR-005):** Parâmetro `tags: list[str]` estendido em `schedule` e `preview`; filtro `tag: str` adicionado em `list_agenda`; tags expostas em resumos e detalhes de `get_item`.
+  - **Web UI (Svelte 5):** Filtro por tag com `<datalist>` no `wdg-job-filters`, badges `badge-tag` na listagem de recados e membros de grupos, cartão `detail-tags-card` no painel de inspeção e campo de tags interativo com chips no formulário `wdg-job-create`.
+
 ### [2026-09-29] Síntese Matinal e Prevenção de Conflitos no MCP (daily_digest e aviso preventivo, Tarefa [02.12])
 
 - **Contexto:** Agentes operando no MCP e chamadores da API precisavam de uma visão diária consolidada da agenda ("síntese matinal") sem ter que iterar sobre dezenas de itens ou inspecionar campos verbosos, além de um mecanismo preventivo contra colisões de disparos ou sobreposição de mensagens destinadas ao mesmo contato.

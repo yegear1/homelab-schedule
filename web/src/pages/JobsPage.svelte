@@ -32,6 +32,8 @@
   let filterTo = $state('');
   let filterPhone = $state('');
   let filterLimit = $state(50);
+  let filterTag = $state('');
+  let availableTags = $state<string[]>([]);
 
   // Group & Batch State
   let groupMembers = $state<JobListItem[]>([]);
@@ -159,6 +161,29 @@
   let createUntil = $state('');
   let createMaxRuns = $state<number | null>(null);
   let creatingJob = $state(false);
+  let createTags = $state<string[]>([]);
+  let newTagInput = $state('');
+
+  function addTag(tagCandidate?: string) {
+    const raw = tagCandidate !== undefined ? tagCandidate : newTagInput;
+    const clean = raw.trim();
+    if (!clean) return;
+    const parts = clean.split(/[,;\s]+/).map((t) => t.trim().toLowerCase()).filter(Boolean);
+    const set = new Set(createTags.map((t) => t.toLowerCase()));
+    const nextTags = [...createTags];
+    for (const p of parts) {
+      if (!set.has(p)) {
+        set.add(p);
+        nextTags.push(p);
+      }
+    }
+    createTags = nextTags;
+    newTagInput = '';
+  }
+
+  function removeTag(tagToRemove: string) {
+    createTags = createTags.filter((t) => t.toLowerCase() !== tagToRemove.toLowerCase());
+  }
 
   let createCustomVars = $state<Array<{ key: string; value: string }>>([]);
   let newVarKey = $state('');
@@ -190,7 +215,16 @@
     loadJobs();
     loadTemplates();
     loadContacts();
+    loadTags();
   });
+
+  async function loadTags() {
+    try {
+      availableTags = await api.getTags();
+    } catch {
+      // Non-critical
+    }
+  }
 
   async function loadTemplates() {
     try {
@@ -251,6 +285,7 @@
           to: filterTo ? new Date(filterTo).toISOString() : undefined,
           phone: filterPhone.trim() || undefined,
           limit: filterLimit || undefined,
+          tag: filterTag.trim() || undefined,
         }),
         loadAllRuns(),
       ]);
@@ -349,6 +384,7 @@
     filterTo = '';
     filterPhone = '';
     filterLimit = 50;
+    filterTag = '';
     setTimeout(() => loadJobs(), 10);
   }
 
@@ -638,6 +674,7 @@
           template_id: payloadTemplateId,
           created_by: createCreatedBy.trim() || null,
           variables: variablesPayload,
+          tags: createTags.length > 0 ? createTags : undefined,
         });
         toast.success(`Grupo criado com ${batchRes.count} agendamentos vinculados.`);
       } else {
@@ -653,6 +690,7 @@
           template_id: payloadTemplateId,
           created_by: createCreatedBy.trim() || null,
           variables: variablesPayload,
+          tags: createTags.length > 0 ? createTags : undefined,
         });
         toast.success(`Job "${createTitle}" registrado na agenda.`);
       }
@@ -670,7 +708,9 @@
       createCustomVars = [];
       newVarKey = '';
       newVarValue = '';
-      await loadJobs();
+      createTags = [];
+      newTagInput = '';
+      await Promise.all([loadJobs(), loadTags()]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao agendar';
       toast.error(msg);
@@ -782,7 +822,7 @@
       </div>
     </div>
 
-    <form class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-space-sm items-end" id="form-job-filters" onsubmit={handleFilterSubmit}>
+    <form class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-space-sm items-end" id="form-job-filters" onsubmit={handleFilterSubmit}>
       <!-- Campo 1: status -->
       <div class="flex flex-col gap-1 min-w-0">
         <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="filter-status">Status</label>
@@ -846,7 +886,26 @@
         />
       </div>
 
-      <!-- Campo 5: limit -->
+      <!-- Campo 5: tag -->
+      <div class="flex flex-col gap-1 min-w-0">
+        <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="filter-tag">Tag / Categoria</label>
+        <input
+          class="w-full bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-1.5 placeholder:text-outline-variant focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+          id="filter-tag"
+          name="tag"
+          list="tags-datalist"
+          placeholder="ex: lembrete"
+          type="text"
+          bind:value={filterTag}
+        />
+        <datalist id="tags-datalist">
+          {#each availableTags as t}
+            <option value={t}>{t}</option>
+          {/each}
+        </datalist>
+      </div>
+
+      <!-- Campo 6: limit -->
       <div class="flex flex-col gap-1 min-w-0">
         <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="filter-limit">Limite (1-100)</label>
         <input
@@ -1033,6 +1092,14 @@
                             <span class="material-symbols-outlined text-[11px]">data_object</span>
                             <span>{Object.keys(job.variables).length} {Object.keys(job.variables).length === 1 ? 'var' : 'vars'}</span>
                           </span>
+                        {/if}
+                        {#if job.tags && job.tags.length > 0}
+                          {#each job.tags as t}
+                            <span class="badge-tag inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-mono" title="Tag: {t}">
+                              <span class="material-symbols-outlined text-[11px]">label</span>
+                              <span>{t}</span>
+                            </span>
+                          {/each}
                         {/if}
                       </div>
                       {#if job.status === 'error' && job.last_error}
@@ -1390,6 +1457,14 @@
                             <span class="text-label-code-sm text-outline">{memberRecipient.targetNumber}</span>
                             {#if memberJob.template_id}
                               <span class="text-outline-variant font-label-code-sm text-label-code-sm">• tpl: {memberJob.template_id}</span>
+                            {/if}
+                            {#if memberJob.tags && memberJob.tags.length > 0}
+                              {#each memberJob.tags as t}
+                                <span class="badge-tag inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-mono" title="Tag: {t}">
+                                  <span class="material-symbols-outlined text-[10px]">label</span>
+                                  <span>{t}</span>
+                                </span>
+                              {/each}
                             {/if}
                           </div>
                           {#if memberJob.status === 'error' && memberJob.last_error}
@@ -1776,6 +1851,26 @@
             {selectedJob.content || (selectedJob.template_id ? `[Template ID: ${selectedJob.template_id}]` : '(vazio)')}
           </div>
         </div>
+
+        {#if selectedJob.tags && selectedJob.tags.length > 0}
+          <div class="bg-surface-container p-space-sm rounded flex flex-col gap-space-xs border border-primary/20" id="detail-tags-card">
+            <div class="flex items-center justify-between">
+              <span class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold flex items-center gap-1">
+                <span class="material-symbols-outlined text-[15px] text-primary">label</span>
+                <span>Tags / Categorias ({selectedJob.tags.length})</span>
+              </span>
+              <span class="font-label-code-sm text-label-code-sm text-outline font-mono">tags</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 pt-1" id="detail-tags-list">
+              {#each selectedJob.tags as t (t)}
+                <span class="badge-tag inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-lowest text-primary font-mono text-label-code-sm border border-outline-variant/20">
+                  <span class="material-symbols-outlined text-[12px]">label</span>
+                  <span>{t}</span>
+                </span>
+              {/each}
+            </div>
+          </div>
+        {/if}
 
         {#if selectedJob.variables && Object.keys(selectedJob.variables).length > 0}
           <div class="bg-surface-container p-space-sm rounded flex flex-col gap-space-xs border border-primary/20" id="detail-variables-card">
@@ -2353,6 +2448,71 @@
                 onclick={addCustomVar}
               >
                 + Adicionar
+              </button>
+            </div>
+          </div>
+
+          <!-- TAGS E CATEGORIAS (tags) -->
+          <div class="flex flex-col gap-space-xs p-space-sm bg-surface-container rounded border border-outline-variant/10" id="section-tags">
+            <div class="flex items-center justify-between">
+              <span class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold flex items-center gap-1">
+                <span class="material-symbols-outlined text-[15px] text-primary">label</span>
+                <span>Tags e Categorias</span>
+              </span>
+              <span class="font-label-code-sm text-label-code-sm text-outline font-mono">
+                {createTags.length} {createTags.length === 1 ? 'tag' : 'tags'}
+              </span>
+            </div>
+            <p class="font-body-sm text-body-sm text-outline">
+              Marcadores para organizar e filtrar recados por assunto ou contexto (ex: alerta, finanças, lembrete).
+            </p>
+
+            {#if createTags.length > 0}
+              <div class="flex flex-wrap gap-1.5 p-1.5 rounded bg-surface-container-lowest border border-outline-variant/20 items-center">
+                {#each createTags as tagItem (tagItem)}
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-mono text-label-code-sm">
+                    <span class="material-symbols-outlined text-[12px]">label</span>
+                    <span>{tagItem}</span>
+                    <button
+                      type="button"
+                      class="hover:text-error ml-0.5 cursor-pointer flex items-center"
+                      title="Remover tag"
+                      onclick={() => removeTag(tagItem)}
+                    >
+                      <span class="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </span>
+                {/each}
+              </div>
+            {/if}
+
+            <div class="flex items-center gap-2 pt-1 flex-wrap sm:flex-nowrap">
+              <input
+                class="flex-1 min-w-[140px] bg-surface-container-lowest text-on-surface font-label-code text-label-code rounded px-space-sm py-1.5 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                id="input-tag"
+                list="modal-tags-datalist"
+                placeholder="Nova tag (ex: plantao, urgente)"
+                type="text"
+                bind:value={newTagInput}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag();
+                  }
+                }}
+              />
+              <datalist id="modal-tags-datalist">
+                {#each availableTags as t}
+                  <option value={t}>{t}</option>
+                {/each}
+              </datalist>
+              <button
+                type="button"
+                class="px-2.5 py-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-primary font-label-ui text-label-ui uppercase tracking-wider font-semibold cursor-pointer shrink-0"
+                id="btn-add-tag"
+                onclick={() => addTag()}
+              >
+                + Adicionar Tag
               </button>
             </div>
           </div>

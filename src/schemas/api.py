@@ -30,6 +30,7 @@ class CreateJobRequest(BaseModel):
     template_id: str | None = None
     group_id: str | None = None
     variables: dict[str, str] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
     until: datetime | None = None
     max_runs: int | None = None
 
@@ -74,9 +75,14 @@ class JobListItem(BaseModel):
     last_error: str | None = None
     retry_count: int = 0
     variables: dict[str, str] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
     until: datetime | None = None
     max_runs: int | None = None
     run_count: int = 0
+
+
+class TagsResponse(BaseModel):
+    tags: list[str]
 
 
 class JobListResponse(BaseModel):
@@ -141,6 +147,7 @@ class CreateBatchJobsRequest(BaseModel):
     created_by: str | None = None
     template_id: str | None = None
     variables: dict[str, str] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
     until: datetime | None = None
     max_runs: int | None = None
 
@@ -192,6 +199,7 @@ class PreviewJobRequest(BaseModel):
     cron_expr: str | None = None
     template_id: str | None = None
     variables: dict[str, str] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
     until: datetime | None = None
     max_runs: int | None = None
 
@@ -265,6 +273,7 @@ class PreviewJobResponse(BaseModel):
     raw_content: str
     rendered_content: str
     variables: dict[str, str] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
     until: datetime | None = None
     max_runs: int | None = None
     conflicts: list[JobConflict] = Field(default_factory=list)

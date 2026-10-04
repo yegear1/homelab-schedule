@@ -48,6 +48,19 @@ from schemas.job import (
 )
 
 
+def _clean_tags(tags: list[str] | None) -> list[str]:
+    if not tags:
+        return []
+    seen: set[str] = set()
+    res: list[str] = []
+    for t in tags:
+        cleaned = t.strip()
+        if cleaned and cleaned.lower() not in seen:
+            seen.add(cleaned.lower())
+            res.append(cleaned)
+    return res
+
+
 class JobService:
     def __init__(
         self,
@@ -89,6 +102,7 @@ class JobService:
             template_id=template_id,
             group_id=payload.group_id,
             variables=payload.variables,
+            tags=_clean_tags(payload.tags),
             until=payload.until,
             max_runs=payload.max_runs,
         )
@@ -100,6 +114,7 @@ class JobService:
         group_id = f"grp_{uuid.uuid4().hex[:12]}"
         content, template_id = self._content_from_payload(payload)
         created_by = self._created_by(payload.created_by)
+        cleaned_tags = _clean_tags(payload.tags)
         created_jobs: list[Job] = []
 
         for recipient in payload.recipients:
@@ -119,6 +134,7 @@ class JobService:
                 template_id=template_id,
                 group_id=group_id,
                 variables=payload.variables,
+                tags=cleaned_tags,
                 until=payload.until,
                 max_runs=payload.max_runs,
             )
@@ -181,6 +197,7 @@ class JobService:
             raw_content=raw_content,
             rendered_content=rendered_content,
             variables=variables,
+            tags=_clean_tags(payload.tags),
             until=payload.until,
             max_runs=payload.max_runs,
             conflicts=conflicts,
@@ -272,6 +289,7 @@ class JobService:
         phone: str | None = None,
         group_id: str | None = None,
         query: str | None = None,
+        tag: str | None = None,
     ) -> list[JobListItem]:
         resolved_phone = self._resolve_to(phone) if phone else None
         jobs = self._repo.list_jobs(
@@ -283,8 +301,12 @@ class JobService:
             raw_to=phone,
             group_id=group_id,
             query=query,
+            tag=tag,
         )
         return [JobListItem.model_validate(job.model_dump()) for job in jobs]
+
+    def get_tags(self) -> list[str]:
+        return self._repo.list_all_tags()
 
     def cancel(self, job_id: str) -> None:
         job = self.get(job_id)

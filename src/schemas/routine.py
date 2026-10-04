@@ -10,6 +10,7 @@ class RoutineSpec(BaseModel):
     content: str = Field(min_length=1)
     to: str = "eu"
     variables: dict[str, str] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
     until: datetime | None = None
     max_runs: int | None = None
 

@@ -34,16 +34,19 @@ def build_mcp(api: AgendaApi) -> MCPServer:
         to: str = "eu",
         title: str | None = None,
         variables: dict[str, str] | None = None,
+        tags: list[str] | None = None,
         until: str | None = None,
         max_runs: int | None = None,
     ) -> str:
         """Create an agenda job. when is ISO-8601, 5-field cron, relative interval
         (+15m, 2h, em 10 minutos), or friendly date/time (amanhã 14h, hoje 18:00, segunda 9h).
         to is a phone or alias. variables is an optional dictionary of custom key-value pairs
-        for template interpolation. until is an optional UTC ISO date limit to end recurring jobs.
+        for template interpolation. tags is an optional list of string tags or categories
+        (e.g. ['saude', 'trabalho', 'casa']).
+        until is an optional UTC ISO date limit to end recurring jobs.
         max_runs is an optional maximum count of successful runs before ending.
         """
-        return handle_schedule(api, when, content, to, title, variables, until, max_runs)
+        return handle_schedule(api, when, content, to, title, variables, tags, until, max_runs)
 
     @mcp.tool()
     def list_agenda(
@@ -52,6 +55,7 @@ def build_mcp(api: AgendaApi) -> MCPServer:
         to: str | None = None,
         query: str | None = None,
         period: str | None = None,
+        tag: str | None = None,
     ) -> str:
         """List jobs with optional filters:
         - status: upcoming, done, error, paused, all (default upcoming)
@@ -59,6 +63,7 @@ def build_mcp(api: AgendaApi) -> MCPServer:
         - to: filter by contact alias, phone number, or recipient (e.g. 'eu', 'mae')
         - query: text search in job title or content (e.g. 'remédio', 'reunião')
         - period: relative window ('hoje', 'amanhã', 'esta semana', '7d', '24h', etc.)
+        - tag: filter by tag or category (e.g. 'saude', 'trabalho')
         """
         return handle_list_agenda(
             api,
@@ -67,6 +72,7 @@ def build_mcp(api: AgendaApi) -> MCPServer:
             to=to,
             query=query,
             period=period,
+            tag=tag,
         )
 
     @mcp.tool()
@@ -111,6 +117,7 @@ def build_mcp(api: AgendaApi) -> MCPServer:
         title: str | None = None,
         template_id: str | None = None,
         variables: dict[str, str] | None = None,
+        tags: list[str] | None = None,
         until: str | None = None,
         max_runs: int | None = None,
     ) -> str:
@@ -125,6 +132,7 @@ def build_mcp(api: AgendaApi) -> MCPServer:
             title=title,
             template_id=template_id,
             variables=variables,
+            tags=tags,
             until=until,
             max_runs=max_runs,
         )

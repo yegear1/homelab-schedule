@@ -41,6 +41,7 @@ export interface Job {
   template_id: string | null;
   group_id?: string | null;
   variables?: Record<string, string>;
+  tags?: string[];
   until?: string | null;
   max_runs?: number | null;
   run_count?: number;
@@ -66,9 +67,14 @@ export interface JobListItem {
   last_error?: string | null;
   retry_count?: number;
   variables?: Record<string, string>;
+  tags?: string[];
   until?: string | null;
   max_runs?: number | null;
   run_count?: number;
+}
+
+export interface TagsResponse {
+  tags: string[];
 }
 
 export interface CreateJobRequest {
@@ -83,6 +89,7 @@ export interface CreateJobRequest {
   template_id?: string | null;
   group_id?: string | null;
   variables?: Record<string, string>;
+  tags?: string[];
   until?: string | null;
   max_runs?: number | null;
 }
@@ -97,6 +104,7 @@ export interface CreateBatchJobsRequest {
   created_by?: string | null;
   template_id?: string | null;
   variables?: Record<string, string>;
+  tags?: string[];
   until?: string | null;
   max_runs?: number | null;
 }

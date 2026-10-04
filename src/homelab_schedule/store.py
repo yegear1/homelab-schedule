@@ -16,7 +16,7 @@ from schemas.job import (
     JobStatus,
 )
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 APP_TZ = ZoneInfo("America/Sao_Paulo")
 
 _CREATE_JOBS = """
@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     template_id TEXT,
     group_id TEXT,
     variables TEXT NOT NULL DEFAULT '{}',
+    tags TEXT NOT NULL DEFAULT '[]',
     until TEXT,
     max_runs INTEGER,
     run_count INTEGER NOT NULL DEFAULT 0
@@ -165,6 +166,11 @@ def init_schema(conn: sqlite3.Connection) -> None:
         if "run_count" not in cols:
             conn.execute("ALTER TABLE jobs ADD COLUMN run_count INTEGER NOT NULL DEFAULT 0")
         conn.execute("PRAGMA user_version=10")
+    if version < 11:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()]
+        if "tags" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'")
+        conn.execute("PRAGMA user_version=11")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_jobs_phone ON jobs (target_number, created_by)"
     )
@@ -210,6 +216,23 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         elif isinstance(raw_vars, dict):
             parsed_vars = {str(k): str(v) for k, v in raw_vars.items()}
 
+    raw_tags = (
+        row["tags"]
+        if "tags" in row.keys() and row["tags"] is not None
+        else None
+    )
+    parsed_tags: list[str] = []
+    if raw_tags:
+        if isinstance(raw_tags, str):
+            try:
+                loaded_tags = json.loads(raw_tags)
+                if isinstance(loaded_tags, list):
+                    parsed_tags = [str(t).strip() for t in loaded_tags if str(t).strip()]
+            except Exception:
+                parsed_tags = []
+        elif isinstance(raw_tags, list):
+            parsed_tags = [str(t).strip() for t in raw_tags if str(t).strip()]
+
     return Job(
         id=str(row["id"]),
         title=str(row["title"]),
@@ -241,6 +264,7 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         if "group_id" in row.keys() and row["group_id"] is not None
         else None,
         variables=parsed_vars,
+        tags=parsed_tags,
         until=_dt_from_db(row["until"]) if "until" in row.keys() else None,
         max_runs=int(row["max_runs"])
         if "max_runs" in row.keys() and row["max_runs"] is not None

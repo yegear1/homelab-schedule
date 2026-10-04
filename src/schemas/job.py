@@ -63,6 +63,7 @@ class Job(BaseModel):
     template_id: str | None = None
     group_id: str | None = None
     variables: dict[str, str] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
     until: datetime | None = None
     max_runs: int | None = None
     run_count: int = 0

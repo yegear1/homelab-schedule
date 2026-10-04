@@ -148,6 +148,7 @@ def test_export_and_import_roundtrip(client: TestClient) -> None:
             "kind": "once",
             "run_at": "2026-09-20T10:00:00Z",
             "variables": {"tipo": "urgente"},
+            "tags": ["cliente", "urgente"],
         },
     )
     assert j_res.status_code == 201
@@ -163,7 +164,7 @@ def test_export_and_import_roundtrip(client: TestClient) -> None:
     export_payload = exp_res.json()
 
     assert export_payload["metadata"]["version"] == 1
-    assert export_payload["metadata"]["schema_version"] == 10
+    assert export_payload["metadata"]["schema_version"] == 11
     assert export_payload["metadata"]["counts"]["contacts"] >= 1
     assert export_payload["metadata"]["counts"]["templates"] >= 1
     assert export_payload["metadata"]["counts"]["jobs"] >= 1
@@ -171,7 +172,9 @@ def test_export_and_import_roundtrip(client: TestClient) -> None:
 
     assert any(c["id"] == contact_id for c in export_payload["contacts"])
     assert any(
-        j["id"] == job_id and j["variables"] == {"tipo": "urgente"}
+        j["id"] == job_id
+        and j["variables"] == {"tipo": "urgente"}
+        and j.get("tags") == ["cliente", "urgente"]
         for j in export_payload["jobs"]
     )
     assert not any(j["id"] == "routine-weekly-review" for j in export_payload["jobs"])
@@ -203,6 +206,7 @@ def test_export_and_import_roundtrip(client: TestClient) -> None:
                 "source": "sqlite",
                 "status": "scheduled",
                 "variables": {"tipo": "alterado"},
+                "tags": ["cliente", "vip"],
             },
             {
                 "title": "Rotina Ignorada",
@@ -253,6 +257,7 @@ def test_export_and_import_roundtrip(client: TestClient) -> None:
     updated_j = client.get(f"/jobs/{job_id}", headers=auth).json()
     assert updated_j["title"] == "Aviso Bob (Atualizado)"
     assert updated_j["variables"] == {"tipo": "alterado"}
+    assert updated_j["tags"] == ["cliente", "vip"]
 
 
 def test_import_replace_mode_preserves_yaml_routines(client: TestClient) -> None:

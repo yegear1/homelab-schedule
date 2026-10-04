@@ -779,3 +779,122 @@ def test_handle_preview_includes_conflicts() -> None:
     assert len(data["conflicts"]) == 1
     assert data["conflicts"][0]["delta_minutes"] == 1
 
+
+def test_handle_schedule_with_tags() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(
+            201,
+            json={
+                "id": "job-tag-123",
+                "title": "Remédio",
+                "content": "Tomar remédio",
+                "to": "eu",
+                "next_run_at": "2027-10-01T08:00:00+00:00",
+                "tags": ["saude", "urgente"],
+            },
+        )
+
+    api = _api(handler)
+    res = handle_schedule(
+        api,
+        when="2027-10-01T08:00:00+00:00",
+        content="Tomar remédio",
+        tags=["saude", "urgente"],
+    )
+    data = json.loads(res)
+    assert data["tags"] == ["saude", "urgente"]
+
+    # Verify request payload sent to HTTP API
+    sent_payload = json.loads(seen[0].content)
+    assert sent_payload["tags"] == ["saude", "urgente"]
+
+
+def test_handle_list_agenda_with_tag_filter() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "jobs": [
+                    {
+                        "id": "j-tag-1",
+                        "title": "Treino",
+                        "to": "eu",
+                        "next_run_at": "2027-10-01T07:00:00+00:00",
+                        "status": "scheduled",
+                        "tags": ["saude", "esporte"],
+                    }
+                ]
+            },
+        )
+
+    api = _api(handler)
+    res = handle_list_agenda(api, tag="saude")
+    data = json.loads(res)
+    assert len(data["jobs"]) == 1
+    assert data["jobs"][0]["tags"] == ["saude", "esporte"]
+    assert "tag=saude" in str(seen[0].url)
+
+
+def test_handle_get_item_includes_tags() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "id": "j-tag-1",
+                "title": "Treino",
+                "content": "Ir na academia",
+                "to": "eu",
+                "kind": "once",
+                "status": "scheduled",
+                "next_run_at": "2027-10-01T07:00:00+00:00",
+                "source": "sqlite",
+                "variables": {},
+                "tags": ["saude", "fitness"],
+            },
+        )
+
+    api = _api(handler)
+    res = handle_get_item(api, "j-tag-1")
+    data = json.loads(res)
+    assert data["tags"] == ["saude", "fitness"]
+
+
+def test_handle_preview_with_tags() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "title": "Consulta",
+                "to": "eu",
+                "target_number": "5511999998888@c.us",
+                "kind": "once",
+                "next_run_at": "2027-10-01T14:00:00+00:00",
+                "raw_content": "Ir ao médico",
+                "rendered_content": "Ir ao médico",
+                "variables": {},
+                "tags": ["saude"],
+                "conflicts": [],
+            },
+        )
+
+    api = _api(handler)
+    res = handle_preview(
+        api,
+        when="amanhã 14h",
+        content="Ir ao médico",
+        tags=["saude"],
+    )
+    data = json.loads(res)
+    assert data["tags"] == ["saude"]
+    sent = json.loads(seen[0].content)
+    assert sent["tags"] == ["saude"]
+

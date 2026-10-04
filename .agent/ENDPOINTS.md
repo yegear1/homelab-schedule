@@ -38,17 +38,24 @@ Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e 
 | `template_id` | string \| null | Catálogo; no disparo o `body` atual vence o snapshot |
 | `group_id` | string \| null | Identificador do lote para agendamentos com múltiplos destinatários |
 | `variables` | object (dict[str, str]) | Dicionário de variáveis contextuais para interpolação em templates e mensagens |
+| `tags` | list[str] | Lista de tags e categorias textuais para organização e filtros |
 | `until` | string ISO-8601 UTC \| null | Data limite para encerramento automático de repetições |
 | `max_runs` | int \| null | Limite máximo acumulado de execuções |
 | `run_count` | int | Contador acumulado de execuções realizadas |
 
 ### `GET /jobs`
 
-Query: `status` (`upcoming` | `done` | `paused` | `error` | `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino), `phone` (destino **ou** criador, normalizado; aceita nome/id de contato), `group_id` (filtro por grupo de envio), `query` (busca textual em título ou conteúdo), `limit`. Lista **curta**: sem `content` completo.
+Query: `status` (`upcoming` | `done` | `paused` | `error` | `all`, default `upcoming`), `from`, `to` (ISO **de intervalo de tempo**, não destino), `phone` (destino **ou** criador, normalizado; aceita nome/id de contato), `group_id` (filtro por grupo de envio), `tag` (filtro case-insensitive por tag/categoria), `query` (busca textual em título ou conteúdo), `limit`. Lista **curta**: sem `content` completo.
 
-Query `to` é **fim de intervalo de data**. Filtro de pessoa: `?phone=`. Filtro de grupo: `?group_id=`. Busca textual: `?query=`.
+Query `to` é **fim de intervalo de data**. Filtro de pessoa: `?phone=`. Filtro de grupo: `?group_id=`. Filtro de tag: `?tag=`. Busca textual: `?query=`.
 
-`200` → `{ "jobs": [ JobListItem ] }` (inclui `created_by`, `template_id`, `group_id`, `last_error`, `retry_count`, sem `content`)
+`200` → `{ "jobs": [ JobListItem ] }` (inclui `created_by`, `template_id`, `group_id`, `tags`, `last_error`, `retry_count`, sem `content`)
+
+### `GET /jobs/tags`
+
+Retorna a lista de todas as tags e categorias distintas registradas em agendamentos ativos ou históricos no SQLite, ordenadas alfabeticamente. Utilizado para autocomplete no frontend e agentes.
+
+`200` → `{ "tags": [ "alerta", "financeiro", "lembrete", ... ] }`
 
 ### `GET /jobs/{id}`
 

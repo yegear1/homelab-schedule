@@ -669,9 +669,9 @@ def test_migration_v8_to_v9_adds_variables(tmp_path: Path) -> None:
     assert job is not None
     assert job.variables == {}
 
-    # Check user_version is 10 (latest)
+    # Check user_version is SCHEMA_VERSION (latest)
     row = migrated.execute("PRAGMA user_version").fetchone()
-    assert row[0] == 10
+    assert row[0] == SCHEMA_VERSION
     migrated.close()
 
 
@@ -729,9 +729,9 @@ def test_migration_v9_to_v10_adds_lifecycle(tmp_path: Path) -> None:
     assert job.max_runs is None
     assert job.run_count == 0
 
-    # Verify user_version is 10
+    # Verify user_version is SCHEMA_VERSION
     row = migrated.execute("PRAGMA user_version").fetchone()
-    assert row[0] == 10
+    assert row[0] == SCHEMA_VERSION
     migrated.close()
 
 
@@ -762,4 +762,120 @@ def test_job_variables_roundtrip(tmp_path: Path) -> None:
     re_fetched = repo.get("job-vars-1")
     assert re_fetched is not None
     assert re_fetched.variables == {"protocolo": "PROT-99999"}
+    conn.close()
+
+
+def test_migration_v10_to_v11_adds_tags(tmp_path: Path) -> None:
+    import sqlite3
+
+    db = tmp_path / "v10.sqlite"
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute(
+        """
+        CREATE TABLE jobs (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            "to" TEXT NOT NULL,
+            target_number TEXT NOT NULL DEFAULT '',
+            kind TEXT NOT NULL,
+            run_at TEXT,
+            cron_expr TEXT,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL,
+            next_run_at TEXT,
+            last_run_at TEXT,
+            last_status TEXT,
+            last_error TEXT,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT NOT NULL DEFAULT '',
+            template_id TEXT,
+            group_id TEXT,
+            variables TEXT NOT NULL DEFAULT '{}',
+            until TEXT,
+            max_runs INTEGER,
+            run_count INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+    conn.execute("PRAGMA user_version=10")
+    conn.execute(
+        """
+        INSERT INTO jobs (
+            id, title, content, "to", target_number, kind, cron_expr, enabled, source, status
+        ) VALUES (
+            'j10', 'v10 recurring', 'hello v10', 'eu', '5511999998888@c.us', 'cron',
+            '0 9 * * *', 1, 'sqlite', 'scheduled'
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    migrated = connect(str(db))
+    repo = JobRepository(migrated)
+    job = repo.get("j10")
+    assert job is not None
+    assert job.tags == []
+
+    # Verify user_version is 11 (SCHEMA_VERSION)
+    row = migrated.execute("PRAGMA user_version").fetchone()
+    assert row[0] == SCHEMA_VERSION
+    migrated.close()
+
+
+def test_job_tags_roundtrip_and_filtering(tmp_path: Path) -> None:
+    from schemas.api import JobListFilter
+
+    conn = connect(str(tmp_path / "tags.sqlite"))
+    repo = JobRepository(conn)
+
+    job1 = Job(
+        id="job-tags-1",
+        title="Consulta médica",
+        content="Lembrete de consulta",
+        to="eu",
+        kind=JobKind.ONCE,
+        run_at=datetime(2027, 10, 1, 9, 0, tzinfo=UTC),
+        tags=["saude", "urgente"],
+    )
+    job2 = Job(
+        id="job-tags-2",
+        title="Reunião de trabalho",
+        content="Alinhamento semanal",
+        to="eu",
+        kind=JobKind.ONCE,
+        run_at=datetime(2027, 10, 1, 10, 0, tzinfo=UTC),
+        tags=["trabalho"],
+    )
+    repo.insert(job1)
+    repo.insert(job2)
+
+    # Roundtrip get
+    f1 = repo.get("job-tags-1")
+    assert f1 is not None
+    assert f1.tags == ["saude", "urgente"]
+
+    # Update tags
+    updated = repo.update(f1.model_copy(update={"tags": ["saude", "clinica"]}))
+    assert updated.tags == ["saude", "clinica"]
+
+    # Filter by tag case-insensitive
+    res_saude = repo.list_jobs(JobListFilter.ALL, tag="SAUDE")
+    assert len(res_saude) == 1
+    assert res_saude[0].id == "job-tags-1"
+
+    res_trab = repo.list_jobs(JobListFilter.ALL, tag="trabalho")
+    assert len(res_trab) == 1
+    assert res_trab[0].id == "job-tags-2"
+
+    res_none = repo.list_jobs(JobListFilter.ALL, tag="inexistente")
+    assert len(res_none) == 0
+
+    # List all tags
+    all_tags = repo.list_all_tags()
+    assert all_tags == ["clinica", "saude", "trabalho"]
+
     conn.close()

@@ -20,7 +20,8 @@ import type {
   ExportDataResponse,
   ImportDataRequest,
   ImportDataResponse,
-  IntegrityCheckResponse
+  IntegrityCheckResponse,
+  TagsResponse
 } from './types';
 
 export class ApiClientError extends Error {
@@ -233,6 +234,8 @@ class ApiService {
     limit?: number;
     phone?: string;
     group_id?: string;
+    query?: string;
+    tag?: string;
   }): Promise<JobListItem[]> {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
@@ -241,10 +244,17 @@ class ApiService {
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.phone) query.set('phone', params.phone);
     if (params?.group_id) query.set('group_id', params.group_id);
+    if (params?.query) query.set('query', params.query);
+    if (params?.tag) query.set('tag', params.tag);
 
     const q = query.toString();
     const res = await this.request<{ jobs: JobListItem[] }>(`/jobs${q ? `?${q}` : ''}`);
     return res.jobs;
+  }
+
+  async getTags(): Promise<string[]> {
+    const res = await this.request<TagsResponse>('/jobs/tags');
+    return res.tags;
   }
 
   async getJob(id: string): Promise<Job> {

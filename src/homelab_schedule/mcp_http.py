@@ -32,6 +32,7 @@ class AgendaApi:
         to: str,
         title: str | None,
         variables: dict[str, str] | None = None,
+        tags: list[str] | None = None,
         until: str | None = None,
         max_runs: int | None = None,
     ) -> dict[str, object]:
@@ -51,6 +52,8 @@ class AgendaApi:
             payload["cron_expr"] = cron_expr
         if variables:
             payload["variables"] = variables
+        if tags:
+            payload["tags"] = tags
         if until:
             payload["until"] = until
         if max_runs is not None:
@@ -65,6 +68,7 @@ class AgendaApi:
         to: str | None = None,
         query: str | None = None,
         period: str | None = None,
+        tag: str | None = None,
     ) -> dict[str, object]:
         effective_limit = max(1, min(limit, _LIST_LIMIT))
         params: dict[str, str] = {
@@ -75,6 +79,8 @@ class AgendaApi:
             params["phone"] = to.strip()
         if query and query.strip():
             params["query"] = query.strip()
+        if tag and tag.strip():
+            params["tag"] = tag.strip()
         if period and period.strip():
             try:
                 range_from, range_to = parse_period(period)
@@ -93,15 +99,16 @@ class AgendaApi:
         short: list[dict[str, object]] = []
         for raw in jobs[:effective_limit]:
             item = _json_object_from_mapping(raw)
-            short.append(
-                {
-                    "id": item.get("id"),
-                    "when": item.get("next_run_at") or item.get("cron_expr"),
-                    "to": item.get("to"),
-                    "title": item.get("title"),
-                    "status": item.get("status"),
-                }
-            )
+            entry: dict[str, object] = {
+                "id": item.get("id"),
+                "when": item.get("next_run_at") or item.get("cron_expr"),
+                "to": item.get("to"),
+                "title": item.get("title"),
+                "status": item.get("status"),
+            }
+            if item.get("tags"):
+                entry["tags"] = item.get("tags")
+            short.append(entry)
         return {"jobs": short}
 
     def get_item(self, job_id: str) -> dict[str, object]:
@@ -146,6 +153,7 @@ class AgendaApi:
         title: str | None = None,
         template_id: str | None = None,
         variables: dict[str, str] | None = None,
+        tags: list[str] | None = None,
         until: str | None = None,
         max_runs: int | None = None,
     ) -> dict[str, object]:
@@ -161,6 +169,8 @@ class AgendaApi:
             payload["template_id"] = template_id
         if variables:
             payload["variables"] = variables
+        if tags:
+            payload["tags"] = tags
         if until:
             payload["until"] = until
         if max_runs is not None:

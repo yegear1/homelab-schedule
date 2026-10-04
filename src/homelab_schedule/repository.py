@@ -22,8 +22,8 @@ class JobRepository:
                 id, title, content, "to", target_number, kind, run_at, cron_expr,
                 enabled, source, status, next_run_at, last_run_at,
                 last_status, last_error, retry_count, created_by, template_id, group_id,
-                variables, until, max_runs, run_count
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                variables, tags, until, max_runs, run_count
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             _job_params(to_store),
         )
@@ -52,6 +52,7 @@ class JobRepository:
         raw_to: str | None = None,
         group_id: str | None = None,
         query: str | None = None,
+        tag: str | None = None,
     ) -> list[Job]:
         clauses: list[str] = []
         params: list[str | int] = []
@@ -87,6 +88,11 @@ class JobRepository:
             )
             q = f"%{query.strip()}%"
             params.extend([q, q])
+        if tag and tag.strip():
+            clauses.append(
+                "EXISTS (SELECT 1 FROM json_each(jobs.tags) WHERE LOWER(value) = LOWER(?))"
+            )
+            params.append(tag.strip())
         sql = "SELECT * FROM jobs"
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
@@ -96,6 +102,17 @@ class JobRepository:
             params.append(limit)
         rows = self._conn.execute(sql, tuple(params)).fetchall()
         return [_row_to_job(row) for row in rows]
+
+    def list_all_tags(self) -> list[str]:
+        rows = self._conn.execute(
+            """
+            SELECT DISTINCT trim(value) AS tag
+            FROM jobs, json_each(jobs.tags)
+            WHERE value IS NOT NULL AND trim(value) != ''
+            ORDER BY tag COLLATE NOCASE ASC
+            """
+        ).fetchall()
+        return [str(r["tag"]) for r in rows]
 
     def list_by_group(self, group_id: str) -> list[Job]:
         rows = self._conn.execute(
@@ -111,7 +128,7 @@ class JobRepository:
                 title = ?, content = ?, "to" = ?, target_number = ?, kind = ?, run_at = ?,
                 cron_expr = ?, enabled = ?, source = ?, status = ?,
                 next_run_at = ?, last_run_at = ?, last_status = ?, last_error = ?, retry_count = ?,
-                created_by = ?, template_id = ?, group_id = ?, variables = ?,
+                created_by = ?, template_id = ?, group_id = ?, variables = ?, tags = ?,
                 until = ?, max_runs = ?, run_count = ?
             WHERE id = ?
             """,
@@ -352,6 +369,7 @@ def _job_params(job: Job) -> tuple[
     str | None,
     str | None,
     str,
+    str,
     str | None,
     int | None,
     int,
@@ -377,6 +395,7 @@ def _job_params(job: Job) -> tuple[
         job.template_id,
         job.group_id,
         json.dumps(job.variables, ensure_ascii=False),
+        json.dumps(job.tags, ensure_ascii=False),
         _dt_to_db(job.until),
         job.max_runs,
         job.run_count,

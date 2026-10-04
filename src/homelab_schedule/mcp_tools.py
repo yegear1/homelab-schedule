@@ -8,6 +8,7 @@ def handle_schedule(
     to: str = "eu",
     title: str | None = None,
     variables: dict[str, str] | None = None,
+    tags: list[str] | None = None,
     until: str | None = None,
     max_runs: int | None = None,
 ) -> str:
@@ -18,6 +19,7 @@ def handle_schedule(
             to=to,
             title=title,
             variables=variables,
+            tags=tags,
             until=until,
             max_runs=max_runs,
         )
@@ -30,6 +32,8 @@ def handle_schedule(
         }
         if job.get("variables"):
             result["variables"] = job.get("variables")
+        if job.get("tags"):
+            result["tags"] = job.get("tags")
         if job.get("until"):
             result["until"] = job.get("until")
         if job.get("max_runs") is not None:
@@ -46,6 +50,7 @@ def handle_list_agenda(
     to: str | None = None,
     query: str | None = None,
     period: str | None = None,
+    tag: str | None = None,
 ) -> str:
     try:
         return compact_json(
@@ -55,6 +60,7 @@ def handle_list_agenda(
                 to=to,
                 query=query,
                 period=period,
+                tag=tag,
             )
         )
     except AgendaToolError as exc:
@@ -74,6 +80,7 @@ def handle_get_item(api: AgendaApi, job_id: str) -> str:
             "next_run_at": job.get("next_run_at"),
             "source": job.get("source"),
             "variables": job.get("variables", {}),
+            "tags": job.get("tags", []),
             "until": job.get("until"),
             "max_runs": job.get("max_runs"),
             "run_count": job.get("run_count", 0),
@@ -158,6 +165,7 @@ def handle_preview(
     title: str | None = None,
     template_id: str | None = None,
     variables: dict[str, str] | None = None,
+    tags: list[str] | None = None,
     until: str | None = None,
     max_runs: int | None = None,
 ) -> str:
@@ -169,6 +177,7 @@ def handle_preview(
             title=title,
             template_id=template_id,
             variables=variables,
+            tags=tags,
             until=until,
             max_runs=max_runs,
         )

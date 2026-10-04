@@ -1282,5 +1282,79 @@ def test_yaml_job_lifecycle_mutations_rejected(
     assert snooze_res.status_code == 409
 
 
+def test_jobs_tags_create_list_filter_and_tags_endpoint(
+    client: TestClient,
+    api_key: str,
+) -> None:
+    # 1. Create single job with tags
+    r1 = client.post(
+        "/jobs",
+        headers=_auth(api_key),
+        json={
+            "title": "Remédio Manhã",
+            "content": "Tomar comprimido",
+            "to": "eu",
+            "kind": "once",
+            "run_at": "2027-10-01T08:00:00Z",
+            "tags": ["saude", "urgente", "saude "],  # tests trimming and deduplication
+        },
+    )
+    assert r1.status_code == 201
+    job1 = r1.json()
+    assert job1["tags"] == ["saude", "urgente"]
 
+    # 2. Create batch jobs with tags
+    r2 = client.post(
+        "/jobs/batch",
+        headers=_auth(api_key),
+        json={
+            "title": "Reunião Sprint",
+            "content": "Revisão de entregas",
+            "recipients": ["5511999991111", "5511999992222"],
+            "kind": "once",
+            "run_at": "2027-10-01T14:00:00Z",
+            "tags": ["trabalho", "sprint"],
+        },
+    )
+    assert r2.status_code == 201
+    batch_data = r2.json()
+    assert all(j["tags"] == ["trabalho", "sprint"] for j in batch_data["jobs"])
+
+    # 3. Preview with tags
+    r_prev = client.post(
+        "/jobs/preview",
+        headers=_auth(api_key),
+        json={
+            "title": "Conta de Luz",
+            "content": "Pagar boleto",
+            "to": "eu",
+            "when": "+1h",
+            "tags": ["financas", "casa"],
+        },
+    )
+    assert r_prev.status_code == 200
+    assert r_prev.json()["tags"] == ["financas", "casa"]
+
+    # 4. Filter by tag (case-insensitive)
+    list_saude = client.get("/jobs?status=all&tag=SAUDE", headers=_auth(api_key))
+    assert list_saude.status_code == 200
+    jobs_saude = list_saude.json()["jobs"]
+    assert len(jobs_saude) == 1
+    assert jobs_saude[0]["id"] == job1["id"]
+    assert jobs_saude[0]["tags"] == ["saude", "urgente"]
+
+    list_trab = client.get("/jobs?status=all&tag=trabalho", headers=_auth(api_key))
+    assert list_trab.status_code == 200
+    assert len(list_trab.json()["jobs"]) == 2
+
+    list_none = client.get("/jobs?status=all&tag=nao-existe", headers=_auth(api_key))
+    assert list_none.status_code == 200
+    assert len(list_none.json()["jobs"]) == 0
+
+    # 5. GET /jobs/tags
+    tags_res = client.get("/jobs/tags", headers=_auth(api_key))
+    assert tags_res.status_code == 200
+    assert tags_res.json() == {
+        "tags": ["saude", "sprint", "trabalho", "urgente"]
+    }
 

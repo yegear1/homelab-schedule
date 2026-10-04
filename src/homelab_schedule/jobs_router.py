@@ -19,6 +19,7 @@ from schemas.api import (
     RescheduleJobRequest,
     RunNowResponse,
     SnoozeJobRequest,
+    TagsResponse,
 )
 from schemas.job import Job
 
@@ -43,6 +44,7 @@ def list_jobs(
     phone: Annotated[str | None, Query()] = None,
     group_id: Annotated[str | None, Query()] = None,
     query: Annotated[str | None, Query(description="Busca textual em título ou conteúdo")] = None,
+    tag: Annotated[str | None, Query(description="Filtrar por tag ou categoria")] = None,
 ) -> JobListResponse:
     jobs = _service(request).list_jobs(
         status_filter,
@@ -52,6 +54,7 @@ def list_jobs(
         phone=phone,
         group_id=group_id,
         query=query,
+        tag=tag,
     )
     return JobListResponse(jobs=jobs)
 
@@ -154,6 +157,11 @@ def get_daily_digest(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
         ) from exc
+
+
+@router.get("/tags", response_model=TagsResponse)
+def get_tags(request: Request, _: Auth) -> TagsResponse:
+    return TagsResponse(tags=_service(request).get_tags())
 
 
 @router.get("/{job_id}", response_model=Job)
