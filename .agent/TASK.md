@@ -7,12 +7,12 @@
 
 ## Active Task
 
-- **Task:** `[02.14]` Previsão de Próximos Disparos (*Upcoming Runs* para Recorrentes na API, MCP e Web UI)
+- **Task:** `[02.15]` Exportação Rápida em CSV de Agendas e Histórico de Disparos (`job_runs`)
 - **Status:** `READY FOR PLANNING`
 - **Scope:**
-  - Exposição de previsões de disparos futuros para rotinas e agendamentos recorrentes (`kind="cron"`), permitindo aos operadores e agentes visualizarem com precisão a linha do tempo futura de execuções.
-  - Endpoint de consulta de projeção de próximas execuções.
-  - Suporte na caneta MCP e visualização na interface Web UI.
+  - Exportação de listagens de agendamentos e histórico de execuções de disparos (`job_runs`) em formato tabular CSV via API HTTP e interface Web UI.
+  - Endpoints dedicados para download direto com cabeçalhos `Content-Disposition`.
+  - Botões de exportação rápida na interface do operador.
 
 ---
 
@@ -20,6 +20,7 @@
 
 Ciclos `v0.1.0`, `v0.2.0`, `v0.3.0` e `v0.4.0` arquivados em `ARCHIVE.md`.
 
+- [02.14] Previsão de Próximos Disparos (*Upcoming Runs* para Recorrentes na API, MCP e Web UI) | [`e4d0b11`] | 2026-10-04
 - [02.13] Tags e Categorias de Agenda (`tags: list[str]` no SQLite v11, API, MCP e Web UI) | [`2946683`] | 2026-10-04
 - [02.12] Síntese Matinal e Prevenção de Conflitos no MCP (`daily_digest` e aviso preventivo) | [`0fd5685`] | 2026-09-29
 - [00.9] Higiene Pós-Release v0.4.0 e Arquivamento de Contexto | [`5ca7d08`] | 2026-09-29
@@ -31,7 +32,7 @@ Ciclos `v0.1.0`, `v0.2.0`, `v0.3.0` e `v0.4.0` arquivados em `ARCHIVE.md`.
 
 ## Backlog (Upcoming, in priority order)
 
-- [ ] **[02.15]** Exportação Rápida em CSV de Agendas e Histórico de Disparos (`job_runs`)
+- [ ] **[02.16]** Métricas e Sumário Operacional no MCP (`health_metrics` e resumo agregado de status)
 
 ---
 
