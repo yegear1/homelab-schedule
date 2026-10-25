@@ -34,6 +34,10 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-10-25] Ícone compartilhado entre cabeçalho e favicon
+
+- O calendário com relógio usa um único SVG em `web/src/assets/scheduler.svg`, referenciado pelo HTML e pelo AppShell. O Vite publica a imagem versionada em `/assets`, já servido pelo FastAPI, sem nova rota estática. Fundo azul-marinho e traços ciano mantêm contraste nos temas claro e escuro; a imagem no cabeçalho é decorativa porque o nome do produto está ao lado.
+
 ### [2026-10-04] Previsão de Próximos Disparos (Upcoming Runs na API, MCP e Web UI, Tarefa [02.14])
 
 - **Contexto:** Operadores humanos e agentes de IA precisavam visualizar a projeção futura de execuções de agendamentos e rotinas recorrentes (`kind="cron"`), inspecionando com exatidão datas e horários dos próximos disparos em horário local (`America/Sao_Paulo`) e UTC, respeitando limites de ciclo de vida (`until`, `max_runs`, `run_count`) e postergações temporárias (`snooze`).

@@ -7,6 +7,18 @@
 
 ## Active Task
 
+- **Task:** `[02.15.1]` Ícone do site (prioridade solicitada pelo usuário antes da exportação CSV)
+- **Status:** `RUNNING`
+- **Scope:**
+  - Criar SVG de calendário com relógio, ciano sobre azul-marinho.
+  - Reutilizar o SVG no cabeçalho e favicon via assets do Vite.
+  - Validar frontend e checks obrigatórios; registrar commit atômico.
+- **Approval:** Conceito aprovado pelo usuário com “prossiga” em 2026-10-25.
+- **Validation:** `npm run check`, `npm run build`, `uv run mypy .`, `uv run ruff check .` e `git diff --check` passaram. `uv run pytest -v`: 200 passaram e 1 falhou (`test_preview_preventive_conflict_detection`, `assert 0 == 1` na linha 182). O teste usa 14h do dia corrente com scheduler real; execução após esse horário permite consumir o job antes do preview. Código Python e testes não foram alterados nesta tarefa.
+- **Pending DoD:** Resolver a falha de teste temporal antes de marcar DONE e promover a tarefa CSV. Dependências reinstaladas com autorização para corrigir shebangs do caminho antigo; cache UV em `/tmp/homelab-schedule-uv-cache`. Pytest requer execução fora do sandbox (TestClient bloqueia dentro dele).
+
+### Próxima tarefa preservada
+
 - **Task:** `[02.15]` Exportação Rápida em CSV de Agendas e Histórico de Disparos (`job_runs`)
 - **Status:** `READY FOR PLANNING`
 - **Scope:**

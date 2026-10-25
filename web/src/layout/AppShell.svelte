@@ -6,6 +6,7 @@
   import Toast from '../components/Toast.svelte';
   import ApiKeyModal from '../components/ApiKeyModal.svelte';
   import BackupModal from '../components/BackupModal.svelte';
+  import schedulerIcon from '../assets/scheduler.svg';
 
   interface Props {
     children: Snippet;
@@ -27,9 +28,7 @@
 <!-- ASIDE: Navigation Rail -->
 <aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest flex flex-col z-50 shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-r border-outline-variant/10">
   <div class="h-16 px-space-md flex items-center gap-space-sm bg-surface-container-low/40">
-    <div class="w-8 h-8 rounded bg-primary/20 flex items-center justify-center text-primary font-headline-sm">
-      <span class="material-symbols-outlined text-[22px]">calendar_clock</span>
-    </div>
+    <img src={schedulerIcon} alt="" width="32" height="32" class="w-8 h-8 shrink-0" />
     <div class="flex flex-col min-w-0">
       <span class="font-headline-sm text-headline-sm text-on-surface truncate tracking-tight">Homelab Scheduler</span>
       <span class="font-label-ui text-label-ui text-primary uppercase tracking-wider truncate">Despachante</span>
