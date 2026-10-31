@@ -33,6 +33,12 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 ## Architectural Decisions Beyond ADRs
 
+### [2026-10-31] Shared Modal and Toast Presentation
+
+- The five global modals share scoped CSS primitives for semantic surfaces, 44 px controls, visible keyboard focus, safe-area padding, and viewport-bounded scrolling. Component scripts, existing DOM IDs, HTTP payloads, and focus-trap actions remain unchanged.
+- Modal entrance and Toast visibility use existing fluid motion tokens. Reduced motion disables modal animation and press scaling; token durations remove Toast transitions. Dialog titles and close controls have accessible names, and Toast announces messages through a polite status region.
+- Validation in the restricted execution environment requires a writable `UV_CACHE_DIR`. If TestClient stalls before the first test completes, rerun the suite outside the sandbox before attributing the stall to application changes.
+
 ### [2026-10-31] Semantic Tokens and Shell Motion
 
 - Theme palette uses space-separated RGB channels for background, label, separator, and fill tokens. Legacy `--color-*` variables alias these semantic tokens, preventing breakage in existing page styles during gradual visual migration.

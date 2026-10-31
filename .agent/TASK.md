@@ -8,11 +8,17 @@
 ## Active Task
 
 - **Task:** `[02.16.2]` HIG Global Components, Modals, and Primitives (`ApiKeyModal`, `BackupModal`, `SnoozeModal`, `RescheduleModal`, `ContactPickerModal`, and `Toast`)
-- **Status:** `READY FOR PLANNING`
+- **Status:** `RUNNING`
 - **Scope:**
   - Apply semantic tokens and fluid motion patterns across `ApiKeyModal`, `BackupModal`, `SnoozeModal`, `RescheduleModal`, `ContactPickerModal`, and `Toast`.
   - Preserve all existing DOM IDs, contracts, focus traps, keyboard navigation, and action handlers.
-- **Approval:** Detailed plan pending; task not yet started.
+- **Approval:** User approved the detailed plan on 2026-10-31.
+- **Implementation Plan:**
+  1. Add shared modal, control, and toast presentation primitives using the existing semantic RGB tokens, rounded surfaces, separators, and responsive viewport constraints.
+  2. Apply the primitives to the five scoped modals and Toast, preserving DOM IDs, component props, event handlers, focus traps, keyboard navigation, and HTTP payloads.
+  3. Use the existing 100 ms press and 280 ms fluid motion tokens for interaction and entrance effects; honor reduced motion and retain visible keyboard focus in both themes.
+  4. Run frontend check/build and all required Python and Git checks; inspect the scoped diff for contract preservation.
+  5. Record relevant UI decisions, create an atomic Conventional Commit, log its hash, and promote task [02.16.3] to READY FOR PLANNING.
 - **Validation:** `npm run check`, `npm run build`, `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
 
 ### Next Planned Tasks

@@ -151,6 +151,84 @@
 }
 
 @layer components {
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+      max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    background: rgb(var(--system-background) / 0.8);
+    backdrop-filter: blur(12px);
+    animation: modal-backdrop-enter var(--motion-selection) var(--ease-fluid);
+  }
+  .modal-surface {
+    width: 100%;
+    min-width: 0;
+    max-height: calc(100dvh - 2 * max(1rem, env(safe-area-inset-top), env(safe-area-inset-bottom)));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: clamp(1rem, 4vw, 1.5rem);
+    border: 1px solid rgb(var(--separator) / 0.65);
+    border-radius: 1.5rem;
+    background: rgb(var(--secondary-system-background));
+    color: rgb(var(--label));
+    box-shadow: 0 24px 64px rgb(0 0 0 / 0.2);
+    overflow-wrap: anywhere;
+    animation: modal-surface-enter var(--motion-selection) var(--ease-fluid);
+  }
+  .modal-surface input:not([type="checkbox"]):not([type="radio"]) {
+    min-width: 0;
+    min-height: 2.75rem;
+    border: 1px solid rgb(var(--separator));
+    border-radius: 0.75rem;
+  }
+  .modal-surface .modal-action {
+    min-height: 2.75rem;
+    border-radius: 0.75rem;
+    transition: background-color var(--motion-selection) var(--ease-fluid),
+      color var(--motion-selection) var(--ease-fluid),
+      opacity var(--motion-press) var(--ease-fluid),
+      transform var(--motion-press) var(--ease-fluid);
+  }
+  .modal-action:active:not(:disabled) { transform: scale(0.98); }
+  .modal-action:disabled { cursor: default; opacity: 0.5; }
+  .modal-close {
+    display: grid;
+    place-items: center;
+    min-width: 2.75rem;
+    flex-shrink: 0;
+    background: rgb(var(--fill) / 0.65);
+  }
+  .modal-close:hover { background: rgb(var(--fill)); }
+  .modal-surface :is(button, input, [role="button"]):focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 3px;
+  }
+  .modal-tabs { overflow-x: auto; flex-shrink: 0; }
+  .modal-tabs > button { flex-shrink: 0; }
+  .toast-surface {
+    position: fixed;
+    z-index: 60;
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
+    right: max(1rem, env(safe-area-inset-right));
+    max-width: calc(100vw - 2 * max(1rem, env(safe-area-inset-right), env(safe-area-inset-left)));
+    padding: 0.875rem 1rem;
+    border: 1px solid rgb(var(--separator) / 0.65);
+    border-radius: 1rem;
+    background: rgb(var(--secondary-system-background));
+    color: rgb(var(--label));
+    box-shadow: 0 8px 32px rgb(0 0 0 / 0.16);
+    overflow-wrap: anywhere;
+    opacity: 0;
+    transform: translateY(1rem);
+    transition: opacity var(--motion-selection) var(--ease-fluid),
+      transform var(--motion-selection) var(--ease-fluid);
+  }
+  .toast-surface[data-visible="true"] { opacity: 1; transform: translateY(0); }
+  .toast-surface > .material-symbols-outlined { flex-shrink: 0; }
   .shell-action {
     transition: background-color var(--motion-selection) var(--ease-fluid),
       color var(--motion-selection) var(--ease-fluid),
@@ -183,8 +261,19 @@
   }
 }
 
+@keyframes modal-backdrop-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-surface-enter {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root { --motion-press: 0ms; --motion-selection: 0ms; }
   .shell-action:active:not(:disabled) { transform: none; }
+  .modal-action:active:not(:disabled), .toast-surface { transform: none; }
+  .modal-backdrop, .modal-surface { animation: none; }
 }
 

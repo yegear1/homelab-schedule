@@ -174,25 +174,26 @@
 
 {#if open}
   <div
-    class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-space-md cursor-pointer"
+    class="modal-backdrop cursor-pointer"
     onclick={(e) => { if (e.target === e.currentTarget) onclose(); }}
     role="presentation"
   >
     <div
       use:focusTrap
-      class="bg-surface-container-low max-w-xl w-full rounded p-space-lg shadow-xl flex flex-col gap-space-md border border-outline-variant/30 cursor-default"
+      class="modal-surface max-w-xl flex flex-col gap-space-md cursor-default"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="backup-modal-title"
       tabindex="-1"
     >
       <!-- HEADER -->
-      <div class="flex items-center justify-between pb-space-xs border-b border-outline-variant/10">
+      <div class="flex items-center justify-between pb-space-xs border-b border-separator/10">
         <div class="flex items-center gap-space-xs">
           <span class="material-symbols-outlined text-primary text-[22px]">database</span>
-          <h3 class="font-headline-sm text-headline-sm text-on-surface">Backup & Dados SQLite</h3>
+          <h3 id="backup-modal-title" class="font-headline-sm text-headline-sm text-label">Backup & Dados SQLite</h3>
         </div>
         <button
-          class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container"
+          class="modal-action modal-close text-secondary-label hover:text-label"
           onclick={onclose}
           type="button"
           aria-label="Fechar"
@@ -202,31 +203,35 @@
       </div>
 
       <!-- TABS -->
-      <div class="flex border-b border-outline-variant/20 gap-space-xs">
+      <div class="modal-tabs flex border-b border-separator gap-space-xs">
         <button
           type="button"
-          class="px-space-md py-space-xs font-label-ui text-label-ui border-b-2 transition-colors {activeTab === 'backup' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface'}"
+          class="modal-action px-space-md py-space-xs font-label-ui text-label-ui border-b-2 {activeTab === 'backup' ? 'border-primary text-primary font-bold' : 'border-transparent text-secondary-label hover:text-label'}"
+          aria-pressed={activeTab === 'backup'}
           onclick={() => (activeTab = 'backup')}
         >
           Snapshot Físico
         </button>
         <button
           type="button"
-          class="px-space-md py-space-xs font-label-ui text-label-ui border-b-2 transition-colors {activeTab === 'export' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface'}"
+          class="modal-action px-space-md py-space-xs font-label-ui text-label-ui border-b-2 {activeTab === 'export' ? 'border-primary text-primary font-bold' : 'border-transparent text-secondary-label hover:text-label'}"
+          aria-pressed={activeTab === 'export'}
           onclick={() => (activeTab = 'export')}
         >
           Exportar JSON
         </button>
         <button
           type="button"
-          class="px-space-md py-space-xs font-label-ui text-label-ui border-b-2 transition-colors {activeTab === 'import' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface'}"
+          class="modal-action px-space-md py-space-xs font-label-ui text-label-ui border-b-2 {activeTab === 'import' ? 'border-primary text-primary font-bold' : 'border-transparent text-secondary-label hover:text-label'}"
+          aria-pressed={activeTab === 'import'}
           onclick={() => (activeTab = 'import')}
         >
           Importar JSON
         </button>
         <button
           type="button"
-          class="px-space-md py-space-xs font-label-ui text-label-ui border-b-2 transition-colors {activeTab === 'integrity' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-on-surface'}"
+          class="modal-action px-space-md py-space-xs font-label-ui text-label-ui border-b-2 {activeTab === 'integrity' ? 'border-primary text-primary font-bold' : 'border-transparent text-secondary-label hover:text-label'}"
+          aria-pressed={activeTab === 'integrity'}
           onclick={() => (activeTab = 'integrity')}
         >
           Integridade
@@ -236,21 +241,21 @@
       <!-- TAB 1: SNAPSHOT FÍSICO -->
       {#if activeTab === 'backup'}
         <div class="flex flex-col gap-space-md py-space-xs">
-          <p class="font-body-sm text-body-sm text-on-surface-variant">
+          <p class="font-body-sm text-body-sm text-secondary-label">
             Gera uma cópia binária consistente e atômica (<code class="font-label-code text-tertiary">.sqlite3</code>) da base de dados ativa em modo WAL utilizando a API nativa de backup do SQLite.
           </p>
-          <div class="bg-surface-container p-space-md rounded flex items-center justify-between">
+          <div class="bg-tertiary-system-background p-space-md rounded flex flex-wrap gap-space-sm items-center justify-between">
             <div class="flex items-center gap-space-sm">
               <span class="material-symbols-outlined text-tertiary text-[28px]">save</span>
               <div class="flex flex-col">
-                <span class="font-headline-sm text-on-surface">Base SQLite Primária</span>
-                <span class="font-label-code-sm text-on-surface-variant">Modo WAL, chaves estrangeiras ativas</span>
+                <span class="font-headline-sm text-label">Base SQLite Primária</span>
+                <span class="font-label-code-sm text-secondary-label">Modo WAL, chaves estrangeiras ativas</span>
               </div>
             </div>
             <button
               id="btn-download-sqlite"
               type="button"
-              class="px-space-md py-space-sm bg-primary text-on-primary rounded font-label-ui text-label-ui flex items-center gap-space-xs hover:opacity-90 transition-opacity disabled:opacity-50"
+              class="modal-action px-space-md py-space-sm bg-primary text-on-primary rounded font-label-ui text-label-ui flex items-center gap-space-xs hover:opacity-90 disabled:opacity-50"
               onclick={handleDownloadDatabase}
               disabled={isDownloadingDb}
             >
@@ -264,7 +269,7 @@
       <!-- TAB 2: EXPORTAR JSON -->
       {#if activeTab === 'export'}
         <div class="flex flex-col gap-space-md py-space-xs">
-          <p class="font-body-sm text-body-sm text-on-surface-variant">
+          <p class="font-body-sm text-body-sm text-secondary-label">
             Exporta todos os contatos, modelos, agendamentos SQLite e histórico para um arquivo JSON portável e legível.
           </p>
 
@@ -272,16 +277,16 @@
             <input
               type="checkbox"
               bind:checked={includeRunsInExport}
-              class="rounded border-outline-variant/30 text-primary focus:ring-primary"
+              class="rounded border-separator/30 text-primary focus:ring-primary"
             />
-            <span class="font-body-sm text-on-surface">Incluir histórico de disparos e execuções (<code class="font-label-code text-tertiary">job_runs</code>)</span>
+            <span class="font-body-sm text-label">Incluir histórico de disparos e execuções (<code class="font-label-code text-tertiary">job_runs</code>)</span>
           </label>
 
           <div class="flex justify-end pt-space-sm">
             <button
               id="btn-export-json"
               type="button"
-              class="px-space-md py-space-sm bg-primary text-on-primary rounded font-label-ui text-label-ui flex items-center gap-space-xs hover:opacity-90 transition-opacity disabled:opacity-50"
+              class="modal-action px-space-md py-space-sm bg-primary text-on-primary rounded font-label-ui text-label-ui flex items-center gap-space-xs hover:opacity-90 disabled:opacity-50"
               onclick={handleExportJson}
               disabled={isExporting}
             >
@@ -295,26 +300,26 @@
       <!-- TAB 3: IMPORTAR JSON -->
       {#if activeTab === 'import'}
         <div class="flex flex-col gap-space-md py-space-xs">
-          <p class="font-body-sm text-body-sm text-on-surface-variant">
+          <p class="font-body-sm text-body-sm text-secondary-label">
             Carrega contatos, templates e agendamentos a partir de um arquivo JSON sob transação atômica.
           </p>
 
           <!-- Mode Selection -->
           <div class="flex flex-col gap-space-xs">
-            <span class="font-label-ui text-label-ui uppercase text-on-surface-variant">Estratégia de Importação</span>
+            <span class="font-label-ui text-label-ui uppercase text-secondary-label">Estratégia de Importação</span>
             <div class="grid grid-cols-2 gap-space-sm">
-              <label class="flex items-start gap-space-xs p-space-sm rounded border cursor-pointer {importMode === 'merge' ? 'border-primary bg-primary/10' : 'border-outline-variant/20 hover:bg-surface-container'}">
+              <label class="flex items-start gap-space-xs p-space-sm rounded border cursor-pointer {importMode === 'merge' ? 'border-primary bg-primary/10' : 'border-separator/20 hover:bg-tertiary-system-background'}">
                 <input type="radio" name="importMode" value="merge" bind:group={importMode} class="mt-1" />
                 <div class="flex flex-col">
-                  <span class="font-label-ui font-bold text-on-surface">Mesclar (Merge)</span>
-                  <span class="font-body-sm text-on-surface-variant text-[11px]">Atualiza ou insere novos registros sem apagar os existentes.</span>
+                  <span class="font-label-ui font-bold text-label">Mesclar (Merge)</span>
+                  <span class="font-body-sm text-secondary-label text-[11px]">Atualiza ou insere novos registros sem apagar os existentes.</span>
                 </div>
               </label>
-              <label class="flex items-start gap-space-xs p-space-sm rounded border cursor-pointer {importMode === 'replace' ? 'border-error bg-error/10' : 'border-outline-variant/20 hover:bg-surface-container'}">
+              <label class="flex items-start gap-space-xs p-space-sm rounded border cursor-pointer {importMode === 'replace' ? 'border-error bg-error/10' : 'border-separator/20 hover:bg-tertiary-system-background'}">
                 <input type="radio" name="importMode" value="replace" bind:group={importMode} class="mt-1" />
                 <div class="flex flex-col">
-                  <span class="font-label-ui font-bold text-on-surface">Substituir (Replace)</span>
-                  <span class="font-body-sm text-on-surface-variant text-[11px]">Limpa dados do SQLite e recarrega. Rotinas YAML são mantidas.</span>
+                  <span class="font-label-ui font-bold text-label">Substituir (Replace)</span>
+                  <span class="font-body-sm text-secondary-label text-[11px]">Limpa dados do SQLite e recarrega. Rotinas YAML são mantidas.</span>
                 </div>
               </label>
             </div>
@@ -322,48 +327,48 @@
 
           <!-- File Picker -->
           <div class="flex flex-col gap-1">
-            <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="input-import-file">
+            <label class="font-label-ui text-label-ui uppercase text-secondary-label" for="input-import-file">
               Selecionar Arquivo JSON
             </label>
             <input
               id="input-import-file"
               type="file"
               accept=".json,application/json"
-              class="bg-surface-container-lowest text-on-surface rounded p-space-sm font-label-code text-label-code border border-outline-variant/20 cursor-pointer"
+              class="bg-system-background text-label rounded p-space-sm font-label-code text-label-code border border-separator/20 cursor-pointer"
               onchange={handleFileSelected}
             />
           </div>
 
           <!-- Preview -->
           {#if importPreview}
-            <div class="bg-surface-container p-space-md rounded flex flex-col gap-space-xs">
-              <span class="font-label-ui text-label-ui font-bold text-on-surface">Resumo do Arquivo</span>
-              <div class="grid grid-cols-4 gap-space-xs text-center font-label-code-sm">
-                <div class="bg-surface-container-lowest p-space-xs rounded">
+            <div class="bg-tertiary-system-background p-space-md rounded flex flex-col gap-space-xs">
+              <span class="font-label-ui text-label-ui font-bold text-label">Resumo do Arquivo</span>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-space-xs text-center font-label-code-sm">
+                <div class="bg-system-background p-space-xs rounded">
                   <span class="text-primary font-bold">{importPreview.contacts}</span>
-                  <span class="block text-on-surface-variant text-[10px]">Contatos</span>
+                  <span class="block text-secondary-label text-[10px]">Contatos</span>
                 </div>
-                <div class="bg-surface-container-lowest p-space-xs rounded">
+                <div class="bg-system-background p-space-xs rounded">
                   <span class="text-primary font-bold">{importPreview.templates}</span>
-                  <span class="block text-on-surface-variant text-[10px]">Modelos</span>
+                  <span class="block text-secondary-label text-[10px]">Modelos</span>
                 </div>
-                <div class="bg-surface-container-lowest p-space-xs rounded">
+                <div class="bg-system-background p-space-xs rounded">
                   <span class="text-primary font-bold">{importPreview.jobs}</span>
-                  <span class="block text-on-surface-variant text-[10px]">Agendas</span>
+                  <span class="block text-secondary-label text-[10px]">Agendas</span>
                 </div>
-                <div class="bg-surface-container-lowest p-space-xs rounded">
+                <div class="bg-system-background p-space-xs rounded">
                   <span class="text-primary font-bold">{importPreview.job_runs}</span>
-                  <span class="block text-on-surface-variant text-[10px]">Execuções</span>
+                  <span class="block text-secondary-label text-[10px]">Execuções</span>
                 </div>
               </div>
             </div>
 
             {#if importMode === 'replace' && !showReplaceConfirm}
-              <div class="bg-error/10 border border-error/30 p-space-sm rounded flex items-center justify-between text-error font-body-sm">
+              <div class="bg-error/10 border border-error/30 p-space-sm rounded flex flex-wrap gap-space-sm items-center justify-between text-error font-body-sm">
                 <span>Atenção: o modo substituir apagará dados prévios do SQLite.</span>
                 <button
                   type="button"
-                  class="px-space-sm py-1 bg-error text-on-error rounded font-label-ui text-label-ui"
+                  class="modal-action px-space-sm py-1 bg-error text-on-error rounded font-label-ui text-label-ui"
                   onclick={() => (showReplaceConfirm = true)}
                 >
                   Confirmar Substituição
@@ -376,7 +381,7 @@
                 <button
                   id="btn-execute-import"
                   type="button"
-                  class="px-space-md py-space-sm bg-primary text-on-primary rounded font-label-ui text-label-ui flex items-center gap-space-xs hover:opacity-90 transition-opacity disabled:opacity-50"
+                  class="modal-action px-space-md py-space-sm bg-primary text-on-primary rounded font-label-ui text-label-ui flex items-center gap-space-xs hover:opacity-90 disabled:opacity-50"
                   onclick={executeImport}
                   disabled={isImporting}
                 >
@@ -392,7 +397,7 @@
       <!-- TAB 4: INTEGRIDADE -->
       {#if activeTab === 'integrity'}
         <div class="flex flex-col gap-space-md py-space-xs">
-          <p class="font-body-sm text-body-sm text-on-surface-variant">
+          <p class="font-body-sm text-body-sm text-secondary-label">
             Inspeciona a integridade física das páginas SQLite (<code class="font-label-code text-tertiary">PRAGMA integrity_check</code>) e valida restrições de chaves estrangeiras (<code class="font-label-code text-tertiary">PRAGMA foreign_key_check</code>).
           </p>
 
@@ -400,7 +405,7 @@
             <button
               id="btn-check-integrity"
               type="button"
-              class="px-space-md py-space-sm bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/30 rounded font-label-ui text-label-ui flex items-center gap-space-xs transition-colors disabled:opacity-50"
+              class="modal-action px-space-md py-space-sm bg-tertiary-system-background hover:bg-fill text-label border border-separator/30 rounded font-label-ui text-label-ui flex items-center gap-space-xs disabled:opacity-50"
               onclick={handleCheckIntegrity}
               disabled={isCheckingIntegrity}
             >
@@ -410,15 +415,15 @@
           </div>
 
           {#if integrityResult}
-            <div class="bg-surface-container p-space-md rounded flex flex-col gap-space-sm">
+            <div class="bg-tertiary-system-background p-space-md rounded flex flex-col gap-space-sm">
               <div class="flex items-center justify-between">
-                <span class="font-label-ui font-bold text-on-surface">Páginas SQLite (Integrity Check)</span>
+                <span class="font-label-ui font-bold text-label">Páginas SQLite (Integrity Check)</span>
                 <span class="px-space-sm py-0.5 rounded font-label-code-sm text-label-code-sm {integrityResult.integrity_ok ? 'bg-tertiary/20 text-tertiary' : 'bg-error/20 text-error'}">
                   {integrityResult.integrity_ok ? 'OK' : 'FALHA'}
                 </span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="font-label-ui font-bold text-on-surface">Chaves Estrangeiras (FK Check)</span>
+                <span class="font-label-ui font-bold text-label">Chaves Estrangeiras (FK Check)</span>
                 <span class="px-space-sm py-0.5 rounded font-label-code-sm text-label-code-sm {integrityResult.foreign_keys_ok ? 'bg-tertiary/20 text-tertiary' : 'bg-error/20 text-error'}">
                   {integrityResult.foreign_keys_ok ? 'OK' : `${integrityResult.fk_violations.length} VIOLAÇÕES`}
                 </span>

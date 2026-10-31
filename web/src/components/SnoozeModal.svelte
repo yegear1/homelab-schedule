@@ -81,27 +81,28 @@
 </script>
 
 {#if open}
-  <div class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-space-md" id="modal-snooze">
+  <div class="modal-backdrop" id="modal-snooze">
     <div
       use:focusTrap
-      class="bg-surface-container-low rounded-xl p-space-lg max-w-md w-full shadow-2xl flex flex-col gap-space-md border border-outline-variant/30"
+      class="modal-surface max-w-md flex flex-col gap-space-md cursor-default"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="snooze-modal-title"
       tabindex="-1"
     >
       <div class="flex items-center justify-between pb-space-xs">
         <div class="flex items-center gap-space-xs">
           <span class="material-symbols-outlined text-primary text-[20px]">snooze</span>
-          <h3 class="font-headline-sm text-headline-sm text-on-surface">
+          <h3 id="snooze-modal-title" class="font-headline-sm text-headline-sm text-label">
             {groupId ? 'Adiar Grupo' : 'Adiar Recado (Snooze)'}
           </h3>
         </div>
-        <button class="text-on-surface-variant hover:text-on-surface cursor-pointer" onclick={onclose} type="button">
+        <button class="modal-action modal-close text-secondary-label hover:text-label" onclick={onclose} type="button" aria-label="Fechar">
           <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
-      <p class="font-body-sm text-body-sm text-on-surface-variant">
+      <p class="font-body-sm text-body-sm text-secondary-label">
         Postergue a próxima execução sem alterar a regra cron do agendamento
         {#if groupId}
           para o grupo <span class="font-label-code text-primary font-semibold font-mono">{groupId}</span>.
@@ -114,28 +115,28 @@
       <div class="flex flex-wrap gap-1.5">
         <button
           type="button"
-          class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-code-sm text-xs font-mono transition-all cursor-pointer"
+          class="modal-action px-2.5 py-1 rounded bg-tertiary-system-background hover:bg-surface-bright text-label font-label-code-sm text-xs font-mono cursor-pointer"
           onclick={() => setQuickOffset(1)}
         >
           +1 hora
         </button>
         <button
           type="button"
-          class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-code-sm text-xs font-mono transition-all cursor-pointer"
+          class="modal-action px-2.5 py-1 rounded bg-tertiary-system-background hover:bg-surface-bright text-label font-label-code-sm text-xs font-mono cursor-pointer"
           onclick={() => setQuickOffset(3)}
         >
           +3 horas
         </button>
         <button
           type="button"
-          class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-code-sm text-xs font-mono transition-all cursor-pointer"
+          class="modal-action px-2.5 py-1 rounded bg-tertiary-system-background hover:bg-surface-bright text-label font-label-code-sm text-xs font-mono cursor-pointer"
           onclick={() => setQuickOffset(24)}
         >
           +1 dia
         </button>
         <button
           type="button"
-          class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-code-sm text-xs font-mono transition-all cursor-pointer"
+          class="modal-action px-2.5 py-1 rounded bg-tertiary-system-background hover:bg-surface-bright text-label font-label-code-sm text-xs font-mono cursor-pointer"
           onclick={() => setQuickOffset(168)}
         >
           +1 semana
@@ -144,28 +145,28 @@
 
       <form class="flex flex-col gap-space-md" onsubmit={handleSubmit}>
         <div class="flex flex-col gap-1">
-          <label class="font-label-ui text-label-ui uppercase tracking-wider text-on-surface-variant" for="modal-snooze-until">
+          <label class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label" for="modal-snooze-until">
             Adiar Até (Próxima Execução)
           </label>
           <input
             id="modal-snooze-until"
-            class="bg-surface-container-lowest text-on-surface rounded px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+            class="bg-system-background text-label rounded px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-primary font-mono"
             type="datetime-local"
             bind:value={until}
             required
           />
         </div>
 
-        <div class="flex items-center justify-end gap-space-sm pt-space-xs border-t border-outline-variant/10">
+        <div class="flex items-center justify-end gap-space-sm pt-space-xs border-t border-separator/10">
           <button
-            class="px-space-md py-space-sm rounded text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui uppercase tracking-wider cursor-pointer"
+            class="modal-action px-space-md py-space-sm rounded text-secondary-label hover:text-label font-label-ui text-label-ui uppercase tracking-wider cursor-pointer"
             onclick={onclose}
             type="button"
           >
             Cancelar
           </button>
           <button
-            class="px-space-md py-space-sm rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase tracking-wider font-semibold hover:brightness-110 active:brightness-95 flex items-center gap-1 shadow-sm cursor-pointer disabled:opacity-50"
+            class="modal-action px-space-md py-space-sm rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase tracking-wider font-semibold hover:brightness-110 active:brightness-95 flex items-center gap-1 shadow-sm cursor-pointer disabled:opacity-50"
             disabled={busy || !until}
             type="submit"
           >

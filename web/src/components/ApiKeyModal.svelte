@@ -37,43 +37,45 @@
 
 {#if open}
   <div
-    class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-space-md cursor-pointer"
+    class="modal-backdrop cursor-pointer"
     onclick={(e) => { if (e.target === e.currentTarget) onclose(); }}
     role="presentation"
   >
     <div
       use:focusTrap
-      class="bg-surface-container-low max-w-md w-full rounded p-space-lg shadow-xl flex flex-col gap-space-md border border-outline-variant/30 cursor-default"
+      class="modal-surface max-w-md flex flex-col gap-space-md cursor-default"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="api-key-modal-title"
       tabindex="-1"
     >
       <div class="flex items-center justify-between pb-space-xs">
         <div class="flex items-center gap-space-xs">
           <span class="material-symbols-outlined text-primary text-[20px]">key</span>
-          <h3 class="font-headline-sm text-headline-sm text-on-surface">Configurar Acesso à API</h3>
+          <h3 id="api-key-modal-title" class="font-headline-sm text-headline-sm text-label">Configurar Acesso à API</h3>
         </div>
         <button
-          class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container"
+          class="modal-action modal-close text-secondary-label hover:text-label"
           onclick={onclose}
           type="button"
+          aria-label="Fechar"
         >
           <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
-      <p class="font-body-sm text-body-sm text-on-surface-variant">
+      <p class="font-body-sm text-body-sm text-secondary-label">
         A chave <code class="font-label-code text-tertiary">x-api-key</code> é transmitida no cabeçalho das requisições para autorização no daemon local.
       </p>
 
       <form class="flex flex-col gap-space-md" onsubmit={handleSave}>
         <div class="flex flex-col gap-1">
-          <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="input-api-key">
+          <label class="font-label-ui text-label-ui uppercase text-secondary-label" for="input-api-key">
             Chave SCHEDULE_API_KEY
           </label>
           <input
             id="input-api-key"
-            class="bg-surface-container-lowest text-on-surface rounded px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-primary"
+            class="bg-system-background text-label rounded px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-primary"
             type="password"
             bind:value={keyInput}
             placeholder="Cole aqui o valor de SCHEDULE_API_KEY..."
@@ -81,29 +83,29 @@
         </div>
 
         <div class="flex flex-col gap-1">
-          <label class="font-label-ui text-label-ui uppercase text-on-surface-variant" for="input-base-url">
+          <label class="font-label-ui text-label-ui uppercase text-secondary-label" for="input-base-url">
             URL Base da API (Opcional)
           </label>
           <input
             id="input-base-url"
-            class="bg-surface-container-lowest text-on-surface rounded px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-primary"
+            class="bg-system-background text-label rounded px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-primary"
             type="text"
             bind:value={urlInput}
             placeholder="Padrão: mesma origem (vazio) ou http://localhost:8003"
           />
-          <span class="font-body-sm text-body-sm text-outline">Deixe em branco se a UI estiver rodando no mesmo host.</span>
+          <span class="font-body-sm text-body-sm text-secondary-label">Deixe em branco se a UI estiver rodando no mesmo host.</span>
         </div>
 
         <div class="flex items-center justify-end gap-space-sm pt-space-xs">
           <button
-            class="px-space-md py-space-sm rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-ui text-label-ui uppercase"
+            class="modal-action px-space-md py-space-sm rounded bg-tertiary-system-background hover:bg-fill text-label font-label-ui text-label-ui uppercase"
             onclick={onclose}
             type="button"
           >
             Cancelar
           </button>
           <button
-            class="px-space-md py-space-sm rounded bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-ui text-label-ui uppercase font-semibold transition-all"
+            class="modal-action px-space-md py-space-sm rounded bg-primary hover:opacity-90 text-on-primary font-label-ui text-label-ui uppercase font-semibold"
             type="submit"
           >
             Salvar
