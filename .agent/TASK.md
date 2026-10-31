@@ -7,23 +7,16 @@
 
 ## Active Task
 
-- **Task:** `[02.16.2]` HIG Global Components, Modals, and Primitives (`ApiKeyModal`, `BackupModal`, `SnoozeModal`, `RescheduleModal`, `ContactPickerModal`, and `Toast`)
-- **Status:** `RUNNING`
+- **Task:** `[02.16.3]` HIG Support Screens (`TemplatesPage`, `ContactsPage`, and `ContactDetailPage`)
+- **Status:** `READY FOR PLANNING`
 - **Scope:**
-  - Apply semantic tokens and fluid motion patterns across `ApiKeyModal`, `BackupModal`, `SnoozeModal`, `RescheduleModal`, `ContactPickerModal`, and `Toast`.
-  - Preserve all existing DOM IDs, contracts, focus traps, keyboard navigation, and action handlers.
-- **Approval:** User approved the detailed plan on 2026-10-31.
-- **Implementation Plan:**
-  1. Add shared modal, control, and toast presentation primitives using the existing semantic RGB tokens, rounded surfaces, separators, and responsive viewport constraints.
-  2. Apply the primitives to the five scoped modals and Toast, preserving DOM IDs, component props, event handlers, focus traps, keyboard navigation, and HTTP payloads.
-  3. Use the existing 100 ms press and 280 ms fluid motion tokens for interaction and entrance effects; honor reduced motion and retain visible keyboard focus in both themes.
-  4. Run frontend check/build and all required Python and Git checks; inspect the scoped diff for contract preservation.
-  5. Record relevant UI decisions, create an atomic Conventional Commit, log its hash, and promote task [02.16.3] to READY FOR PLANNING.
+  - Apply existing semantic tokens and shared visual patterns to the three support screens.
+  - Preserve DOM IDs, form contracts, keyboard navigation, and action handlers.
+- **Approval:** Detailed plan pending; task not yet started.
 - **Validation:** `npm run check`, `npm run build`, `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
 
 ### Next Planned Tasks
 
-- **[02.16.3]** HIG Support Screens (`TemplatesPage`, `ContactsPage`, and `ContactDetailPage`)
 - **[02.16.4]** HIG Agenda Core (`JobsPage`, `JobTimelineView`, and `JobCalendarView`)
 - **[02.15]** Fast Tabular CSV Export for Jobs and Execution History (`job_runs`)
 
@@ -32,6 +25,8 @@
 ## Completed Tasks Log
 
 Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
+
+- [02.16.2] Shared semantic modal and Toast presentation; responsive controls, focus styling, accessible labels, and reduced motion | [`8a7d61f`] | 2026-10-31 | check/build, 201 tests, mypy, Ruff and diff check: exit 0
 
 - [00.11] Governance Alignment: Rename .agent/adr/ Files to Technical English and Update Cross-References | [`941eb0f`] | 2026-10-31 | 201 tests, mypy, ruff, diff check: exit 0
 - [00.10] Governance Alignment: Migrate .agent/ Documentation and ADRs to Technical English | [`61e9a15`] | 2026-10-31 | 201 tests, mypy, ruff, diff check: exit 0
