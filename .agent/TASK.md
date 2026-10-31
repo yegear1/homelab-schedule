@@ -7,27 +7,16 @@
 
 ## Active Task
 
-- **Task:** `[00.10]` Governance Alignment: Migrate .agent/ Documentation and ADRs to Technical English
-- **Status:** `RUNNING`
+- **Task:** `[02.16.2]` HIG Global Components, Modals, and Primitives (`ApiKeyModal`, `BackupModal`, `SnoozeModal`, `RescheduleModal`, `ContactPickerModal`, and `Toast`)
+- **Status:** `READY FOR PLANNING`
 - **Scope:**
-  - Translate and refactor `.agent/TASK.md`, `.agent/NOTES.md`, and all `.agent/adr/` documents (ADR-000 to ADR-007) into concise Technical English following `agent-doc-refactor`.
-  - Translate `.agent/INTERFACE.md` and `.agent/CHANNELS.md` prose to Technical English, preserving data contracts, DOM IDs, and endpoint tables.
-  - Add explicit Technical English mandate rule in `AGENTS.md` aligned with `template-agent:greenfield`.
-  - Maintain all active architecture contracts, system boundaries, payload invariants, and historical task commit logs.
-- **Approval:** Approved by user with "proceed" on 2026-10-31.
-- **Plan:**
-  1. Refactor and translate `.agent/adr/` (ADR-000 through ADR-007) into standard English ADR structure while preserving technical decisions, dates, and author context.
-  2. Refactor `.agent/NOTES.md` into concise Technical English, maintaining active data contracts, SQLite table schema notes, and runtime traps.
-  3. Translate `.agent/INTERFACE.md` and `.agent/CHANNELS.md` explanatory prose into Technical English while keeping DOM IDs and tables intact.
-  4. Align `AGENTS.md` Golden Rules with `template-agent`'s Technical English requirement.
-  5. Translate `.agent/TASK.md` headers, active task scope, and planned backlog into Technical English.
-  6. Execute validations (`uv run mypy .`, `uv run pytest -v`, `uv run ruff check .`, `git diff --check`).
-  7. Commit atomically as `docs(governance): migrate .agent documentation and adrs to technical english` and promote `[02.16.2]`.
-- **Validation:** `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
+  - Apply semantic tokens and fluid motion patterns across `ApiKeyModal`, `BackupModal`, `SnoozeModal`, `RescheduleModal`, `ContactPickerModal`, and `Toast`.
+  - Preserve all existing DOM IDs, contracts, focus traps, keyboard navigation, and action handlers.
+- **Approval:** Detailed plan pending; task not yet started.
+- **Validation:** `npm run check`, `npm run build`, `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
 
 ### Next Planned Tasks
 
-- **[02.16.2]** HIG Global Components, Modals, and Primitives (`ApiKeyModal`, `BackupModal`, `SnoozeModal`, `RescheduleModal`, `ContactPickerModal`, and `Toast`)
 - **[02.16.3]** HIG Support Screens (`TemplatesPage`, `ContactsPage`, and `ContactDetailPage`)
 - **[02.16.4]** HIG Agenda Core (`JobsPage`, `JobTimelineView`, and `JobCalendarView`)
 - **[02.15]** Fast Tabular CSV Export for Jobs and Execution History (`job_runs`)
@@ -37,6 +26,8 @@
 ## Completed Tasks Log
 
 Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
+
+- [00.10] Governance Alignment: Migrate .agent/ Documentation and ADRs to Technical English | [`61e9a15`] | 2026-10-31 | 201 tests, mypy, ruff, diff check: exit 0
 
 - [02.16.1] Semantic HIG tokens and responsive translucent AppShell; segmented theme and reduced motion | [`2b44137`] | 2026-10-31 | check/build, 201 tests, mypy, Ruff and diff check: exit 0
 - [02.15.1] Site branding icon (shared calendar clock between header and favicon) | [`327a573`] | 2026-10-31
