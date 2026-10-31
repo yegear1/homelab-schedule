@@ -7,17 +7,17 @@
 
 ## Active Task
 
-- **Task:** `[02.16]` Health Metrics and Operational Summary in MCP (`health_metrics` and aggregate status)
-- **Status:** `READY FOR PLANNING`
-- **Scope:** Plan aggregate operational metrics while preserving the closed MCP surface and existing contracts.
-- **Approval:** Detailed plan pending; implementation not started.
-- **Validation:** `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
+- **Task:** None; the feature backlog is empty.
+- **Status:** `IDLE`
+- **Next Step:** Await the next operator task. Release/tag remains gated by explicit request.
 
 ---
 
 ## Completed Tasks Log
 
 Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
+
+- [02.16] Authenticated operational aggregates and bounded `health_metrics` MCP tool; synchronized ADR/contracts and privacy checks | [`4e69ee8`] | 2026-10-31 | 234 tests, mypy, Ruff and diff check: exit 0
 
 - [02.15] Authenticated filtered CSV downloads for jobs and execution history, bounded keyset reads, spreadsheet-safe cells, and accessible UI downloads | [`59c04cd`] | 2026-10-31 | check/build (zero diagnostics), 212 tests, mypy, Ruff and diff check: exit 0
 
