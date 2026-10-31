@@ -53,6 +53,7 @@ class JobRepository:
         group_id: str | None = None,
         query: str | None = None,
         tag: str | None = None,
+        after_id: str | None = None,
     ) -> list[Job]:
         clauses: list[str] = []
         params: list[str | int] = []
@@ -93,10 +94,16 @@ class JobRepository:
                 "EXISTS (SELECT 1 FROM json_each(jobs.tags) WHERE LOWER(value) = LOWER(?))"
             )
             params.append(tag.strip())
+        if after_id is not None:
+            clauses.append("id > ?")
+            params.append(after_id)
         sql = "SELECT * FROM jobs"
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
-        sql += " ORDER BY next_run_at IS NULL, next_run_at ASC"
+        sql += (
+            " ORDER BY id" if after_id is not None
+            else " ORDER BY next_run_at IS NULL, next_run_at ASC"
+        )
         if limit is not None and limit > 0:
             sql += " LIMIT ?"
             params.append(limit)
@@ -270,6 +277,7 @@ class JobRepository:
         limit: int = 50,
         status_filter: str | None = None,
         job_id: str | None = None,
+        after_id: str | None = None,
     ) -> list[JobRun]:
         clauses: list[str] = []
         params: list[str | int] = []
@@ -279,10 +287,13 @@ class JobRepository:
         if job_id:
             clauses.append("job_id = ?")
             params.append(job_id)
+        if after_id is not None:
+            clauses.append("id > ?")
+            params.append(after_id)
         sql = "SELECT * FROM job_runs"
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
-        sql += " ORDER BY ran_at DESC LIMIT ?"
+        sql += " ORDER BY id LIMIT ?" if after_id is not None else " ORDER BY ran_at DESC LIMIT ?"
         params.append(limit)
         rows = self._conn.execute(sql, tuple(params)).fetchall()
         return [_row_to_job_run(row) for row in rows]

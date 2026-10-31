@@ -1456,3 +1456,107 @@ def test_get_upcoming_runs_cron_and_once(
     assert r_once_up.status_code == 200
     assert r_once_up.json()["total_projected"] == 1
     assert r_once_up.json()["runs"][0]["time_local"] == "10:00"
+
+
+def test_csv_auth_and_empty_header(client: TestClient, api_key: str) -> None:
+    import csv
+    import io
+
+    for path, first_columns in (
+        ("/jobs/export.csv", ["id", "title", "content"]),
+        ("/jobs/runs/export.csv", ["id", "job_id", "ran_at"]),
+    ):
+        assert client.get(path).status_code == 401
+        response = client.get(path, headers=_auth(api_key))
+        assert response.status_code == 200
+        assert response.content.startswith(b"\xef\xbb\xbf")
+        assert response.headers["content-type"].startswith("text/csv")
+        assert "attachment" in response.headers["content-disposition"]
+        assert response.headers["cache-control"] == "no-store"
+        rows = list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
+        assert len(rows) == 1
+        assert rows[0][:3] == first_columns
+
+
+def test_csv_jobs_filters_and_safe_cells(
+    client: TestClient, api_key: str, app: FastAPI,
+) -> None:
+    import csv
+    import io
+    import json
+
+    repo: JobRepository = app.state.repo
+    for index in range(2):
+        repo.insert(Job(
+            id=f"csv-{index}", title=' =HYPERLINK("ação")', content='Olá, "amigo"\nAté amanhã',
+            to="eu", kind=JobKind.ONCE, run_at=datetime(2028, 1, 1, tzinfo=UTC),
+            target_number="5511999998888@c.us", group_id=f"g{index}",
+            tags=["Financeiro"], variables={"name": "João"},
+            source=JobSource.YAML if index == 0 else JobSource.SQLITE,
+        ))
+    response = client.get('/jobs/export.csv', headers=_auth(api_key), params={
+        "status": "all", "from": "2027-01-01T00:00:00Z", "to": "2029-01-01T00:00:00Z",
+        "phone": "eu", "group_id": "g0", "query": "ação", "tag": "financeiro",
+    })
+    rows = list(csv.DictReader(io.StringIO(response.content.decode("utf-8-sig"))))
+    assert len(rows) == 1
+    assert rows[0]["source"] == "yaml"
+    assert rows[0]["title"].startswith("' =")
+    assert rows[0]["content"] == 'Olá, "amigo"\nAté amanhã'
+    assert rows[0]["cron_expr"] == ""
+    assert rows[0]["run_at"] == "2028-01-01T00:00:00Z"
+    assert json.loads(rows[0]["tags"]) == ["Financeiro"]
+    assert json.loads(rows[0]["variables"]) == {"name": "João"}
+    empty = client.get('/jobs/export.csv?tag=absent', headers=_auth(api_key))
+    assert empty.content.count(b'\r\n') == 1
+    listed = client.get('/jobs?status=all', headers=_auth(api_key)).json()["jobs"]
+    assert len(listed) == 2 and "content" not in listed[0]
+
+
+def test_csv_batches_include_all_jobs_and_runs(
+    client: TestClient, api_key: str, app: FastAPI,
+) -> None:
+    import csv
+    import io
+
+    from schemas.job import JobRun, JobRunStatus, JobRunTrigger
+
+    repo: JobRepository = app.state.repo
+    for index in range(260):
+        job_id = f"export-{index:04}"
+        repo.insert(Job(id=job_id, title="Export", content="hello", to="eu",
+                        kind=JobKind.ONCE, run_at=datetime(2028, 1, 1, tzinfo=UTC)))
+        repo.record_run(JobRun(
+            id=job_id, job_id=job_id, ran_at=datetime(2026, 1, 1, tzinfo=UTC),
+            trigger=JobRunTrigger.MANUAL, status=JobRunStatus.ERROR,
+            status_code=500, duration_ms=2.5, error_message="@unsafe",
+        ))
+    for path in ("/jobs/export.csv", "/jobs/runs/export.csv"):
+        response = client.get(path, headers=_auth(api_key))
+        rows = list(csv.DictReader(io.StringIO(response.content.decode("utf-8-sig"))))
+        assert len(rows) == 260
+        assert len({row["id"] for row in rows}) == 260
+        if "runs" in path:
+            assert rows[0]["error_message"] == "'@unsafe"
+            assert rows[0]["duration_ms"] == "2.5"
+    filtered = client.get('/jobs/runs/export.csv?job_id=export-0000&status=error',
+                          headers=_auth(api_key))
+    assert len(list(csv.DictReader(io.StringIO(filtered.content.decode("utf-8-sig"))))) == 1
+    assert client.get('/jobs/runs/export.csv?status=success',
+                      headers=_auth(api_key)).content.count(b'\r\n') == 1
+    assert client.get('/jobs/runs/export.csv?job_id=missing',
+                      headers=_auth(api_key)).status_code == 404
+    assert client.get('/jobs/runs/export.csv?status=invalid',
+                      headers=_auth(api_key)).status_code == 422
+    assert client.get('/jobs/export.csv?status=invalid',
+                      headers=_auth(api_key)).status_code == 422
+
+
+@pytest.mark.parametrize(
+    "value", ["=1+1", "+cmd", "-cmd", "@SUM(1)", "\tcmd", "\rcmd", "\ncmd", "  =1"],
+)
+def test_csv_formula_protection(value: str) -> None:
+    from homelab_schedule.csv_export import _cell
+
+    assert _cell(value) == "'" + value
+    assert _cell(-3) == "-3"

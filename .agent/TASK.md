@@ -8,10 +8,15 @@
 ## Active Task
 
 - **Task:** `[02.15]` Fast Tabular CSV Export for Jobs and Execution History (`job_runs`)
-- **Status:** `READY FOR PLANNING`
+- **Status:** `RUNNING`
 - **Scope:**
-  - Plan fast tabular CSV export for jobs and execution history while preserving existing API and UI contracts.
-- **Approval:** Detailed plan pending; task not yet started.
+  - Add authenticated `GET /jobs/export.csv` and `GET /jobs/runs/export.csv` downloads; register static routes before job-ID routes.
+  - Export jobs using existing agenda filters (status, date range, phone, group, tag, query), including SQLite and YAML jobs. Export runs with optional status and job-ID filters. Export every matching row independently of UI pagination.
+  - Define stable column headers from existing job/run models; serialize timestamps as ISO-8601, nulls as empty cells, and compound values as JSON. Use UTF-8 BOM, standard CSV quoting, and spreadsheet formula-injection protection for text cells.
+  - Keep routers thin, CSV serialization in the service layer, and parameterized reads in the repository. Read and emit bounded batches without loading the entire export into memory or holding a long write transaction. Add no dependencies or schema migrations.
+  - Add accessible CSV download controls to the agenda and execution-history UI with authenticated Blob downloads, loading/error states, and object-URL cleanup.
+  - Synchronize HTTP/UI contracts and notes; test authentication, filters, full export beyond list limits, empty results, quoting/Unicode, formula protection, and unchanged JSON behavior.
+- **Approval:** Detailed plan approved by the user on 2026-10-31; implementation in progress.
 - **Validation:** `npm run check`, `npm run build`, `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
 
 ---

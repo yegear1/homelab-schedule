@@ -250,3 +250,14 @@ Implementations MUST preserve exact DOM IDs and `data-state` markers:
 | `scr-jobs` | Job detail drawer | `wdg-job-detail` | — | `loading` \| `empty` \| `error` |
 | `scr-jobs` | Create job form | `wdg-job-create` | `title`, `content`, `to`, `kind`, `run_at`, `cron_expr`, `created_by`, `template_id` | `error` |
 | `scr-jobs` | Contact picker | `wdg-contact-pick` | `to`, `created_by` | `loading` \| `empty` \| `error` |
+
+## 10. CSV Export Actions
+
+The agenda provides `btn-export-jobs-csv` (current status/date/phone/tag filters,
+all matching jobs independent of list limit) and `btn-export-runs-csv` (all retained
+execution history). The inspection drawer provides `btn-export-job-runs-csv` for
+the selected job's complete history. These bind to `GET /jobs/export.csv` and
+`GET /jobs/runs/export.csv` with optional `job_id`, respectively. Downloads use
+`x-api-key`, validated CSV content type, Blob URLs with cleanup, disabled buttons
+while busy, a status announcement, and visible alert messages on failure. Existing
+DOM IDs, list/detail JSON endpoints, and scheduling actions remain unchanged.

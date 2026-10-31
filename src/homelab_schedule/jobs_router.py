@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi.responses import StreamingResponse
 
 from homelab_schedule.auth import Auth
 from homelab_schedule.jobs_service import JobService
@@ -22,7 +23,7 @@ from schemas.api import (
     TagsResponse,
     UpcomingRunsResponse,
 )
-from schemas.job import Job
+from schemas.job import Job, JobRunStatus
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -163,6 +164,41 @@ def get_daily_digest(
 @router.get("/tags", response_model=TagsResponse)
 def get_tags(request: Request, _: Auth) -> TagsResponse:
     return TagsResponse(tags=_service(request).get_tags())
+
+
+@router.get("/export.csv", response_class=StreamingResponse)
+def export_jobs_csv(
+    request: Request,
+    _: Auth,
+    status_filter: Annotated[JobListFilter, Query(alias="status")] = JobListFilter.UPCOMING,
+    range_from: Annotated[datetime | None, Query(alias="from")] = None,
+    range_to: Annotated[datetime | None, Query(alias="to")] = None,
+    phone: str | None = None,
+    group_id: str | None = None,
+    query: str | None = None,
+    tag: str | None = None,
+) -> StreamingResponse:
+    chunks = _service(request).export_jobs_csv(
+        status_filter, range_from, range_to, phone, group_id, query, tag,
+    )
+    return StreamingResponse(chunks, media_type="text/csv", headers={
+        "Content-Disposition": 'attachment; filename="jobs.csv"',
+        "Cache-Control": "no-store",
+    })
+
+
+@router.get("/runs/export.csv", response_class=StreamingResponse)
+def export_runs_csv(
+    request: Request,
+    _: Auth,
+    status_filter: Annotated[JobRunStatus | None, Query(alias="status")] = None,
+    job_id: str | None = None,
+) -> StreamingResponse:
+    chunks = _service(request).export_runs_csv(status_filter, job_id)
+    return StreamingResponse(chunks, media_type="text/csv", headers={
+        "Content-Disposition": 'attachment; filename="job-runs.csv"',
+        "Cache-Control": "no-store",
+    })
 
 
 @router.get("/{job_id}", response_model=Job)

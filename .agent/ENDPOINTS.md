@@ -412,3 +412,28 @@ Executa auditoria em tempo real com `PRAGMA integrity_check` e `PRAGMA foreign_k
 
 JSON `{ "detail": ... }` no estilo FastAPI. Não vazar path de SQLite nem API keys.
 
+
+## Tabular CSV Downloads
+
+### `GET /jobs/export.csv`
+
+Requires `x-api-key`. Accepts the same `status` (default `upcoming`), `from`, `to`,
+`phone`, `group_id`, `query`, and `tag` filters as `GET /jobs`. Includes SQLite and
+YAML jobs, every matching row regardless of list pagination. Columns, in order:
+`id,title,content,to,target_number,kind,run_at,cron_expr,enabled,source,status,next_run_at,last_run_at,last_status,last_error,retry_count,created_by,template_id,group_id,variables,tags,until,max_runs,run_count`.
+
+### `GET /jobs/runs/export.csv`
+
+Requires `x-api-key`. Optional `status` (`success` or `error`) and `job_id` filters.
+A nonexistent `job_id` returns `404`. Columns, in order:
+`id,job_id,ran_at,trigger,status,status_code,duration_ms,error_message`.
+
+Both return `200 text/csv; charset=utf-8`, UTF-8 BOM, comma separators, CRLF records,
+standard CSV quoting, `Content-Disposition: attachment` (`jobs.csv` / `job-runs.csv`),
+and `Cache-Control: no-store`. Empty results contain the header only. Timestamps are
+ISO-8601; nulls become empty cells; compound values are compact JSON. Text starting
+with formula operators (`=`, `+`, `-`, `@`, including after whitespace) or leading
+tab/CR/LF receives an apostrophe prefix for spreadsheet safety. This is a tabular
+report, not a lossless backup format. Authentication errors return `401`; invalid
+filter values return `422`. Rows are ordered by ID and read in 256-row keyset
+batches; concurrent writes may be reflected between batches (no snapshot guarantee).

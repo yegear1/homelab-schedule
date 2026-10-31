@@ -266,6 +266,41 @@
     };
   }
 
+  let exportingCsv = $state(false);
+  let csvError = $state('');
+
+  async function downloadCsv(kind: 'jobs' | 'runs', jobId?: string) {
+    exportingCsv = true;
+    csvError = '';
+    try {
+      const params = new URLSearchParams();
+      if (kind === 'jobs') {
+        params.set('status', filterStatus);
+        if (filterFrom) params.set('from', new Date(filterFrom).toISOString());
+        if (filterTo) params.set('to', new Date(filterTo).toISOString());
+        if (filterPhone.trim()) params.set('phone', filterPhone.trim());
+        if (filterTag.trim()) params.set('tag', filterTag.trim());
+      } else if (jobId) params.set('job_id', jobId);
+      const path = kind === 'jobs' ? '/jobs/export.csv' : '/jobs/runs/export.csv';
+      const blob = await api.downloadCsv(path, params);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      try {
+        link.href = url;
+        link.download = kind === 'jobs' ? 'agendamentos.csv' : 'historico.csv';
+        document.body.appendChild(link);
+        link.click();
+      } finally {
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    } catch (err) {
+      csvError = err instanceof Error ? err.message : 'Falha ao exportar CSV';
+    } finally {
+      exportingCsv = false;
+    }
+  }
+
   async function loadAllRuns() {
     loadingAllRuns = true;
     try {
@@ -823,6 +858,15 @@
       </div>
     </div>
   </section>
+
+  <div class="flex flex-wrap items-center gap-space-sm mb-space-md" aria-busy={exportingCsv}>
+    <button type="button" id="btn-export-jobs-csv" class="px-space-md py-2 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui cursor-pointer" disabled={exportingCsv}
+      onclick={() => downloadCsv('jobs')}>Exportar agenda CSV</button>
+    <button type="button" id="btn-export-runs-csv" class="px-space-md py-2 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui cursor-pointer" disabled={exportingCsv}
+      onclick={() => downloadCsv('runs')}>Exportar histórico CSV</button>
+    {#if exportingCsv}<span role="status">Preparando CSV…</span>{/if}
+  </div>
+  {#if csvError}<p role="alert" class="text-error mb-space-md">{csvError}</p>{/if}
 
   <!-- WIDGET 1: JOB FILTERS (wdg-job-filters) -->
   <section class="agenda-panel bg-surface-container-low p-space-md rounded shadow-sm mb-space-lg border border-outline-variant/10" id="wdg-job-filters">
@@ -1892,6 +1936,12 @@
               <span>Atualizar</span>
             </button>
           </div>
+
+          <button type="button" id="btn-export-job-runs-csv" class="px-space-md py-2 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui cursor-pointer"
+            disabled={exportingCsv} onclick={() => downloadCsv('runs', selectedJob!.id)}>
+            Exportar histórico deste agendamento CSV
+          </button>
+          {#if csvError}<p role="alert" class="text-error">{csvError}</p>{/if}
 
           {#if loadingJobRuns}
             <div class="py-2 text-center text-outline font-label-code-sm font-mono text-xs" id="runs-loading">

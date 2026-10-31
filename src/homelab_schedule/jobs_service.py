@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from homelab_schedule.aliases import normalize_whatsapp_phone, resolve_destination
 from homelab_schedule.contacts_service import ContactService
 from homelab_schedule.cron import next_cron_utc, upcoming_cron_runs_utc
+from homelab_schedule.csv_export import csv_chunks
 from homelab_schedule.dispatch import Dispatcher
 from homelab_schedule.errors import (
     Conflict,
@@ -317,6 +318,46 @@ class JobService:
             tag=tag,
         )
         return [JobListItem.model_validate(job.model_dump()) for job in jobs]
+
+    def export_jobs_csv(
+        self,
+        status_filter: JobListFilter,
+        range_from: datetime | None = None,
+        range_to: datetime | None = None,
+        phone: str | None = None,
+        group_id: str | None = None,
+        query: str | None = None,
+        tag: str | None = None,
+    ) -> Iterator[bytes]:
+        resolved_phone = self._resolve_to(phone) if phone else None
+
+        def rows() -> Iterator[Job]:
+            after_id = ""
+            while batch := self._repo.list_jobs(
+                status_filter, range_from, range_to, limit=256,
+                phone=resolved_phone, raw_to=phone, group_id=group_id,
+                query=query, tag=tag, after_id=after_id,
+            ):
+                yield from batch
+                after_id = batch[-1].id
+
+        return csv_chunks(tuple(Job.model_fields), rows())
+
+    def export_runs_csv(
+        self, status: JobRunStatus | None = None, job_id: str | None = None,
+    ) -> Iterator[bytes]:
+        if job_id is not None:
+            self.get(job_id)
+
+        def rows() -> Iterator[JobRun]:
+            after_id = ""
+            while batch := self._repo.list_runs(
+                limit=256, status_filter=status, job_id=job_id, after_id=after_id,
+            ):
+                yield from batch
+                after_id = batch[-1].id
+
+        return csv_chunks(tuple(JobRun.model_fields), rows())
 
     def get_tags(self) -> list[str]:
         return self._repo.list_all_tags()

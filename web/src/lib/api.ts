@@ -407,6 +407,20 @@ class ApiService {
     return response.blob();
   }
 
+  async downloadCsv(path: '/jobs/export.csv' | '/jobs/runs/export.csv', params: URLSearchParams): Promise<Blob> {
+    const response = await fetch(`${this.getBaseUrl()}${path}?${params}`, {
+      headers: { 'x-api-key': this.getApiKey(), Accept: 'text/csv' },
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      throw new ApiClientError(response.status, `Exportação falhou (${response.status})`);
+    }
+    if (!response.headers.get('content-type')?.includes('text/csv')) {
+      throw new ApiClientError(response.status, 'Resposta CSV inválida');
+    }
+    return response.blob();
+  }
+
   async exportData(includeRuns: boolean = true): Promise<ExportDataResponse> {
     return this.request<ExportDataResponse>(`/backup/export?include_runs=${includeRuns}`);
   }

@@ -33,6 +33,12 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 ## Architectural Decisions Beyond ADRs
 
+### [2026-10-31] Tabular CSV Export
+
+- Authenticated `/jobs/export.csv` reuses agenda filters and includes SQLite/YAML jobs; `/jobs/runs/export.csv` supports status/job filters. Both export all matching rows independently of list limits, with stable model-field columns, UTF-8 BOM, CRLF, ISO timestamps, compact JSON compound cells, and empty null cells.
+- The job service serializes CSV; repository reads use 256-row ID keyset batches. Each batch finishes its read before streaming resumes, without a long transaction. Exports have no cross-batch snapshot guarantee during concurrent writes. The browser assembles the authenticated response as a Blob before downloading.
+- Leading spreadsheet formula operators (including after whitespace) and tab/CR/LF in text cells receive an apostrophe. CSV is a spreadsheet report; JSON backup remains the lossless portability format. Agenda and per-job history downloads preserve existing JSON/list contracts and revoke temporary object URLs.
+
 ### [2026-10-31] Agenda Presentation
 
 - Agenda table, timeline, and calendar share semantic panels and existing control primitives (44 px touch targets, visible focus, fluid motion, and reduced-motion handling). Selection is exposed through `aria-pressed` or `aria-current`; calendar day labels include event counts and errors.
