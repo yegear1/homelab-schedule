@@ -7,22 +7,16 @@
 
 ## Active Task
 
-- **Task:** `[02.16.3]` HIG Support Screens (`TemplatesPage`, `ContactsPage`, and `ContactDetailPage`)
-- **Status:** `RUNNING`
+- **Task:** `[02.16.4]` HIG Agenda Core (`JobsPage`, `JobTimelineView`, and `JobCalendarView`)
+- **Status:** `READY FOR PLANNING`
 - **Scope:**
-  - Apply existing semantic tokens and shared visual patterns to the three support screens.
-  - Preserve DOM IDs, form contracts, keyboard navigation, and action handlers.
-- **Approval:** Detailed plan approved by the user on 2026-10-31; implementation in progress.
-- **Plan:**
-  1. Apply existing semantic surface, label, separator, and motion tokens to `TemplatesPage`, `ContactsPage`, and `ContactDetailPage`.
-  2. Align cards, lists, forms, and action controls with the shared shell and modal presentation; provide responsive spacing, visible keyboard focus, and reduced-motion behavior.
-  3. Preserve DOM IDs, field names, state markers, API payloads, and action handlers; keep changes within these support screens and necessary shared presentation styles.
-  4. Run all required frontend and backend checks, review the diff, document relevant decisions, and create an atomic Conventional Commit before promoting `[02.16.4]`.
+  - Apply existing semantic tokens and shared visual patterns to the agenda table, timeline, and calendar.
+  - Preserve DOM IDs, view switching, filters, keyboard navigation, and job action contracts.
+- **Approval:** Detailed plan pending; task not yet started.
 - **Validation:** `npm run check`, `npm run build`, `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
 
 ### Next Planned Tasks
 
-- **[02.16.4]** HIG Agenda Core (`JobsPage`, `JobTimelineView`, and `JobCalendarView`)
 - **[02.15]** Fast Tabular CSV Export for Jobs and Execution History (`job_runs`)
 
 ---
@@ -30,6 +24,8 @@
 ## Completed Tasks Log
 
 Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
+
+- [02.16.3] Semantic support screen presentation, responsive contact rows, accessible controls, keyboard job inspection, and reduced motion | [`8ae2e88`] | 2026-10-31 | check/build, 201 tests, mypy, Ruff and diff check: exit 0
 
 - [02.16.2] Shared semantic modal and Toast presentation; responsive controls, focus styling, accessible labels, and reduced motion | [`8a7d61f`] | 2026-10-31 | check/build, 201 tests, mypy, Ruff and diff check: exit 0
 
