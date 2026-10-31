@@ -8,11 +8,16 @@
 ## Active Task
 
 - **Task:** `[02.16.3]` HIG Support Screens (`TemplatesPage`, `ContactsPage`, and `ContactDetailPage`)
-- **Status:** `READY FOR PLANNING`
+- **Status:** `RUNNING`
 - **Scope:**
   - Apply existing semantic tokens and shared visual patterns to the three support screens.
   - Preserve DOM IDs, form contracts, keyboard navigation, and action handlers.
-- **Approval:** Detailed plan pending; task not yet started.
+- **Approval:** Detailed plan approved by the user on 2026-10-31; implementation in progress.
+- **Plan:**
+  1. Apply existing semantic surface, label, separator, and motion tokens to `TemplatesPage`, `ContactsPage`, and `ContactDetailPage`.
+  2. Align cards, lists, forms, and action controls with the shared shell and modal presentation; provide responsive spacing, visible keyboard focus, and reduced-motion behavior.
+  3. Preserve DOM IDs, field names, state markers, API payloads, and action handlers; keep changes within these support screens and necessary shared presentation styles.
+  4. Run all required frontend and backend checks, review the diff, document relevant decisions, and create an atomic Conventional Commit before promoting `[02.16.4]`.
 - **Validation:** `npm run check`, `npm run build`, `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
 
 ### Next Planned Tasks

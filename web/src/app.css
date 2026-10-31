@@ -151,6 +151,54 @@
 }
 
 @layer components {
+  .support-page {
+    min-width: 0;
+    color: rgb(var(--label));
+    overflow-wrap: anywhere;
+  }
+  .support-page :is(.grid, .flex) > * { min-width: 0; }
+  .support-page .justify-between { flex-wrap: wrap; gap: 0.75rem; }
+  .support-panel {
+    border-radius: 1.25rem;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.04);
+  }
+  .support-page h1 { font-size: clamp(1.5rem, 3vw, 1.875rem); }
+  .support-page :is(input, select, textarea) {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 2.75rem;
+    border: 1px solid rgb(var(--separator));
+    border-radius: 0.75rem;
+    color: rgb(var(--label));
+    background: rgb(var(--system-background));
+    box-shadow: none;
+  }
+  .support-page textarea { resize: vertical; }
+  .support-page :is(input, textarea)::placeholder { color: rgb(var(--secondary-label)); opacity: 1; }
+  .support-page :is(button, a) {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    border-radius: 0.75rem;
+    transition: background-color var(--motion-selection) var(--ease-fluid),
+      color var(--motion-selection) var(--ease-fluid),
+      transform var(--motion-press) var(--ease-fluid);
+  }
+  .support-page :is(button, a):active:not(:disabled) { transform: scale(0.98); }
+  .support-page :is(button, input, select, textarea):disabled { cursor: default; opacity: 0.5; }
+  .support-page :is(button, a, input, select, textarea):focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 3px;
+  }
+  .support-page .support-tabs > button { flex-shrink: 0; }
+  .support-page .support-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .support-page .support-job-card[aria-current="true"] { border-color: rgb(var(--accent)); }
+  .support-page .support-job-card { border: 1px solid rgb(var(--separator) / 0.6); }
+  .support-page .support-job-title {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    color: rgb(var(--accent));
+  }
   .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -275,5 +323,18 @@
   .shell-action:active:not(:disabled) { transform: none; }
   .modal-action:active:not(:disabled), .toast-surface { transform: none; }
   .modal-backdrop, .modal-surface { animation: none; }
+  .support-page :is(button, a):active:not(:disabled) { transform: none; }
+  .support-page :is(.animate-pulse, .animate-spin) { animation: none; }
+}
+
+@media (max-width: 639px) {
+  .support-page .support-contact-table { min-width: 0; }
+  .support-page .support-contact-heading { display: none; }
+  .support-page .contact-row { flex-wrap: wrap; gap: 0.75rem; }
+  .support-page .contact-row > * { width: auto; }
+  .support-page .contact-row > :nth-child(2) { flex: 1 1 50%; padding: 0; }
+  .support-page .contact-row > :nth-child(3) { flex: 1 1 50%; }
+  .support-page .contact-row > :first-child { max-width: 5rem; overflow-wrap: anywhere; }
+  .support-page .support-actions > button { flex: 1 1 auto; justify-content: center; }
 }
 

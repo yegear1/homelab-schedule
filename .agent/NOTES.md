@@ -33,6 +33,12 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 ## Architectural Decisions Beyond ADRs
 
+### [2026-10-31] Support Screen Presentation
+
+- Templates, contacts, and contact detail use semantic surface, label, separator, and accent tokens. Shared `support-page` styles remain scoped to these screens; `support-panel` provides consistent card rounding and subtle shadows.
+- Controls have 44 px minimum touch targets and visible keyboard focus. Contact rows wrap on narrow screens, action groups wrap, and status filters retain horizontal scrolling. Job titles provide native keyboard buttons while preserving card click and nested action behavior.
+- Reduced motion disables decorative spinners, pulses, and press scaling, and template editing scrolls instantly. Existing DOM IDs, field names, state markers, API calls, and payloads remain unchanged.
+
 ### [2026-10-31] Shared Modal and Toast Presentation
 
 - The five global modals share scoped CSS primitives for semantic surfaces, 44 px controls, visible keyboard focus, safe-area padding, and viewport-bounded scrolling. Component scripts, existing DOM IDs, HTTP payloads, and focus-trap actions remain unchanged.
