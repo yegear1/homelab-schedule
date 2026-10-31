@@ -7,9 +7,9 @@
 
 ## Active Task
 
-- **Task:** None; the feature backlog is empty.
-- **Status:** `IDLE`
-- **Next Step:** Await the next operator task. Release/tag remains gated by explicit request.
+- **Task:** [00.12] Open Source Readiness: Licensing, Community Governance, and Sanitization Audit
+- **Status:** `RUNNING`
+- **Next Step:** Implement root LICENSE, update pyproject.toml & web/package.json manifests, scaffold community governance, sanitize .env.example, configure git noreply, and verify all suites.
 
 ---
 

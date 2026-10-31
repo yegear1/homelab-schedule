@@ -143,3 +143,7 @@ summary does not probe scheduler/gateway availability; `/health` remains public.
 ## Repository
 
 GitHub: [`yegear1/homelab-schedule`](https://github.com/yegear1/homelab-schedule).
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).

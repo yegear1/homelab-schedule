@@ -144,3 +144,7 @@ continua público.
 ## Repositório
 
 GitHub: [`yegear1/homelab-schedule`](https://github.com/yegear1/homelab-schedule).
+
+## Licença
+
+Este projeto está licenciado sob a licença [MIT](LICENSE).

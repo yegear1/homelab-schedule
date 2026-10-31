@@ -33,6 +33,13 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 ## Architectural Decisions Beyond ADRs
 
+### [2026-10-31] Open Source Readiness and Community Governance (Task [00.12])
+
+- Aligned project with canonical open source readiness standards (`oss-readiness`): MIT License scaffolded with SPDX manifest declarations across Python (`pyproject.toml`) and Web UI (`web/package.json`).
+- Community governance established under Contributor Covenant 2.1 (`CODE_OF_CONDUCT.md`), architecture and development guidelines (`CONTRIBUTING.md`), responsible vulnerability disclosure policy (`SECURITY.md`), and GitHub PR and issue templates (`.github/`).
+- Verified PyPI package namespace `homelab-schedule` (AVAILABLE) and sanitized `.env.example` comments in Technical English.
+- Local repository git config updated to anonymous GitHub noreply author identity (`yegear1@users.noreply.github.com`).
+
 ### [2026-10-31] Operational Metrics (Task [02.16])
 
 - Authenticated `GET /health/metrics` and the explicit `health_metrics` MCP tool return only aggregate counts and timestamps. The MCP remains an HTTP bridge; ADR-005 authorizes this bounded read-only addition. Public `/health` stays unchanged.
