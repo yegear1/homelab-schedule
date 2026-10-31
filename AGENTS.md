@@ -133,7 +133,7 @@ For composes/images without a pinned version: adopt the latest stable release.
 
 Prefer MCP over ad-hoc curl once the server exists. Direct production mutation via MCP requires user consent. NEVER log auth tokens. `mcp.json` in editor profiles is local — **do not** version control.
 
-MCP tools in this project: closed surface (see [ADR-005](./.agent/adr/005-mcp-superficie-fechada.md)). No generic CRUD, no unbounded `PATCH`.
+MCP tools in this project: closed surface (see [ADR-005](./.agent/adr/005-closed-mcp-surface.md)). No generic CRUD, no unbounded `PATCH`.
 
 ---
 

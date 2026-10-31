@@ -7,15 +7,30 @@
 
 ## Active Task
 
-- **Task:** `[02.16.2]` HIG Global Components, Modals, and Primitives (`ApiKeyModal`, `BackupModal`, `SnoozeModal`, `RescheduleModal`, `ContactPickerModal`, and `Toast`)
-- **Status:** `READY FOR PLANNING`
+- **Task:** `[00.11]` Governance Alignment: Rename .agent/adr/ Files to Technical English and Update Cross-References
+- **Status:** `RUNNING`
 - **Scope:**
-  - Apply semantic tokens and fluid motion patterns across `ApiKeyModal`, `BackupModal`, `SnoozeModal`, `RescheduleModal`, `ContactPickerModal`, and `Toast`.
-  - Preserve all existing DOM IDs, contracts, focus traps, keyboard navigation, and action handlers.
-- **Approval:** Detailed plan pending; task not yet started.
-- **Validation:** `npm run check`, `npm run build`, `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
+  - Rename `.agent/adr/` files from Portuguese to canonical Technical English kebab-case via `git mv`:
+    - `001-monolito-python-uv.md` $\rightarrow$ `001-python-monolith-uv.md`
+    - `002-sqlite-e-yaml.md` $\rightarrow$ `002-sqlite-and-yaml.md`
+    - `003-canetas.md` $\rightarrow$ `003-pens-and-notebook.md`
+    - `004-dispatch-gatekeeper.md` $\rightarrow$ `004-gateway-dispatch.md`
+    - `005-mcp-superficie-fechada.md` $\rightarrow$ `005-closed-mcp-surface.md`
+    - `007-ui-mesmo-repo.md` $\rightarrow$ `007-in-repo-web-ui.md`
+  - Update all cross-references across `.agent/NOTES.md`, `AGENTS.md`, `.agent/CHANNELS.md`, and within the ADRs themselves.
+  - Maintain zero broken links and pass all linters, type checks, and automated tests.
+- **Approval:** Approved by user with "proceed" on 2026-10-31.
+- **Plan:**
+  1. Execute `git mv` on all 6 ADR files.
+  2. Update all Markdown links in `.agent/NOTES.md`, `AGENTS.md`, and `.agent/adr/*.md`.
+  3. Validate repository integrity (`uv run ruff check .`, `uv run mypy .`, `uv run pytest -v`, `git diff --check`).
+  4. Create atomic commit `docs(adr): rename adr files to technical english and update references`.
+  5. Log task completion in `.agent/TASK.md` and promote `[02.16.2]` as `READY FOR PLANNING`.
+- **Validation:** `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
 
 ### Next Planned Tasks
+
+- **[02.16.2]** HIG Global Components, Modals, and Primitives (`ApiKeyModal`, `BackupModal`, `SnoozeModal`, `RescheduleModal`, `ContactPickerModal`, and `Toast`)
 
 - **[02.16.3]** HIG Support Screens (`TemplatesPage`, `ContactsPage`, and `ContactDetailPage`)
 - **[02.16.4]** HIG Agenda Core (`JobsPage`, `JobTimelineView`, and `JobCalendarView`)

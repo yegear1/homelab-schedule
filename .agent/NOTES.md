@@ -21,13 +21,13 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 | ADR | Title | Status | Date |
 |---|---|---|---|
-| [ADR-001](adr/001-monolito-python-uv.md) | Single Process FastAPI + SQLite Tick, UV, Python 3.13 | Approved | 2026-09-11 |
-| [ADR-002](adr/002-sqlite-e-yaml.md) | SQLite WAL for Reminders and YAML for Permanent Routines | Approved | 2026-09-11 |
-| [ADR-003](adr/003-canetas.md) | Three In-Repo Pens, Single Shared Notebook | Approved | 2026-09-11 |
-| [ADR-004](adr/004-dispatch-gatekeeper.md) | Dispatch Exclusively via POST /send on Configured HTTP Gateway | Approved | 2026-09-11 |
-| [ADR-005](adr/005-mcp-superficie-fechada.md) | Closed Surface MCP Server | Approved | 2026-09-11 |
+| [ADR-001](adr/001-python-monolith-uv.md) | Single Process FastAPI + SQLite Tick, UV, Python 3.13 | Approved | 2026-09-11 |
+| [ADR-002](adr/002-sqlite-and-yaml.md) | SQLite WAL for Reminders and YAML for Permanent Routines | Approved | 2026-09-11 |
+| [ADR-003](adr/003-pens-and-notebook.md) | Three In-Repo Pens, Single Shared Notebook | Approved | 2026-09-11 |
+| [ADR-004](adr/004-gateway-dispatch.md) | Dispatch Exclusively via POST /send on Configured HTTP Gateway | Approved | 2026-09-11 |
+| [ADR-005](adr/005-closed-mcp-surface.md) | Closed Surface MCP Server | Approved | 2026-09-11 |
 | [ADR-006](adr/006-tick-next-run.md) | Temporal Dispatch: `next_run_at` UTC Index and Asyncio Tick Loop | Approved | 2026-09-11 |
-| [ADR-007](adr/007-ui-mesmo-repo.md) | Operator Web UI in Same Repository (`web/` and `proto/`) | Approved | 2026-09-12 |
+| [ADR-007](adr/007-in-repo-web-ui.md) | Operator Web UI in Same Repository (`web/` and `proto/`) | Approved | 2026-09-12 |
 
 ---
 
@@ -197,7 +197,7 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 | HTTP `/contacts` | Web UI / curl | homelab-schedule API | [ENDPOINTS.md](ENDPOINTS.md) | Contact catalog management |
 | HTTP `/templates` | Web UI / curl | homelab-schedule API | [ENDPOINTS.md](ENDPOINTS.md) | Message template catalog |
 | HTTP `/backup` | Web UI / scripts | homelab-schedule API | [ENDPOINTS.md](ENDPOINTS.md) | SQLite snapshot, JSON export/import |
-| MCP stdio | AI agents | Local HTTP daemon | [ADR-005](adr/005-mcp-superficie-fechada.md) | Closed surface (11 tools) |
+| MCP stdio | AI agents | Local HTTP daemon | [ADR-005](adr/005-closed-mcp-surface.md) | Closed surface (11 tools) |
 | `routines.yaml` | Git / operator | YAML loader + tick watch | [CHANNELS.md](CHANNELS.md) | Declarative permanent routines |
 | `POST /send` | Dispatcher tick | Gateway `{WHATSAPP_API_URL}` | `phone_number`, `content`, `quote_id`, `x-api-key` | Outbound dispatch gateway |
 

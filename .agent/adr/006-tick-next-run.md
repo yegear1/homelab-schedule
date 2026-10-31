@@ -58,4 +58,4 @@ Key Architectural Invariants:
 
 - `.agent/ENDPOINTS.md`
 - `.agent/skills/due-tick/SKILL.md`
-- [ADR-001: Python Monolith](001-monolito-python-uv.md)
+- [ADR-001: Python Monolith](001-python-monolith-uv.md)

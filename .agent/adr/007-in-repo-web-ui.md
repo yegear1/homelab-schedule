@@ -20,7 +20,7 @@ Incorporate the frontend directly within the repository structure:
 - **Production Runtime:** Served by the existing FastAPI process via `StaticFiles` mounted from `web/dist/`. Authenticated with operator `x-api-key`.
 - In-repo pens remain: MCP, HTTP, and YAML are maintained alongside Web UI as the fourth input surface.
 
-This explicitly amends the earlier "no UI in repo" constraint from [ADR-003](003-canetas.md) specifically for the local human operator Web UI. CalDAV, IMAP email, and messaging clients remain strictly out of scope.
+This explicitly amends the earlier "no UI in repo" constraint from [ADR-003](003-pens-and-notebook.md) specifically for the local human operator Web UI. CalDAV, IMAP email, and messaging clients remain strictly out of scope.
 
 ## 3. Alternatives Considered
 
@@ -43,5 +43,5 @@ This explicitly amends the earlier "no UI in repo" constraint from [ADR-003](003
 ## 5. References and Links
 
 - `.agent/INTERFACE.md`
-- [ADR-003: Three In-Repo Pens](003-canetas.md)
+- [ADR-003: Three In-Repo Pens](003-pens-and-notebook.md)
 - `proto/scr-*/code.html`

@@ -18,7 +18,7 @@ Restrict in-repo input interfaces ("pens") to:
 2. **HTTP API:** Machine automation pen and backend target for the MCP server.
 3. **YAML (`routines.yaml`):** Declarative infrastructure routine pen.
 
-Explicitly out of scope in this repository: CalDAV, IMAP/SMTP email polling, Telegram bots, WhatsApp socket listeners, or GitHub issues as reminder queues. The operator Web UI was later incorporated into the repository per [ADR-007](007-ui-mesmo-repo.md). External chat bots or messaging services interact strictly as external **HTTP callers** (`POST /jobs`). Messaging client protocol code does not reside here.
+Explicitly out of scope in this repository: CalDAV, IMAP/SMTP email polling, Telegram bots, WhatsApp socket listeners, or GitHub issues as reminder queues. The operator Web UI was later incorporated into the repository per [ADR-007](007-in-repo-web-ui.md). External chat bots or messaging services interact strictly as external **HTTP callers** (`POST /jobs`). Messaging client protocol code does not reside here.
 
 Destination addressing supports aliases (e.g., `eu`) resolved via `WHATSAPP_ALIASES` (historical env name) with fallback default `to='eu'`.
 
@@ -44,4 +44,4 @@ Destination addressing supports aliases (e.g., `eu`) resolved via `WHATSAPP_ALIA
 
 - `.agent/CHANNELS.md`
 - `.agent/skills/whatsapp-dispatch/SKILL.md`
-- [ADR-007: Web UI in Repo](007-ui-mesmo-repo.md)
+- [ADR-007: Web UI in Repo](007-in-repo-web-ui.md)
