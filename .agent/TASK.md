@@ -7,17 +7,23 @@
 
 ## Active Task
 
-- **Task:** `[02.15.1]` Ícone do site (prioridade solicitada pelo usuário antes da exportação CSV)
+- **Task:** `[02.16.1]` Design System Apple HIG & Shell Base (Tokens Semânticos, Animações Fluidas e AppShell)
 - **Status:** `RUNNING`
 - **Scope:**
-  - Criar SVG de calendário com relógio, ciano sobre azul-marinho.
-  - Reutilizar o SVG no cabeçalho e favicon via assets do Vite.
-  - Validar frontend e checks obrigatórios; registrar commit atômico.
-- **Approval:** Conceito aprovado pelo usuário com “prossiga” em 2026-10-25.
-- **Validation:** `npm run check`, `npm run build`, `uv run mypy .`, `uv run ruff check .` e `git diff --check` passaram. `uv run pytest -v`: 200 passaram e 1 falhou (`test_preview_preventive_conflict_detection`, `assert 0 == 1` na linha 182). O teste usa 14h do dia corrente com scheduler real; execução após esse horário permite consumir o job antes do preview. Código Python e testes não foram alterados nesta tarefa.
-- **Pending DoD:** Resolver a falha de teste temporal antes de marcar DONE e promover a tarefa CSV. Dependências reinstaladas com autorização para corrigir shebangs do caminho antigo; cache UV em `/tmp/homelab-schedule-uv-cache`. Pytest requer execução fora do sandbox (TestClient bloqueia dentro dele).
+  - Definir paleta de tokens semânticos e curvas de movimento Apple HIG em `web/src/app.css` e `web/tailwind.config.js` (System Backgrounds, Labels, Separators, Fills, cubic-bezier fluid springs e escalas ativas).
+  - Modernizar o `AppShell.svelte` com materiais translúcidos (`backdrop-blur-xl`, bordas ultra-sutis), sidebar estilo Source List do macOS e header minimalista integrado.
+  - Adicionar fluidez e micro-interações estilo Apple: feedback de pressão instantâneo (`active:scale-[0.98]`), transições com easing Apple (`cubic-bezier(0.16, 1, 0.3, 1)`), e Segmented Control nativo com indicador deslizante suave para alternador de temas e abas.
+  - Preservar rigorosamente todos os contratos de DOM IDs do `INTERFACE.md` e a funcionalidade completa da aplicação.
+- **Approval:** Escopo aprovado pelo usuário com “proceed” em 2026-10-31. Pressão 100 ms, seleção 280 ms, curva cubic-bezier(0.16, 1, 0.3, 1) e prefers-reduced-motion.
+- **Validation:** `npm run check`, `npm run build`, `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` e `git diff --check` devem sair com código 0.
 
-### Próxima tarefa preservada
+### Próximas tarefas planejadas (Epic [02.16] Apple HIG Redesign)
+
+- **[02.16.2]** Componentes Globais, Modais e Primitivas HIG (`ApiKeyModal`, `BackupModal`, `SnoozeModal`, `RescheduleModal`, `ContactPickerModal` e `Toast`)
+- **[02.16.3]** Telas de Apoio HIG (`TemplatesPage`, `ContactsPage` e `ContactDetailPage`)
+- **[02.16.4]** Núcleo de Agendas HIG (`JobsPage`, `JobTimelineView` e `JobCalendarView`)
+
+### Próxima tarefa de produto preservada
 
 - **Task:** `[02.15]` Exportação Rápida em CSV de Agendas e Histórico de Disparos (`job_runs`)
 - **Status:** `READY FOR PLANNING`
@@ -32,6 +38,7 @@
 
 Ciclos `v0.1.0`, `v0.2.0`, `v0.3.0` e `v0.4.0` arquivados em `ARCHIVE.md`.
 
+- [02.15.1] Ícone do site (calendário com relógio compartilhado entre header e favicon) | [`327a573`] | 2026-10-31
 - [02.14] Previsão de Próximos Disparos (*Upcoming Runs* para Recorrentes na API, MCP e Web UI) | [`e4d0b11`] | 2026-10-04
 - [02.13] Tags e Categorias de Agenda (`tags: list[str]` no SQLite v11, API, MCP e Web UI) | [`2946683`] | 2026-10-04
 - [02.12] Síntese Matinal e Prevenção de Conflitos no MCP (`daily_digest` e aviso preventivo) | [`0fd5685`] | 2026-09-29

@@ -17,7 +17,18 @@ export default {
   ],
   theme: {
     extend: {
+      transitionTimingFunction: { fluid: "var(--ease-fluid)" },
+      transitionDuration: { press: "var(--motion-press)", selection: "var(--motion-selection)" },
       colors: {
+        "system-background": withOpacity("--system-background"),
+        "secondary-system-background": withOpacity("--secondary-system-background"),
+        "tertiary-system-background": withOpacity("--tertiary-system-background"),
+        "label": withOpacity("--label"),
+        "secondary-label": withOpacity("--secondary-label"),
+        "separator": withOpacity("--separator"),
+        "fill": withOpacity("--fill"),
+        "accent": withOpacity("--accent"),
+
         "surface-container-low": withOpacity("--color-surface-container-low"),
         "on-secondary-container": withOpacity("--color-on-secondary-container"),
         "on-background": withOpacity("--color-on-background"),
@@ -67,10 +78,10 @@ export default {
         "surface-tint": withOpacity("--color-surface-tint")
       },
       borderRadius: {
-        "DEFAULT": "0.125rem",
-        "lg": "0.25rem",
-        "xl": "0.5rem",
-        "full": "0.75rem"
+        "DEFAULT": "0.5rem",
+        "lg": "0.75rem",
+        "xl": "1rem",
+        "full": "9999px"
       },
       spacing: {
         "margin-tablet": "1.5rem",
@@ -86,15 +97,15 @@ export default {
       },
       fontFamily: {
         "label-code-sm": ["JetBrains Mono", "monospace"],
-        "headline-lg": ["Inter", "sans-serif"],
+        "headline-lg": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"],
         "label-code": ["JetBrains Mono", "monospace"],
-        "headline-lg-mobile": ["Inter", "sans-serif"],
-        "label-ui": ["Inter", "sans-serif"],
-        "headline-md": ["Inter", "sans-serif"],
-        "body-sm": ["Inter", "sans-serif"],
-        "body-md": ["Inter", "sans-serif"],
-        "headline-sm": ["Inter", "sans-serif"],
-        "body-lg": ["Inter", "sans-serif"]
+        "headline-lg-mobile": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"],
+        "label-ui": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"],
+        "headline-md": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"],
+        "body-sm": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"],
+        "body-md": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"],
+        "headline-sm": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"],
+        "body-lg": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"]
       },
       fontSize: {
         "label-code-sm": ["11px", { lineHeight: "14px", letterSpacing: "0em", fontWeight: "400" }],

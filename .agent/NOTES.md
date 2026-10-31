@@ -34,6 +34,13 @@ Um processo. Sem Redis, sem APScheduler, sem Alembic, sem cliente de mensageiro 
 
 ## Decisões que não estão só no ADR
 
+### [2026-10-31] Tokens semânticos e movimento do shell
+
+- A paleta usa canais RGB separados por espaços em tokens de background, label, separator e fill. Os nomes legados `--color-*` apontam para esses tokens, mantendo as classes das telas durante a migração visual gradual.
+- O shell usa pressão de 100 ms e seleção de 280 ms com `cubic-bezier(0.16, 1, 0.3, 1)`. `prefers-reduced-motion` zera essas durações e remove a escala de pressão. O controle segmentado mantém botões nativos com `aria-pressed`, IDs existentes e persistência dos três modos de tema.
+- Testes de tema resolvem aliases e verificam contraste mínimo de 4.5:1 entre label e surface em ambos os temas, em vez de congelar a paleta anterior.
+
+
 ### [2026-10-25] Ícone compartilhado entre cabeçalho e favicon
 
 - O calendário com relógio usa um único SVG em `web/src/assets/scheduler.svg`, referenciado pelo HTML e pelo AppShell. O Vite publica a imagem versionada em `/assets`, já servido pelo FastAPI, sem nova rota estática. Fundo azul-marinho e traços ciano mantêm contraste nos temas claro e escuro; a imagem no cabeçalho é decorativa porque o nome do produto está ao lado.

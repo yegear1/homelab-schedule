@@ -4,22 +4,33 @@
 
 @layer base {
   :root {
-    --color-background: 248 249 252;
-    --color-surface: 255 255 255;
-    --color-surface-container-lowest: 255 255 255;
-    --color-surface-container-low: 241 244 249;
-    --color-surface-container: 232 237 245;
-    --color-surface-container-high: 222 228 238;
-    --color-surface-container-highest: 212 219 230;
-    --color-surface-variant: 223 228 236;
-    --color-surface-bright: 255 255 255;
-    --color-surface-dim: 226 231 240;
-    --color-surface-tint: 0 104 122;
-    --color-on-surface: 25 28 32;
-    --color-on-surface-variant: 68 71 78;
-    --color-outline: 116 119 127;
-    --color-outline-variant: 196 199 207;
-    --color-primary: 0 104 122;
+    --motion-press: 100ms;
+    --motion-selection: 280ms;
+    --ease-fluid: cubic-bezier(0.16, 1, 0.3, 1);
+    --system-background: 245 245 247;
+    --secondary-system-background: 255 255 255;
+    --tertiary-system-background: 238 238 240;
+    --label: 29 29 31;
+    --secondary-label: 99 99 102;
+    --separator: 198 198 200;
+    --fill: 228 228 232;
+    --accent: 0 102 204;
+    --color-background: var(--system-background);
+    --color-surface: var(--secondary-system-background);
+    --color-surface-container-lowest: var(--secondary-system-background);
+    --color-surface-container-low: var(--system-background);
+    --color-surface-container: var(--tertiary-system-background);
+    --color-surface-container-high: var(--fill);
+    --color-surface-container-highest: var(--fill);
+    --color-surface-variant: var(--fill);
+    --color-surface-bright: var(--secondary-system-background);
+    --color-surface-dim: var(--system-background);
+    --color-surface-tint: var(--accent);
+    --color-on-surface: var(--label);
+    --color-on-surface-variant: var(--secondary-label);
+    --color-outline: var(--secondary-label);
+    --color-outline-variant: var(--separator);
+    --color-primary: var(--accent);
     --color-on-primary: 255 255 255;
     --color-primary-container: 172 237 255;
     --color-on-primary-container: 0 31 38;
@@ -50,7 +61,7 @@
     --color-inverse-surface: 40 48 68;
     --color-inverse-on-surface: 218 226 253;
     --color-inverse-primary: 76 215 246;
-    --color-on-background: 25 28 32;
+    --color-on-background: var(--label);
   }
 
   :root.dark,
@@ -58,22 +69,30 @@
   [data-theme="dark"],
   html[data-theme="dark"],
   body.dark {
-    --color-background: 11 19 38;
-    --color-surface: 11 19 38;
-    --color-surface-container-lowest: 6 14 32;
-    --color-surface-container-low: 19 27 46;
-    --color-surface-container: 23 31 51;
-    --color-surface-container-high: 34 42 61;
-    --color-surface-container-highest: 45 52 73;
-    --color-surface-variant: 45 52 73;
-    --color-surface-bright: 49 57 77;
-    --color-surface-dim: 11 19 38;
-    --color-surface-tint: 76 215 246;
-    --color-on-surface: 218 226 253;
-    --color-on-surface-variant: 188 201 205;
-    --color-outline: 134 147 151;
-    --color-outline-variant: 61 73 76;
-    --color-primary: 76 215 246;
+    --system-background: 28 28 30;
+    --secondary-system-background: 44 44 46;
+    --tertiary-system-background: 58 58 60;
+    --label: 245 245 247;
+    --secondary-label: 174 174 178;
+    --separator: 84 84 88;
+    --fill: 68 68 72;
+    --accent: 100 181 255;
+    --color-background: var(--system-background);
+    --color-surface: var(--secondary-system-background);
+    --color-surface-container-lowest: var(--secondary-system-background);
+    --color-surface-container-low: var(--system-background);
+    --color-surface-container: var(--tertiary-system-background);
+    --color-surface-container-high: var(--fill);
+    --color-surface-container-highest: var(--fill);
+    --color-surface-variant: var(--fill);
+    --color-surface-bright: var(--secondary-system-background);
+    --color-surface-dim: var(--system-background);
+    --color-surface-tint: var(--accent);
+    --color-on-surface: var(--label);
+    --color-on-surface-variant: var(--secondary-label);
+    --color-outline: var(--secondary-label);
+    --color-outline-variant: var(--separator);
+    --color-primary: var(--accent);
     --color-on-primary: 0 54 64;
     --color-primary-container: 6 182 212;
     --color-on-primary-container: 0 66 79;
@@ -104,7 +123,7 @@
     --color-inverse-surface: 218 226 253;
     --color-inverse-on-surface: 40 48 68;
     --color-inverse-primary: 0 104 122;
-    --color-on-background: 218 226 253;
+    --color-on-background: var(--label);
   }
 
   html {
@@ -119,6 +138,9 @@
   }
   body {
     overscroll-behavior: none;
+    background: rgb(var(--system-background));
+    color: rgb(var(--label));
+    -webkit-font-smoothing: antialiased;
   }
   main > :first-child {
     margin-top: 0 !important;
@@ -128,7 +150,41 @@
   }
 }
 
-::-webkit-scrollbar {
-  display: none;
+@layer components {
+  .shell-action {
+    transition: background-color var(--motion-selection) var(--ease-fluid),
+      color var(--motion-selection) var(--ease-fluid),
+      transform var(--motion-press) var(--ease-fluid);
+  }
+  .shell-action:active:not(:disabled) { transform: scale(0.98); }
+  .segmented-control {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 3px;
+    border-radius: 10px;
+    background: rgb(var(--fill) / 0.65);
+  }
+  .segmented-indicator {
+    position: absolute;
+    z-index: -1;
+    inset: 3px auto 3px 3px;
+    width: calc((100% - 6px) / 3);
+    border-radius: 7px;
+    background: rgb(var(--secondary-system-background));
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
+    transform: translateX(calc(var(--selected-index, 0) * 100%));
+    transition: transform var(--motion-selection) var(--ease-fluid);
+  }
+  .shell-action:focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-press: 0ms; --motion-selection: 0ms; }
+  .shell-action:active:not(:disabled) { transform: none; }
 }
 

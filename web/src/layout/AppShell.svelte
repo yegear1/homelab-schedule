@@ -18,164 +18,101 @@
   let showBackupModal = $state(false);
   let hasApiKey = $derived(Boolean(api.getApiKey()));
 
+  const themeOptions: { mode: ThemeMode; label: string; icon: string }[] = [
+    { mode: 'light', label: 'Claro', icon: 'light_mode' },
+    { mode: 'system', label: 'Sistema', icon: 'desktop_windows' },
+    { mode: 'dark', label: 'Escuro', icon: 'dark_mode' },
+  ];
+  const themeIndex = $derived(themeOptions.findIndex((option) => option.mode === theme.mode));
+
   const navItems = [
-    { name: 'Contatos', path: '/contacts', id: 'scr-contacts', routeName: 'contacts', subRoute: 'contact-detail' },
-    { name: 'Modelos', path: '/templates', id: 'scr-templates', routeName: 'templates', subRoute: '' },
-    { name: 'Agendas', path: '/jobs', id: 'scr-jobs', routeName: 'jobs', subRoute: '' },
+    { name: 'Contatos', icon: 'contacts', path: '/contacts', id: 'scr-contacts', routeName: 'contacts', subRoute: 'contact-detail' },
+    { name: 'Modelos', icon: 'description', path: '/templates', id: 'scr-templates', routeName: 'templates', subRoute: '' },
+    { name: 'Agendas', icon: 'calendar_month', path: '/jobs', id: 'scr-jobs', routeName: 'jobs', subRoute: '' },
   ];
 </script>
 
-<!-- ASIDE: Navigation Rail -->
-<aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest flex flex-col z-50 shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-r border-outline-variant/10">
-  <div class="h-16 px-space-md flex items-center gap-space-sm bg-surface-container-low/40">
-    <img src={schedulerIcon} alt="" width="32" height="32" class="w-8 h-8 shrink-0" />
-    <div class="flex flex-col min-w-0">
-      <span class="font-headline-sm text-headline-sm text-on-surface truncate tracking-tight">Homelab Scheduler</span>
-      <span class="font-label-ui text-label-ui text-primary uppercase tracking-wider truncate">Despachante</span>
+<aside class="fixed inset-y-0 left-0 z-40 flex w-20 flex-col border-r border-separator/40 bg-system-background/85 backdrop-blur-xl md:w-60">
+  <div class="flex h-20 shrink-0 items-center justify-center gap-3 px-4 md:justify-start">
+    <img src={schedulerIcon} alt="" width="36" height="36" class="h-9 w-9 shrink-0 rounded-xl shadow-sm" />
+    <div class="hidden min-w-0 md:block">
+      <span class="block truncate font-headline-sm text-body-lg font-semibold text-label">Homelab Scheduler</span>
+      <span class="text-body-sm text-secondary-label">Sua agenda de mensagens</span>
     </div>
   </div>
 
-  <div class="px-space-md py-space-sm">
-    <div class="bg-surface-container-low px-space-sm py-space-xs rounded flex items-center justify-between">
-      <div class="flex items-center gap-space-xs">
-        <span class="relative flex h-2 w-2">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
-        </span>
-        <span class="font-label-code-sm text-label-code-sm text-on-surface-variant">Tick local (SQLite)</span>
-      </div>
-      <span class="font-label-code-sm text-label-code-sm text-tertiary">SYNC</span>
-    </div>
-  </div>
-
-  <nav class="flex-1 px-space-sm py-space-xs flex flex-col gap-space-xs">
+  <nav aria-label="Navegação principal" class="flex-1 space-y-1 px-3 pt-4">
+    <p class="mb-3 hidden px-3 text-body-sm font-semibold text-secondary-label md:block">Biblioteca</p>
     {#each navItems as item}
       {@const isActive = router.route === item.routeName || (item.subRoute && router.route === item.subRoute)}
       <a
-        aria-current={isActive ? 'page' : undefined}
-        class="flex items-center justify-between px-space-md py-space-sm transition-colors rounded {isActive ? 'bg-surface-container-high text-primary font-headline-sm' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'}"
-        href={item.path}
         id="nav-{item.id}"
+        href={item.path}
+        title={item.name}
+        aria-label={item.name}
+        aria-current={isActive ? 'page' : undefined}
+        class="shell-action flex min-h-11 items-center justify-center gap-3 rounded-lg px-3 text-body-lg md:justify-start {isActive ? 'bg-primary/10 font-semibold text-primary' : 'text-secondary-label hover:bg-fill/60 hover:text-label'}"
       >
-        <span class="font-body-md text-body-md">{item.name}</span>
-        <span class="font-label-code-sm text-label-code-sm {isActive ? 'text-primary/70' : 'text-outline'}">{item.path}</span>
+        <span aria-hidden="true" class="material-symbols-outlined text-[21px]">{item.icon}</span>
+        <span class="hidden md:inline">{item.name}</span>
       </a>
     {/each}
   </nav>
 
-  <div class="p-space-md bg-surface-container-lowest flex flex-col gap-space-sm border-t border-outline-variant/10">
-    <button
-      id="btn-open-backup-modal-sidebar"
-      class="bg-surface-container-low p-space-sm rounded flex items-center justify-between text-left hover:bg-surface-container transition-colors cursor-pointer"
-      onclick={() => (showBackupModal = true)}
-      type="button"
-    >
-      <div class="flex items-center gap-space-xs">
-        <span class="material-symbols-outlined text-primary text-[18px]">database</span>
-        <span class="font-label-ui text-label-ui uppercase text-on-surface-variant">Backup & Dados</span>
-      </div>
-      <span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
+  <div class="space-y-2 border-t border-separator/40 p-3">
+    <button id="btn-open-backup-modal-sidebar" type="button" title="Backup e dados"
+      class="shell-action flex min-h-11 w-full items-center justify-center gap-3 rounded-lg px-3 text-secondary-label hover:bg-fill/60 hover:text-label md:justify-start"
+      onclick={() => (showBackupModal = true)}>
+      <span aria-hidden="true" class="material-symbols-outlined text-[21px]">database</span>
+      <span class="hidden text-body-md md:inline">Backup e dados</span>
     </button>
-
-    <button
-      class="bg-surface-container-low p-space-sm rounded flex flex-col gap-space-xs text-left hover:bg-surface-container transition-colors cursor-pointer"
-      onclick={() => (showApiKeyModal = true)}
-      type="button"
-    >
-      <div class="flex items-center justify-between">
-        <span class="font-label-ui text-label-ui uppercase text-on-surface-variant">Credencial API</span>
-        <span class="h-1.5 w-1.5 rounded-full {hasApiKey ? 'bg-tertiary' : 'bg-error'}"></span>
-      </div>
-      <span class="font-label-code-sm text-label-code-sm {hasApiKey ? 'text-tertiary' : 'text-error'} truncate">
-        {hasApiKey ? 'x-api-key: configurada' : 'x-api-key: pendente'}
+    <button type="button" title="Configurar chave da API"
+      class="shell-action flex min-h-11 w-full items-center justify-center gap-3 rounded-lg px-3 text-secondary-label hover:bg-fill/60 hover:text-label md:justify-start"
+      onclick={() => (showApiKeyModal = true)}>
+      <span aria-hidden="true" class="material-symbols-outlined text-[21px]">key</span>
+      <span class="hidden text-left md:block">
+        <span class="block text-body-md text-label">Chave da API</span>
+        <span class="text-body-sm {hasApiKey ? 'text-secondary-label' : 'text-error'}">{hasApiKey ? 'Configurada neste navegador' : 'Configuração pendente'}</span>
       </span>
-      <span class="font-label-code-sm text-label-code-sm text-outline">Armazenada no cliente</span>
     </button>
-
-    <div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm pt-space-xs">
-      <span>Node: hl-node-01</span>
-      <span>v0.2.0</span>
-    </div>
   </div>
 </aside>
 
-<!-- TOP HEADER -->
-<div class="pl-64">
-  <header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-gutter-desktop border-b border-outline-variant/10">
-    <div class="flex items-center gap-space-md">
-      <div class="flex items-center gap-space-xs px-space-sm py-space-xs rounded bg-surface-container-low text-tertiary">
-        <span class="material-symbols-outlined text-[16px]">bolt</span>
-        <span class="font-label-code text-label-code font-semibold">DISPATCHER PRONTO</span>
-      </div>
-      <button
-        type="button"
-        id="btn-open-backup-modal-header"
+<div class="pl-20 md:pl-60">
+  <header class="fixed left-20 right-0 top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-separator/40 bg-secondary-system-background/80 px-3 backdrop-blur-xl md:left-60 md:px-6">
+    <span class="hidden text-body-md font-medium text-secondary-label sm:block">{router.route === 'contact-detail' ? 'Contato' : navItems.find((item) => item.routeName === router.route)?.name}</span>
+    <div class="ml-auto flex items-center gap-2 md:gap-4">
+      <button type="button" id="btn-open-backup-modal-header" title="Backup e dados"
         onclick={() => (showBackupModal = true)}
-        class="hidden lg:flex items-center gap-space-xs text-on-surface-variant font-label-code-sm text-label-code-sm hover:text-primary transition-colors cursor-pointer py-1 px-2 rounded hover:bg-surface-container"
-        title="Backup e Dados SQLite"
-      >
-        <span class="text-outline">DRIVER:</span>
-        <span class="text-on-surface font-mono">SQLite WAL-mode</span>
-        <span class="material-symbols-outlined text-[16px] text-tertiary">database</span>
+        class="shell-action hidden min-h-10 items-center gap-2 rounded-lg px-3 text-body-md text-secondary-label hover:bg-fill/60 hover:text-label lg:flex">
+        <span aria-hidden="true" class="material-symbols-outlined text-[18px]">database</span>
+        Backup e dados
       </button>
-    </div>
-
-    <div class="flex items-center gap-space-md">
-      <!-- Theme Switcher Group (light | system | dark) -->
-      <div aria-label="Controle de tema" class="flex items-center p-0.5 rounded bg-surface-container-low" role="group">
-        <button
-          id="theme-btn-light"
-          aria-label="Tema Claro (Light)"
-          aria-pressed={theme.mode === 'light'}
-          title="Tema Claro"
-          class="px-space-sm py-0.5 rounded font-label-ui text-label-ui transition-colors {theme.mode === 'light' ? 'bg-surface-container text-primary shadow-sm font-bold' : 'text-on-surface-variant hover:text-on-surface'}"
-          onclick={() => theme.setMode('light')}
-          type="button"
-        >
-          light
-        </button>
-        <button
-          id="theme-btn-system"
-          aria-label="Tema do Sistema (System)"
-          aria-pressed={theme.mode === 'system'}
-          title="Tema do Sistema"
-          class="px-space-sm py-0.5 rounded font-label-ui text-label-ui transition-colors {theme.mode === 'system' ? 'bg-surface-container text-primary shadow-sm font-bold' : 'text-on-surface-variant hover:text-on-surface'}"
-          onclick={() => theme.setMode('system')}
-          type="button"
-        >
-          system
-        </button>
-        <button
-          id="theme-btn-dark"
-          aria-label="Tema Escuro (Dark)"
-          aria-pressed={theme.mode === 'dark'}
-          title="Tema Escuro"
-          class="px-space-sm py-0.5 rounded font-label-ui text-label-ui transition-colors {theme.mode === 'dark' ? 'bg-surface-container text-primary shadow-sm font-bold' : 'text-on-surface-variant hover:text-on-surface'}"
-          onclick={() => theme.setMode('dark')}
-          type="button"
-        >
-          dark
-        </button>
+      <div aria-label="Controle de tema" class="segmented-control" role="group" style:--selected-index={themeIndex}>
+        <span class="segmented-indicator" aria-hidden="true"></span>
+        {#each themeOptions as option}
+          <button id="theme-btn-{option.mode}" type="button" title="Tema {option.label}"
+            aria-label="Tema {option.label}" aria-pressed={theme.mode === option.mode}
+            class="shell-action flex min-h-9 min-w-10 items-center justify-center gap-1.5 rounded-lg px-2 text-body-sm {theme.mode === option.mode ? 'font-semibold text-label' : 'text-secondary-label hover:text-label'}"
+            onclick={() => theme.setMode(option.mode)}>
+            <span aria-hidden="true" class="material-symbols-outlined text-[16px]">{option.icon}</span>
+            <span class="hidden lg:inline">{option.label}</span>
+          </button>
+        {/each}
       </div>
-
-      <button
-        class="w-8 h-8 rounded-full bg-primary flex items-center justify-center hover:opacity-90 transition-opacity"
-        onclick={() => (showApiKeyModal = true)}
-        title="Configurações da API"
-        type="button"
-      >
-        <span class="material-symbols-outlined text-on-primary text-[18px]">person</span>
+      <button type="button" title="Configurações da API"
+        class="shell-action flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20"
+        onclick={() => (showApiKeyModal = true)}>
+        <span aria-hidden="true" class="material-symbols-outlined text-[20px]">tune</span>
       </button>
     </div>
   </header>
 
-  <!-- MAIN VIEW CONTAINER -->
-  <main class="w-full pt-16 bg-surface min-h-screen px-gutter-desktop py-margin-desktop">
+  <main class="min-h-screen w-full bg-system-background px-3 pb-8 pt-24 md:px-6">
     {@render children()}
   </main>
 </div>
 
-<!-- GLOBAL TOAST AND MODALS -->
 <Toast />
 <ApiKeyModal open={showApiKeyModal} onclose={() => (showApiKeyModal = false)} />
 <BackupModal open={showBackupModal} onclose={() => (showBackupModal = false)} />
