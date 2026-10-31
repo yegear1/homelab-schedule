@@ -7,23 +7,19 @@
 
 ## Active Task
 
-- **Task:** `[02.15]` Fast Tabular CSV Export for Jobs and Execution History (`job_runs`)
-- **Status:** `RUNNING`
-- **Scope:**
-  - Add authenticated `GET /jobs/export.csv` and `GET /jobs/runs/export.csv` downloads; register static routes before job-ID routes.
-  - Export jobs using existing agenda filters (status, date range, phone, group, tag, query), including SQLite and YAML jobs. Export runs with optional status and job-ID filters. Export every matching row independently of UI pagination.
-  - Define stable column headers from existing job/run models; serialize timestamps as ISO-8601, nulls as empty cells, and compound values as JSON. Use UTF-8 BOM, standard CSV quoting, and spreadsheet formula-injection protection for text cells.
-  - Keep routers thin, CSV serialization in the service layer, and parameterized reads in the repository. Read and emit bounded batches without loading the entire export into memory or holding a long write transaction. Add no dependencies or schema migrations.
-  - Add accessible CSV download controls to the agenda and execution-history UI with authenticated Blob downloads, loading/error states, and object-URL cleanup.
-  - Synchronize HTTP/UI contracts and notes; test authentication, filters, full export beyond list limits, empty results, quoting/Unicode, formula protection, and unchanged JSON behavior.
-- **Approval:** Detailed plan approved by the user on 2026-10-31; implementation in progress.
-- **Validation:** `npm run check`, `npm run build`, `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
+- **Task:** `[02.16]` Health Metrics and Operational Summary in MCP (`health_metrics` and aggregate status)
+- **Status:** `READY FOR PLANNING`
+- **Scope:** Plan aggregate operational metrics while preserving the closed MCP surface and existing contracts.
+- **Approval:** Detailed plan pending; implementation not started.
+- **Validation:** `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
 
 ---
 
 ## Completed Tasks Log
 
 Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
+
+- [02.15] Authenticated filtered CSV downloads for jobs and execution history, bounded keyset reads, spreadsheet-safe cells, and accessible UI downloads | [`59c04cd`] | 2026-10-31 | check/build (zero diagnostics), 212 tests, mypy, Ruff and diff check: exit 0
 
 - [02.16.4] Semantic agenda panels, responsive table/timeline/calendar controls, accessible selection and keyboard inspection, and reduced motion | [`5a24c1b`] | 2026-10-31 | check/build (zero diagnostics), 201 tests, mypy, Ruff and diff check: exit 0
 
@@ -48,7 +44,7 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 ## Backlog (Upcoming, in priority order)
 
-- [ ] **[02.16]** Health Metrics and Operational Summary in MCP (`health_metrics` and aggregate status)
+No additional feature tasks queued.
 
 ---
 
