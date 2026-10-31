@@ -7,9 +7,9 @@
 
 ## Active Task
 
-- **Task:** [00.12] Open Source Readiness: Licensing, Community Governance, and Sanitization Audit
-- **Status:** `RUNNING`
-- **Next Step:** Implement root LICENSE, update pyproject.toml & web/package.json manifests, scaffold community governance, sanitize .env.example, configure git noreply, and verify all suites.
+- **Task:** None; the feature backlog is empty.
+- **Status:** `IDLE`
+- **Next Step:** Await the next operator task. Release/tag remains gated by explicit request.
 
 ---
 
@@ -17,6 +17,7 @@
 
 Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
+- [00.12] Open Source Readiness: Licensing, Community Governance, and Sanitization Audit | [`94a4477`] | 2026-10-31 | 234 tests, mypy, Ruff and diff check: exit 0
 - [02.16] Authenticated operational aggregates and bounded `health_metrics` MCP tool; synchronized ADR/contracts and privacy checks | [`4e69ee8`] | 2026-10-31 | 234 tests, mypy, Ruff and diff check: exit 0
 
 - [02.15] Authenticated filtered CSV downloads for jobs and execution history, bounded keyset reads, spreadsheet-safe cells, and accessible UI downloads | [`59c04cd`] | 2026-10-31 | check/build (zero diagnostics), 212 tests, mypy, Ruff and diff check: exit 0
