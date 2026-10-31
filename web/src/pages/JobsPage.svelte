@@ -743,11 +743,11 @@
   }
 </script>
 
-<div class="flex flex-col w-full" data-state={loading ? 'loading' : errorMsg ? 'error' : 'ready'} id="scr-jobs">
+<div class="agenda-page flex flex-col w-full" data-state={loading ? 'loading' : errorMsg ? 'error' : 'ready'} id="scr-jobs">
   <!-- HEADER METRICS & STATUS RAIL -->
   <section class="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-space-lg">
     <!-- METRIC 1 -->
-    <div class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden border border-outline-variant/10">
+    <div class="agenda-panel bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden border border-outline-variant/10">
       <div class="flex items-center justify-between">
         <span class="font-label-ui text-label-ui text-on-surface-variant uppercase tracking-wider">Total Agendado</span>
         <span class="material-symbols-outlined text-primary text-[18px]">schedule</span>
@@ -763,7 +763,7 @@
     </div>
 
     <!-- METRIC 2 -->
-    <div class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden border border-outline-variant/10">
+    <div class="agenda-panel bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden border border-outline-variant/10">
       <div class="flex items-center justify-between">
         <span class="font-label-ui text-label-ui text-on-surface-variant uppercase tracking-wider">Despachante</span>
         <span class="material-symbols-outlined text-tertiary text-[18px]">done_all</span>
@@ -782,7 +782,7 @@
     <button
       type="button"
       id="card-metric-errors"
-      class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden border border-outline-variant/10 text-left hover:border-error/40 transition-colors cursor-pointer"
+      class="agenda-panel bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden border border-outline-variant/10 text-left hover:border-error/40 transition-colors cursor-pointer"
       onclick={() => {
         filterStatus = 'error';
         loadJobs();
@@ -809,7 +809,7 @@
     </button>
 
     <!-- METRIC 4: STORAGE -->
-    <div class="bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden border border-outline-variant/10">
+    <div class="agenda-panel bg-surface-container-low p-space-md rounded shadow-sm flex flex-col justify-between relative overflow-hidden border border-outline-variant/10">
       <div class="flex items-center justify-between">
         <span class="font-label-ui text-label-ui text-on-surface-variant uppercase tracking-wider">Modo Storage</span>
         <span class="font-label-code-sm text-label-code-sm text-primary px-1.5 py-0.5 rounded bg-surface-container font-mono">WAL</span>
@@ -825,7 +825,7 @@
   </section>
 
   <!-- WIDGET 1: JOB FILTERS (wdg-job-filters) -->
-  <section class="bg-surface-container-low p-space-md rounded shadow-sm mb-space-lg border border-outline-variant/10" id="wdg-job-filters">
+  <section class="agenda-panel bg-surface-container-low p-space-md rounded shadow-sm mb-space-lg border border-outline-variant/10" id="wdg-job-filters">
     <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md mb-space-sm">
       <div class="flex items-center gap-space-xs">
         <span class="material-symbols-outlined text-primary text-[18px]">tune</span>
@@ -954,6 +954,7 @@
         <button
           class="px-space-sm py-1.5 rounded bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer"
           id="btn-reset-filters"
+          aria-label="Limpar filtros"
           onclick={resetFilters}
           title="Limpar Filtros"
           type="button"
@@ -967,8 +968,8 @@
   <!-- MAIN DUAL-PANE VIEW: LIST & DETAIL -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
     <!-- WIDGET 2: JOB LIST (wdg-job-list) - 7 cols on Desktop -->
-    <section class="lg:col-span-7 bg-surface-container-low p-space-md rounded shadow-sm flex flex-col border border-outline-variant/10" id="wdg-job-list">
-      <div class="flex items-center justify-between mb-space-sm">
+    <section class="agenda-panel lg:col-span-7 bg-surface-container-low p-space-md rounded shadow-sm flex flex-col border border-outline-variant/10" id="wdg-job-list">
+      <div class="agenda-toolbar flex items-center justify-between mb-space-sm">
         <div class="flex items-center gap-space-xs">
           <span class="material-symbols-outlined text-on-surface-variant text-[18px]">dataset</span>
           <h2 class="font-headline-sm text-headline-sm text-on-surface">Agendas Registradas</h2>
@@ -993,10 +994,11 @@
       </div>
 
       <!-- Segmented View Mode Switcher -->
-      <div class="flex items-center gap-1 p-1 bg-surface-container-lowest rounded border border-outline-variant/10 mb-space-sm w-fit" id="view-mode-switcher">
+      <div class="agenda-segments flex items-center gap-1 p-1 bg-surface-container-lowest rounded border border-outline-variant/10 mb-space-sm w-fit" id="view-mode-switcher">
         <button
           type="button"
           id="tab-view-table"
+          aria-pressed={activeView === 'table'}
           class="px-2.5 py-1 rounded text-[12px] font-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer {activeView === 'table' ? 'bg-primary text-on-primary font-semibold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
           onclick={() => (activeView = 'table')}
         >
@@ -1006,6 +1008,7 @@
         <button
           type="button"
           id="tab-view-timeline"
+          aria-pressed={activeView === 'timeline'}
           class="px-2.5 py-1 rounded text-[12px] font-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer {activeView === 'timeline' ? 'bg-primary text-on-primary font-semibold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
           onclick={() => (activeView = 'timeline')}
         >
@@ -1015,6 +1018,7 @@
         <button
           type="button"
           id="tab-view-calendar"
+          aria-pressed={activeView === 'calendar'}
           class="px-2.5 py-1 rounded text-[12px] font-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer {activeView === 'calendar' ? 'bg-primary text-on-primary font-semibold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
           onclick={() => (activeView = 'calendar')}
         >
@@ -1025,8 +1029,10 @@
 
       {#if activeView === 'table'}
         <!-- Tabela Estruturada de Recados -->
-        <div class="overflow-x-auto w-full">
-        <table class="w-full min-w-[660px] table-fixed text-left font-body-sm text-body-sm text-on-surface">
+        <!-- Keyboard focus enables native arrow-key scrolling of the wide table. -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div class="agenda-table-scroll overflow-x-auto w-full" role="region" aria-label="Tabela de agendamentos" tabindex="0">
+        <table aria-label="Agendamentos" class="agenda-table w-full min-w-[660px] table-fixed text-left font-body-sm text-body-sm text-on-surface">
           <colgroup>
             <col style="width: 145px;" class="w-[145px]" />
             <col />
@@ -1036,11 +1042,11 @@
           </colgroup>
           <thead>
             <tr class="bg-surface-container-lowest text-on-surface-variant font-label-ui text-label-ui uppercase tracking-wider border-b border-outline-variant/10">
-              <th class="py-2.5 px-space-sm w-[145px] whitespace-nowrap">Status</th>
-              <th class="py-2.5 px-space-sm">Título &amp; Destino</th>
-              <th class="py-2.5 px-space-sm w-[180px] whitespace-nowrap">Tipo / Próx. Execução</th>
-              <th class="py-2.5 px-space-sm w-[110px] whitespace-nowrap">Origem</th>
-              <th class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap">Ações</th>
+              <th scope="col" class="py-2.5 px-space-sm w-[145px] whitespace-nowrap">Status</th>
+              <th scope="col" class="py-2.5 px-space-sm">Título &amp; Destino</th>
+              <th scope="col" class="py-2.5 px-space-sm w-[180px] whitespace-nowrap">Tipo / Próx. Execução</th>
+              <th scope="col" class="py-2.5 px-space-sm w-[110px] whitespace-nowrap">Origem</th>
+              <th scope="col" class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap">Ações</th>
             </tr>
           </thead>
           <tbody class="font-label-code-sm text-label-code-sm divide-y divide-surface-container-high/20" id="job-table-body">
@@ -1061,6 +1067,7 @@
                   <tr
                     class="transition-colors cursor-pointer group {isSelected ? 'bg-surface-container-high' : 'bg-surface-container hover:bg-surface-container-high/60'}"
                     data-job-id={job.id}
+                    aria-current={isSelected ? 'true' : undefined}
                     onclick={() => inspectJob(job.id)}
                   >
                     <td class="py-2.5 px-space-sm whitespace-nowrap w-[145px]">
@@ -1079,9 +1086,10 @@
 
                     <td class="py-2.5 px-space-sm">
                       <div class="flex items-center gap-2">
-                        <span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors">
+                        <button type="button" class="agenda-job-title font-body-md text-body-md font-semibold transition-colors"
+                          onclick={(event) => { event.stopPropagation(); inspectJob(job.id); }}>
                           {job.title}
-                        </span>
+                        </button>
                       </div>
                       <div class="text-outline flex items-center gap-1.5 flex-wrap font-mono mt-0.5">
                         <span class="material-symbols-outlined text-[13px]">call_made</span>
@@ -1308,9 +1316,15 @@
                         <span class="material-symbols-outlined text-[16px] text-secondary transition-transform {isExpanded ? 'rotate-180' : ''}">
                           expand_more
                         </span>
-                        <span class="font-body-md text-body-md font-semibold text-on-surface">
+                        <button type="button" class="agenda-job-title font-body-md text-body-md font-semibold"
+                          aria-expanded={isExpanded}
+                          onclick={(event) => {
+                            event.stopPropagation();
+                            toggleGroupCollapse(row.groupId);
+                            if (!isAnySelected && row.items.length > 0) inspectJob(row.items[0].id);
+                          }}>
                           {row.title}
-                        </span>
+                        </button>
                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary/15 text-secondary font-label-code-sm text-label-code-sm font-semibold" title="Grupo: {row.groupId}">
                           <span class="material-symbols-outlined text-[12px]">group</span>
                           <span>Grupo ({row.items.length} destinatários)</span>
@@ -1433,6 +1447,7 @@
                       <tr
                         class="transition-colors cursor-pointer group/child {isMemberSelected ? 'bg-secondary/20 font-semibold' : 'bg-surface-container-lowest hover:bg-surface-container-high/40'}"
                         data-job-id={memberJob.id}
+                        aria-current={isMemberSelected ? 'true' : undefined}
                         onclick={() => inspectJob(memberJob.id)}
                       >
                         <!-- Sub-status (Alinhado com master row, sem quebra de linha) -->
@@ -1477,7 +1492,11 @@
                                 </span>
                               {/if}
                             {/if}
-                            <span class="text-label-code-sm text-outline">{memberRecipient.targetNumber}</span>
+                            <button type="button" class="agenda-job-title text-label-code-sm"
+                              aria-label="Inspecionar {memberJob.title}: {memberRecipient.targetNumber}"
+                              onclick={(event) => { event.stopPropagation(); inspectJob(memberJob.id); }}>
+                              {memberRecipient.targetNumber}
+                            </button>
                             {#if memberJob.template_id}
                               <span class="text-outline-variant font-label-code-sm text-label-code-sm">• tpl: {memberJob.template_id}</span>
                             {/if}
@@ -1624,7 +1643,7 @@
     {#if selectedJob}
       {@const recipient = resolveRecipient(selectedJob)}
       {@const creatorContact = selectedJob.created_by ? contactsByPhone.get(selectedJob.created_by) : null}
-      <section class="lg:col-span-5 bg-surface-container-low p-space-md rounded shadow-sm flex flex-col gap-space-md sticky top-20 border border-outline-variant/10" id="wdg-job-detail">
+      <section class="agenda-panel lg:col-span-5 bg-surface-container-low p-space-md rounded shadow-sm flex flex-col gap-space-md sticky top-20 border border-outline-variant/10" id="wdg-job-detail">
         <div class="flex items-center justify-between pb-space-xs">
           <div class="flex items-center gap-space-xs">
             <span class="material-symbols-outlined text-primary text-[20px]">policy</span>

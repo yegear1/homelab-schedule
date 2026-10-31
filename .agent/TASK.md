@@ -8,11 +8,16 @@
 ## Active Task
 
 - **Task:** `[02.16.4]` HIG Agenda Core (`JobsPage`, `JobTimelineView`, and `JobCalendarView`)
-- **Status:** `READY FOR PLANNING`
+- **Status:** `RUNNING`
 - **Scope:**
   - Apply existing semantic tokens and shared visual patterns to the agenda table, timeline, and calendar.
   - Preserve DOM IDs, view switching, filters, keyboard navigation, and job action contracts.
-- **Approval:** Detailed plan pending; task not yet started.
+- **Approval:** User approved the agenda presentation plan on 2026-10-31.
+- **Plan:**
+  1. Apply existing semantic surface, label, separator, accent, and motion tokens to the agenda table, timeline, and calendar.
+  2. Align filters, view switching, job actions, and empty/loading/error states with shared presentation patterns; preserve DOM IDs, payloads, grouping, and navigation behavior.
+  3. Provide responsive layouts, 44 px touch controls, visible keyboard focus, accessible names, and reduced-motion behavior.
+  4. Run all listed validation commands, document presentation decisions, create an atomic Conventional Commit, and log its hash before promoting the next task.
 - **Validation:** `npm run check`, `npm run build`, `uv run pytest -v`, `uv run mypy .`, `uv run ruff check .` and `git diff --check` must exit with code 0.
 
 ### Next Planned Tasks

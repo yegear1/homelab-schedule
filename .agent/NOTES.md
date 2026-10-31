@@ -33,6 +33,12 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 ## Architectural Decisions Beyond ADRs
 
+### [2026-10-31] Agenda Presentation
+
+- Agenda table, timeline, and calendar share semantic panels and existing control primitives (44 px touch targets, visible focus, fluid motion, and reduced-motion handling). Selection is exposed through `aria-pressed` or `aria-current`; calendar day labels include event counts and errors.
+- The fixed-column agenda table has a 1080 px minimum width and a named, keyboard-focusable horizontal scroll region. Job titles, group titles, and member destinations are native inspection buttons; propagation guards preserve nested actions and group behavior.
+- Calendar grids retain seven columns with a 308 px minimum width inside a scrollable panel. Event actions wrap, narrow-screen day indicators truncate, and the detail panel stops sticking on mobile. DOM IDs, filtering, grouping, API calls, and payloads remain unchanged.
+
 ### [2026-10-31] Support Screen Presentation
 
 - Templates, contacts, and contact detail use semantic surface, label, separator, and accent tokens. Shared `support-page` styles remain scoped to these screens; `support-panel` provides consistent card rounding and subtle shadows.

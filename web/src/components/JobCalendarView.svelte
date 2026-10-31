@@ -218,9 +218,9 @@
   }
 </script>
 
-<div class="flex flex-col gap-space-md w-full" id="job-calendar-view">
+<div class="agenda-page flex flex-col gap-space-md w-full" id="job-calendar-view">
   <!-- Calendar Navigation Header -->
-  <div class="flex items-center justify-between flex-wrap gap-space-sm bg-surface-container-lowest p-space-sm rounded border border-outline-variant/10">
+  <div class="agenda-panel agenda-toolbar flex items-center justify-between flex-wrap gap-space-sm bg-surface-container-lowest p-space-sm rounded border border-outline-variant/10">
     <div class="flex items-center gap-space-sm">
       <h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold capitalize" id="calendar-current-month">
         {monthNames[viewMonth]} {viewYear}
@@ -260,7 +260,7 @@
   </div>
 
   <!-- MONTH GRID -->
-  <div class="bg-surface-container-lowest rounded border border-outline-variant/10 overflow-hidden shadow-sm">
+  <div class="agenda-panel agenda-calendar-month bg-surface-container-lowest rounded border border-outline-variant/10 overflow-hidden shadow-sm">
     <!-- Weekday headers -->
     <div class="grid grid-cols-7 border-b border-outline-variant/10 bg-surface-container-low/50 text-center">
       {#each weekDays as wd}
@@ -278,7 +278,9 @@
           class="min-h-[76px] p-1.5 flex flex-col justify-between text-left transition-colors cursor-pointer {cell.isCurrentMonth ? 'bg-surface-container-lowest hover:bg-surface-container-low/40' : 'bg-surface-container-low/20 text-outline-variant hover:bg-surface-container-low/40'} {cell.isSelected ? 'ring-2 ring-inset ring-primary bg-primary/5' : ''}"
           onclick={() => (selectedDateKey = cell.dateKey)}
           id="calendar-day-{cell.dateKey}"
-          aria-label="{cell.dateKey}"
+          aria-label="{cell.dateKey}: {cell.scheduledCount} agendamentos, {cell.runsCount} execuções{cell.hasError ? ', contém erro' : ''}"
+          aria-pressed={cell.isSelected}
+          aria-current={cell.isToday ? 'date' : undefined}
         >
           <!-- Day number badge -->
           <div class="flex items-center justify-between">
@@ -296,13 +298,13 @@
           <!-- Event indicators -->
           <div class="flex flex-col gap-0.5 mt-1">
             {#if cell.scheduledCount > 0}
-              <div class="px-1 py-0.2 rounded bg-primary/10 text-primary text-[10px] font-mono truncate flex items-center gap-0.5">
+              <div class="agenda-calendar-indicator px-1 py-0.2 rounded bg-primary/10 text-primary text-[10px] font-mono truncate flex items-center gap-0.5">
                 <span class="material-symbols-outlined text-[10px]">schedule</span>
                 <span>{cell.scheduledCount} {cell.scheduledCount === 1 ? 'agendado' : 'agendados'}</span>
               </div>
             {/if}
             {#if cell.runsCount > 0}
-              <div class="px-1 py-0.2 rounded bg-tertiary/10 text-tertiary text-[10px] font-mono truncate flex items-center gap-0.5">
+              <div class="agenda-calendar-indicator px-1 py-0.2 rounded bg-tertiary/10 text-tertiary text-[10px] font-mono truncate flex items-center gap-0.5">
                 <span class="material-symbols-outlined text-[10px]">done</span>
                 <span>{cell.runsCount} {cell.runsCount === 1 ? 'disparo' : 'disparos'}</span>
               </div>
@@ -314,7 +316,7 @@
   </div>
 
   <!-- SELECTED DAY DRILLDOWN -->
-  <div class="bg-surface-container-lowest p-space-md rounded border border-outline-variant/10 flex flex-col gap-space-sm" id="calendar-day-detail">
+  <div class="agenda-panel bg-surface-container-lowest p-space-md rounded border border-outline-variant/10 flex flex-col gap-space-sm" id="calendar-day-detail">
     <div class="flex items-center justify-between border-b border-outline-variant/10 pb-space-xs flex-wrap gap-space-xs">
       <div class="flex items-center gap-space-xs">
         <span class="material-symbols-outlined text-primary text-[18px]">event</span>
@@ -349,8 +351,9 @@
               {#each selectedDayEvents.jobs as job (job.id)}
                 {@const isSelected = selectedJobId === job.id}
                 <div
-                  class="p-space-sm rounded border transition-all flex items-center justify-between gap-space-xs {isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/10 bg-surface-container-low/30 hover:border-outline-variant/30'}"
+                  class="agenda-event p-space-sm rounded border transition-all flex items-center justify-between gap-space-xs {isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant/10 bg-surface-container-low/30 hover:border-outline-variant/30'}"
                   id="calendar-event-job-{job.id}"
+                  aria-current={isSelected ? 'true' : undefined}
                 >
                   <div class="flex flex-col min-w-0 flex-1">
                     <div class="flex items-center gap-space-xs flex-wrap">
@@ -379,6 +382,7 @@
                       class="p-1 rounded bg-tertiary/15 hover:bg-tertiary/25 text-tertiary transition-colors cursor-pointer"
                       onclick={() => onRunJob(job.id)}
                       title="Disparar agora"
+                      aria-label="Disparar {job.title} agora"
                     >
                       <span class="material-symbols-outlined text-[14px]">send</span>
                     </button>
@@ -405,7 +409,7 @@
               {#each selectedDayEvents.runs as run (run.id)}
                 {@const isSuccess = run.status === 'success'}
                 <div
-                  class="p-space-sm rounded border border-outline-variant/10 bg-surface-container-low/30 flex items-center justify-between gap-space-xs text-[12px]"
+                  class="agenda-event p-space-sm rounded border border-outline-variant/10 bg-surface-container-low/30 flex items-center justify-between gap-space-xs text-[12px]"
                   id="calendar-event-run-{run.id}"
                 >
                   <div class="flex flex-col min-w-0 flex-1">

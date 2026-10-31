@@ -101,13 +101,14 @@
   }
 </script>
 
-<div class="flex flex-col gap-space-md w-full" id="job-timeline-view">
+<div class="agenda-page flex flex-col gap-space-md w-full" id="job-timeline-view">
   <!-- Controls Bar -->
-  <div class="flex items-center justify-between flex-wrap gap-space-sm bg-surface-container-lowest p-space-sm rounded border border-outline-variant/10">
-    <div class="flex items-center gap-1 bg-surface-container-low p-0.5 rounded border border-outline-variant/10">
+  <div class="agenda-panel agenda-toolbar flex items-center justify-between flex-wrap gap-space-sm bg-surface-container-lowest p-space-sm rounded border border-outline-variant/10">
+    <div class="agenda-segments flex items-center gap-1 bg-surface-container-low p-0.5 rounded border border-outline-variant/10">
       <button
         type="button"
         id="timeline-filter-all"
+        aria-pressed={timelineFilter === 'all'}
         class="px-2.5 py-1 text-[12px] font-label-ui uppercase tracking-wider rounded cursor-pointer transition-all {timelineFilter === 'all' ? 'bg-primary text-on-primary font-semibold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
         onclick={() => (timelineFilter = 'all')}
       >
@@ -116,6 +117,7 @@
       <button
         type="button"
         id="timeline-filter-future"
+        aria-pressed={timelineFilter === 'future'}
         class="px-2.5 py-1 text-[12px] font-label-ui uppercase tracking-wider rounded cursor-pointer transition-all {timelineFilter === 'future' ? 'bg-primary text-on-primary font-semibold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
         onclick={() => (timelineFilter = 'future')}
       >
@@ -124,6 +126,7 @@
       <button
         type="button"
         id="timeline-filter-history"
+        aria-pressed={timelineFilter === 'history'}
         class="px-2.5 py-1 text-[12px] font-label-ui uppercase tracking-wider rounded cursor-pointer transition-all {timelineFilter === 'history' ? 'bg-primary text-on-primary font-semibold shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}"
         onclick={() => (timelineFilter = 'history')}
       >
@@ -167,15 +170,16 @@
               {@const isSelected = selectedJobId === job.id}
               {@const rel = getRelativeBadge(job.next_run_at || job.run_at)}
               <div
-                class="relative bg-surface-container-lowest p-space-sm rounded border transition-all {isSelected ? 'border-primary shadow-sm bg-surface-container/20' : 'border-outline-variant/10 hover:border-outline-variant/40'}"
+                class="agenda-panel relative bg-surface-container-lowest p-space-sm rounded border transition-all {isSelected ? 'border-primary shadow-sm bg-surface-container/20' : 'border-outline-variant/10 hover:border-outline-variant/40'}"
                 id="timeline-job-{job.id}"
+                aria-current={isSelected ? 'true' : undefined}
               >
                 <!-- Marker bullet on vertical line -->
                 <div
                   class="absolute -left-[23px] top-4 w-3 h-3 rounded-full border-2 border-surface-container-low {job.status === 'error' ? 'bg-error' : job.status === 'paused' ? 'bg-amber-500' : 'bg-tertiary'}"
                 ></div>
 
-                <div class="flex items-start justify-between gap-space-sm flex-wrap">
+                <div class="agenda-event flex items-start justify-between gap-space-sm flex-wrap">
                   <div class="flex flex-col min-w-0 flex-1">
                     <div class="flex items-center gap-space-xs flex-wrap">
                       <span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">
@@ -228,7 +232,7 @@
                   </div>
 
                   <!-- Quick Action Buttons -->
-                  <div class="flex items-center gap-1 flex-shrink-0 pt-0.5">
+                  <div class="agenda-actions flex items-center gap-1 flex-shrink-0 pt-0.5">
                     <button
                       type="button"
                       class="px-2 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface text-[11px] font-label-ui uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
@@ -267,6 +271,7 @@
                         class="px-1.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[11px] transition-colors cursor-pointer"
                         onclick={() => onOpenReschedule(job.id, job.source)}
                         title="Reagendar horário"
+                        aria-label="Reagendar horário"
                       >
                         <span class="material-symbols-outlined text-[14px]">edit_calendar</span>
                       </button>
@@ -275,6 +280,7 @@
                         class="px-1.5 py-1 rounded bg-surface-container hover:bg-error/15 text-on-surface-variant hover:text-error text-[11px] transition-colors cursor-pointer"
                         onclick={() => onCancelJob(job)}
                         title="Cancelar agendamento"
+                        aria-label="Cancelar agendamento"
                       >
                         <span class="material-symbols-outlined text-[14px]">cancel</span>
                       </button>
@@ -308,7 +314,7 @@
               {@const isSuccess = run.status === 'success'}
               {@const rel = getRelativeBadge(run.ran_at)}
               <div
-                class="relative bg-surface-container-lowest p-space-sm rounded border border-outline-variant/10 flex items-start justify-between gap-space-sm flex-wrap hover:border-outline-variant/30 transition-all"
+                class="agenda-panel relative bg-surface-container-lowest p-space-sm rounded border border-outline-variant/10 flex items-start justify-between gap-space-sm flex-wrap hover:border-outline-variant/30 transition-all"
                 id="timeline-run-{run.id}"
               >
                 <!-- Marker bullet on vertical line -->
