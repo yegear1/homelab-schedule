@@ -1,44 +1,47 @@
-# [ADR-007] UI operador no mesmo repo (`web/` + `proto/`)
+# [ADR-007] Operator Web UI in Same Repository (`web/` and `proto/`)
 
-- **Status:** Aprovado
-- **Data:** 2026-09-12
-- **Autor(es):** yegear / chat de desenho
+- **Status:** Approved
+- **Date:** 2026-09-12
+- **Author(s):** yegear / design session
 
 ---
 
-## 1. Contexto do Problema
+## 1. Problem Context
 
-A API de contatos, templates e `GET /jobs?phone=` existe. O contrato [INTERFACE.md](../INTERFACE.md) está aprovado. O visual canônico é Stitch em `proto/scr-*/code.html`. Precisa de um lugar no git para o app, sem misturar com `src/homelab_schedule/` e sem segundo container nesta fase.
+The contacts, templates, and jobs endpoints exist and the interface contract [INTERFACE.md](../INTERFACE.md) is approved. Stitch design prototypes exist in `proto/scr-*/code.html`. The repository requires a dedicated location for the web application without polluting `src/homelab_schedule/` and without spinning up a separate runtime container.
 
-## 2. Decisão Tomada
+## 2. Decision Taken
 
-- **`proto/`** — fonte visual (layout A Stitch). Não é o que o Compose serve em produção. Não apagar no porte.
-- **`web/`** — app Svelte 5 + Vite (SPA). Extração: `web/src/layout/`, `web/src/components/`, `web/src/pages/` (`scr-*`). Cliente HTTP em `web/src/lib/` só no porte.
-- **Stack:** Svelte 5, Tailwind (classes do Stitch). Sem React/Vue neste repo.
-- **Runtime:** mesmo processo FastAPI (StaticFiles do `web/dist/` no porte). `x-api-key` de operador. Sem contas/OTP nesta versão.
-- Canetas MCP / HTTP / YAML **permanecem**. A UI é a quarta superfície, não um bot.
+Incorporate the frontend directly within the repository structure:
 
-Isto **reabre** o “sem UI neste repo” do [ADR-003](003-canetas.md) só para o operador web. CalDAV, e-mail, Telegram e cliente de mensageiro continuam fora.
+- **`proto/`:** Preserved visual design source (Stitch HTML/Tailwind prototypes). Kept intact for reference; never deleted during porting.
+- **`web/`:** Single Page Application (SPA) built with Svelte 5 and Vite. Component hierarchy: `web/src/layout/`, `web/src/components/`, `web/src/pages/`.
+- **Frontend Stack:** Svelte 5 (Runes), Tailwind CSS (tokens derived from Stitch and Apple HIG design systems). Prohibit React or Vue.
+- **Production Runtime:** Served by the existing FastAPI process via `StaticFiles` mounted from `web/dist/`. Authenticated with operator `x-api-key`.
+- In-repo pens remain: MCP, HTTP, and YAML are maintained alongside Web UI as the fourth input surface.
 
-## 3. Alternativas Consideradas
+This explicitly amends the earlier "no UI in repo" constraint from [ADR-003](003-canetas.md) specifically for the local human operator Web UI. CalDAV, IMAP email, and messaging clients remain strictly out of scope.
 
-- **Repo frontend separado:** duas cópias de `INTERFACE.md`; o homelab quer um container.
-- **HTML estático servido de `proto/`:** não liga bindings; Stitch usa CDN Tailwind.
-- **Svelte dentro de `src/homelab_schedule/`:** mistura hatch/Python e o bundler.
+## 3. Alternatives Considered
 
-## 4. Consequências e Trade-offs
+- **Separate frontend repository:** Causes duplicated interface contracts and violates single-container homelab deployment simplicity.
+- **Directly serving static HTML from `proto/`:** Fails to provide reactive state bindings, dynamic API synchronization, or type safety.
+- **Embedding Svelte source inside `src/homelab_schedule/`:** Conflates Python packaging tooling with Node.js frontend build systems.
 
-### Positivas
+## 4. Consequences and Trade-offs
 
-- Porte segue `ui-port` com árvore previsível.
-- `proto/` fica como referência lado a lado do app.
+### Positive
 
-### Negativas / Riscos Assumidos
+- Porting follows the `ui-port` and `component-contract` skills with predictable component layout.
+- Prototypes in `proto/` remain accessible side-by-side for visual regression auditing.
 
-- Imagem Docker passa a ter stage Node no porte (ainda não neste ADR de pastas).
-- `node_modules` / `web/dist` não entram no git.
+### Negative / Accepted Risks
 
-## 5. Referências e Links
+- Production Docker multi-stage build requires an intermediate Node.js build stage.
+- Directory artifacts `node_modules/` and `web/dist/` must remain untracked in `.gitignore`.
+
+## 5. References and Links
 
 - `.agent/INTERFACE.md`
-- `proto/scr-contacts|scr-contact|scr-templates|scr-jobs/code.html`
+- [ADR-003: Three In-Repo Pens](003-canetas.md)
+- `proto/scr-*/code.html`

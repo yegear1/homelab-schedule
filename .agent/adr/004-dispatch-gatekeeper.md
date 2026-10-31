@@ -1,41 +1,47 @@
-# [ADR-004] Dispatch apenas via POST /send no gateway configurado
+# [ADR-004] Dispatch Exclusively via POST /send on Configured HTTP Gateway
 
-- **Status:** Aprovado (sanitizado 2026-09-12 para publicação)
-- **Data:** 2026-09-11
-- **Autor(es):** yegear / chat de desenho
+- **Status:** Approved (Sanitized 2026-09-12 for public release)
+- **Date:** 2026-09-11
+- **Author(s):** yegear / design session
 
 ---
 
-## 1. Contexto do Problema
+## 1. Problem Context
 
-A agenda precisa entregar o recado no horário. Embutir cliente de mensageiro, fila Redis ou sessão de chat neste container duplicaria peso e contratos. O envio fica num HTTP que o operador aponta em `WHATSAPP_API_URL`.
+The scheduler must reliably deliver notifications when jobs mature. Embedding a messaging socket client, Redis task queue, or persistent chat session in this container would bloat memory and create cross-cutting maintenance issues. Outbound transmission must decouple behind an HTTP endpoint specified by `WHATSAPP_API_URL`.
 
-## 2. Decisão Tomada
+## 2. Decision Taken
 
-O scheduler só faz HTTP `POST {WHATSAPP_API_URL}/send` com:
+The scheduler communicates outbound messages strictly via HTTP `POST {WHATSAPP_API_URL}/send` with:
 
-- Header `x-api-key: {WHATSAPP_API_KEY}`
-- JSON `phone_number` (destino normalizado), `content`, `quote_id` opcional
+- Header: `x-api-key: {WHATSAPP_API_KEY}`
+- JSON Payload: `phone_number` (E.164 normalized recipient), `content` (string message), and optional `quote_id`
 
-`202` + `status: queued` = sucesso do job (`last_status=queued`). Não poll. Não reenviar imediatamente. Falha de rede/401/422: log `error` NDJSON; retry com backoff **só se não houve 202** (erros permanentes falham na hora). Alias resolve para `target_number` no create; o tick usa esse valor.
+Protocol Contract:
+- `202 Accepted` with JSON containing `status: queued` represents successful job dispatch (`last_status='queued'`).
+- Do NOT poll downstream delivery. Do NOT immediately retry upon 202.
+- Transient network failures or 5xx errors: logged as `error` NDJSON; retry up to 3 times with exponential backoff.
+- Permanent HTTP errors (401 Unauthorized, 422 Unprocessable Entity): immediate terminal failure (`last_status='error'`), skipping retries.
+- Recipient aliases resolve to canonical `target_number` during job creation; background tick dispatches to this resolved number.
 
-## 3. Alternativas Consideradas
+## 3. Alternatives Considered
 
-- **Fila compartilhada / Redis do outro serviço:** acoplamento.
-- **whatsapp-web.js / browser neste container:** Puppeteer pesado; fora do recorte “leve”.
+- **Shared database or Redis queue with messaging service:** Tight architectural coupling and shared failure domains.
+- **Embedded headless browser / Puppeteer:** Excessive RAM (>500 MB) and CPU overhead, violating homelab lightweight constraints.
 
-## 4. Consequências e Trade-offs
+## 4. Consequences and Trade-offs
 
-### Positivas
+### Positive
 
-- Este repo permanece um caderno + tick.
-- Cliente httpx drop-in; qualquer gateway com o payload canônico serve.
+- Keeps the repository focused strictly on scheduling and timer dispatch.
+- Decoupled `httpx` HTTP client allows pairing with any dispatch gateway that conforms to the canonical `/send` schema.
 
-### Negativas / Riscos Assumidos
+### Negative / Accepted Risks
 
-- Se o gateway estiver fora, o job falha mesmo com a agenda saudável — `502` em run-now; scheduler registra `last_error`.
-- Entrega real ao destinatário **não** é observada aqui.
+- If the external gateway is offline, dispatch fails despite healthy local scheduler state (returns HTTP 502 on immediate run; logs `last_error` in background tick).
+- End-to-end receipt confirmation by the handset/recipient cannot be verified by this scheduler.
 
-## 5. Referências e Links
+## 5. References and Links
 
 - `.agent/skills/whatsapp-dispatch/SKILL.md`
+- `.agent/NOTES.md` (Active Contracts)

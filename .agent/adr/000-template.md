@@ -1,29 +1,29 @@
-# [ADR-000] [Título da Decisão Arquitetural]
+# [ADR-000] [Architectural Decision Title]
 
-- **Status:** [Proposto | Aprovado | Rejeitado | Deprecado]
-- **Data:** [AAAA-MM-DD]
-- **Autor(es):** [Nome / Equipe]
+- **Status:** [Proposed | Approved | Rejected | Deprecated]
+- **Date:** [YYYY-MM-DD]
+- **Author(s):** [Name / Team]
 
 ---
 
-## 1. Contexto do Problema
-[Descreva o contexto, as forças em conflito, requisitos técnicos ou limitações de negócio que motivaram esta decisão.]
+## 1. Problem Context
+[Describe the problem context, conflicting forces, technical constraints, or business drivers motivating this architectural decision.]
 
-## 2. Decisão Tomada
-[Descreva a solução ou padrão arquitetural escolhido de forma clara e objetiva.]
+## 2. Decision Taken
+[Describe the chosen solution or architectural pattern clearly and objectively.]
 
-## 3. Alternativas Consideradas
-- **Alternativa A:** [Descrição e motivo pelo qual foi descartada]
-- **Alternativa B:** [Descrição e motivo pelo qual foi descartada]
+## 3. Alternatives Considered
+- **Alternative A:** [Description and rejection rationale]
+- **Alternative B:** [Description and rejection rationale]
 
-## 4. Consequências e Trade-offs
-### Positivas
-- [Benefício 1]
-- [Benefício 2]
+## 4. Consequences and Trade-offs
+### Positive
+- [Benefit 1]
+- [Benefit 2]
 
-### Negativas / Riscos Assumidos
-- [Trade-off ou complexidade adicional 1]
-- [Plano de mitigação se aplicável]
+### Negative / Accepted Risks
+- [Trade-off or incidental complexity 1]
+- [Mitigation strategy where applicable]
 
-## 5. Referências e Links
-- [Link ou referência para documentação/discussão]
+## 5. References and Links
+- [Link or reference to related specifications/discussions]

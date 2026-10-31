@@ -177,6 +177,7 @@ Adding new dependencies REQUIRES explicit user approval.
 ## Golden Rules
 
 - **MUST NOT** use loose typing (`any`/`Any`). All functions and schemas MUST be strictly typed.
+- **MUST** write all agent-facing directives, skills, contracts, and task logs (`AGENTS.md`, `.agent/*`) in concise Technical English to maximize instruction fidelity and minimize context token overhead.
 - **MUST NOT** install dependencies or use `pip` directly without explicit user permission.
 - **MUST NOT** break payload contracts (`.agent/NOTES.md`, `.agent/ENDPOINTS.md`, skill `whatsapp-dispatch`).
 - **MUST NOT** use fields `to`, `body`, `message`, or `Authorization: Bearer` on `POST /send` — use ONLY `phone_number`, `content`, `x-api-key`.

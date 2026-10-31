@@ -1,52 +1,55 @@
-# [ADR-005] MCP com superfície fechada
+# [ADR-005] Closed Surface MCP Server
 
-- **Status:** Aprovado
-- **Data:** 2026-09-11
-- **Atualizado:** 2026-09-12 (`reschedule` entrou na superfície), 2026-09-19 (`preview` adicionada para dry-run), 2026-09-20 (`pause`, `resume`, `snooze` adicionados para ciclo de vida), 2026-09-29 (`daily_digest` adicionada para síntese diária e detecção de conflitos), 2026-10-04 (`upcoming_runs` adicionada para projeção de execuções futuras)
-- **Autor(es):** yegear / chat de desenho
+- **Status:** Approved
+- **Date:** 2026-09-11
+- **Updated:** 2026-09-12 (Added `reschedule`), 2026-09-19 (Added `preview` for dry-run), 2026-09-20 (Added `pause`, `resume`, `snooze` for lifecycle), 2026-09-29 (Added `daily_digest` for morning synthesis and conflict detection), 2026-10-04 (Added `upcoming_runs` for timeline projection)
+- **Author(s):** yegear / design session
 
 ---
 
-## 1. Contexto do Problema
+## 1. Problem Context
 
-Agentes alucinam crontab e PATCH genérico. A agenda precisa de poucas tools e respostas curtas: listar o marcado e gravar recado sem CRUD REST no protocolo MCP.
+Language models frequently hallucinate non-standard crontab patterns and unconstrained REST `PATCH` mutations. The agenda MCP server requires a compact, closed tool surface with token-dense responses to prevent context bloat and hallucinated mutations.
 
-## 2. Decisão Tomada
+## 2. Decision Taken
 
-Servidor MCP **stdio**, Python, chamando a HTTP local (não abre SQLite direto). Tools:
+Implement a **stdio-based** Python MCP server communicating strictly with the local HTTP daemon (`localhost:8003`), never accessing SQLite files directly.
 
-1. `schedule`
-2. `list_agenda`
-3. `get_item`
-4. `cancel`
-5. `pause` (sqlite; YAML → erro)
-6. `resume` (sqlite; YAML → erro)
-7. `snooze` (sqlite; adia próximo disparo sem mutar cron)
-8. `reschedule` (sqlite; YAML → erro para editar `routines.yaml`)
-9. `preview` (dry-run sem efeitos colaterais: testa resolução de destinatário, cálculo de `next_run_at` e interpolação de variáveis)
-10. `daily_digest` (consolidação matinal/diária da agenda e detecção de conflitos/sobreposição de horários para o mesmo destinatário)
-11. `upcoming_runs` (projeção determinística de ocorrências futuras em UTC e horário local para inspeção de linha do tempo respeitando limites de ciclo de vida)
+Exposed MCP Tools:
+1. `schedule`: Create one-off or recurring reminders.
+2. `list_agenda`: List upcoming and pending items with compact summaries.
+3. `get_item`: Inspect a specific job by ID.
+4. `cancel`: Cancel a job by ID (SQLite jobs only; YAML routines return conflict error).
+5. `pause`: Temporarily disable a SQLite job without deletion.
+6. `resume`: Re-enable a paused SQLite job.
+7. `snooze`: Postpone next run timestamp without altering base recurrence pattern.
+8. `reschedule`: Move a one-off job to a new execution timestamp.
+9. `preview`: Side-effect-free dry-run testing temporal parsing, recipient resolution, and dynamic template variable interpolation.
+10. `daily_digest`: Morning/daily agenda consolidation detecting time overlaps for identical recipients.
+11. `upcoming_runs`: Deterministic projection of future occurrences in UTC and local timezone respecting lifecycle bounds (`until`, `max_runs`).
 
-Sem `PATCH`, sem `delete` genérico, sem CRUD de contato/template no MCP. `list_agenda` não devolve `content` completo. Config Cursor (`.cursor/mcp.json`) **não** versionada. Mutação em produção via MCP exige consentimento humano nas regras do `AGENTS.md`.
+Forbidden: Generic REST `PATCH`, generic SQL queries, and full CRUD endpoints for contacts/templates over MCP.
+`list_agenda` returns compact summaries and omits full message content bodies. Direct production database mutations via MCP require human operator consent per `AGENTS.md`.
 
-## 3. Alternativas Consideradas
+## 3. Alternatives Considered
 
-- **Expor o OpenAPI inteiro como MCP:** o modelo quebra schema e dispara jobs YAML.
-- **SQLite via MCP de banco:** fura camadas e migrations.
+- **Expose entire OpenAPI schema as MCP tools:** Results in hallucinated schema parameters and accidental mutations to declarative YAML routines.
+- **Direct SQLite database MCP:** Violates layered architecture, bypasses validation logic, and bypasses event notifications.
 
-## 4. Consequências e Trade-offs
+## 4. Consequences and Trade-offs
 
-### Positivas
+### Positive
 
-- Token barato; skill `agenda-job` cabe em uma página.
-- HTTP permanece testável com pytest sem MCP.
+- Minimal token consumption; the `agenda-job` skill fits on a single page.
+- HTTP API remains fully testable via pytest independently of MCP runtime.
 
-### Negativas / Riscos Assumidos
+### Negative / Accepted Risks
 
-- Catálogo de contatos/modelos (ciclo `[00.x]`) **não** vira tool MCP genérica; no máximo parâmetros em `schedule`.
-- MCP inútil se a API não estiver no ar; falha com mensagem clara (URL, nunca a chave).
+- Contact and template catalog management remains restricted to Web UI and HTTP API.
+- MCP fails if the HTTP server is down; returns structured error referencing URL without exposing secret keys.
 
-## 5. Referências e Links
+## 5. References and Links
 
 - `.agent/skills/mcp-tool/SKILL.md`
 - `.agent/CHANNELS.md`
+- `AGENTS.md` (MCP Guidelines)

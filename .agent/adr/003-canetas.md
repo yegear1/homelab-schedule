@@ -1,46 +1,47 @@
-# [ADR-003] Três canetas neste repo, um caderno
+# [ADR-003] Three In-Repo Pens, Single Shared Notebook
 
-- **Status:** Aprovado (sanitizado 2026-09-12 para publicação)
-- **Data:** 2026-09-11
-- **Autor(es):** yegear / chat de desenho
+- **Status:** Approved (Sanitized 2026-09-12 for public release)
+- **Date:** 2026-09-11
+- **Author(s):** yegear / design session
 
 ---
 
-## 1. Contexto do Problema
+## 1. Problem Context
 
-O humano quer anotar de várias superfícies (agente, script, rotina git) sem calendário, e-mail ou UI web. O risco é cada canal virar um produto.
+Users require multiple input surfaces (AI agent prompt, automation script, declarative git routine) to record reminders without incurring dependencies on external calendar servers, email inboxes, or heavy cloud platforms. Without clear boundaries, each input channel risks expanding into a separate standalone product.
 
-## 2. Decisão Tomada
+## 2. Decision Taken
 
-Canetas **neste repositório**:
+Restrict in-repo input interfaces ("pens") to:
 
-1. **MCP** — caneta do agente.
-2. **HTTP** — caneta de máquina e backend do MCP.
-3. **YAML** — caneta de rotina permanente.
+1. **MCP (Model Context Protocol):** AI agent stdio pen.
+2. **HTTP API:** Machine automation pen and backend target for the MCP server.
+3. **YAML (`routines.yaml`):** Declarative infrastructure routine pen.
 
-Fora de escopo neste repo: CalDAV, e-mail, Telegram, bots de chat, issues GitHub como fila de lembrete. **UI web do operador** passou a ser in-tree: ver [ADR-007](007-ui-mesmo-repo.md). Um bot ou outro serviço pode ser **caller HTTP** (`/jobs`); o código de mensageiro não mora aqui.
+Explicitly out of scope in this repository: CalDAV, IMAP/SMTP email polling, Telegram bots, WhatsApp socket listeners, or GitHub issues as reminder queues. The operator Web UI was later incorporated into the repository per [ADR-007](007-ui-mesmo-repo.md). External chat bots or messaging services interact strictly as external **HTTP callers** (`POST /jobs`). Messaging client protocol code does not reside here.
 
-Destinos: alias (`eu`, …) via `WHATSAPP_ALIASES` (nome histórico da env). Default `to=eu`.
+Destination addressing supports aliases (e.g., `eu`) resolved via `WHATSAPP_ALIASES` (historical env name) with fallback default `to='eu'`.
 
-## 3. Alternativas Consideradas
+## 3. Alternatives Considered
 
-- **Só MCP:** inútil em scripts e automações.
-- **Cliente de mensageiro neste container:** duplicaria fila, sessão e anti-ban; o scheduler só agenda e faz `POST /send`.
-- **Google Calendar:** auth e sync; não é o caderno.
+- **MCP only:** Unusable from curl, shell scripts, cron jobs, and non-LLM automations.
+- **Embedded messaging client in container:** Would duplicate session state, authentication keys, outbound queues, and anti-ban safeguards. The scheduler strictly manages schedule state and issues outbound HTTP `POST /send`.
+- **Google Calendar / CalDAV sync:** Involves complex OAuth flows and remote polling; conflicts with local homelab isolation.
 
-## 4. Consequências e Trade-offs
+## 4. Consequences and Trade-offs
 
-### Positivas
+### Positive
 
-- Um modelo de job; três escritas versionadas neste repo.
-- Integrações futuras são clientes HTTP, não segundo scheduler.
+- Unified internal job model; three versioned ingestion surfaces within the repository.
+- Future integrations act as downstream HTTP API clients rather than competing scheduler instances.
 
-### Negativas / Riscos Assumidos
+### Negative / Accepted Risks
 
-- Anotar pelo celular exige um caller externo (não documentado neste git).
-- Duas chaves: `SCHEDULE_API_KEY` (esta API) vs `WHATSAPP_API_KEY` (gateway de envio). Não misturar.
+- Scheduling from mobile devices requires an external caller (e.g., external webhook bot).
+- Dual API key management: `SCHEDULE_API_KEY` (secures this API) vs `WHATSAPP_API_KEY` (authenticates outbound dispatch to the gateway).
 
-## 5. Referências e Links
+## 5. References and Links
 
 - `.agent/CHANNELS.md`
 - `.agent/skills/whatsapp-dispatch/SKILL.md`
+- [ADR-007: Web UI in Repo](007-ui-mesmo-repo.md)

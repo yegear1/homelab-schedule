@@ -1,66 +1,61 @@
-# [ADR-006] Avisos no tempo: `next_run_at` + tick asyncio
+# [ADR-006] Temporal Dispatch: `next_run_at` UTC Index and Asyncio Tick Loop
 
-- **Status:** Aprovado
-- **Data:** 2026-09-11
-- **Autor(es):** yegear / chat de desenho
+- **Status:** Approved
+- **Date:** 2026-09-11
+- **Author(s):** yegear / design session
 
 ---
 
-## 1. Contexto do Problema
+## 1. Problem Context
 
-Sem APScheduler não há trigger in-memory. Precisamos disparar o gateway na hora certa com um processo ocioso, SQLite como relógio, e acordar se o humano anotar um recado daqui a dois minutos enquanto o loop “dormia” até a próxima rotina.
+Without third-party schedulers such as APScheduler, the system requires an efficient background dispatch loop that remains idle until the next scheduled job is due, wakes up immediately if a new near-term reminder is created via HTTP/MCP, and avoids busy-waiting polling.
 
-## 2. Decisão Tomada
+## 2. Decision Taken
 
-Cada job tem **`next_run_at` em UTC** (índice). O tick **não** é “cron interno”: é dormir até o próximo vencimento.
+Each job persists an indexed **`next_run_at` in UTC**. The tick loop functions as an event-driven timer rather than a polling cron daemon:
 
 ```text
 loop:
-  1. SELECT jobs WHERE enabled AND status=scheduled AND next_run_at <= now
-  2. para cada um: POST /send; se 202:
-       once  → status=done, next_run_at=NULL
-       cron  → next_run_at = próxima ocorrência ESTRITAMENTE > now (TZ America/Sao_Paulo)
-  3. t = MIN(next_run_at) dos scheduled
-  4. await wait(timeout=min(t-now, 5min), OU evento "caderno mudou")
+  1. SELECT jobs WHERE enabled AND status='scheduled' AND next_run_at <= now()
+  2. For each due job, issue HTTP POST /send:
+       If 202 Accepted:
+         once  -> status='done', next_run_at=NULL
+         cron  -> next_run_at = next calculated occurrence STRICTLY > now() (TZ: America/Sao_Paulo)
+  3. t = MIN(next_run_at) among all enabled scheduled jobs
+  4. await asyncio.wait_for(notebook_changed_event.wait(), timeout=min(t - now(), 300s))
 ```
 
-**Evento:** `POST /jobs`, cancel, run-now e merge YAML setam `asyncio.Event`. Assim um recado “daqui 90s” não espera o cap de 5 min.
+Key Architectural Invariants:
+- **Notebook Changed Event:** Mutations via `POST /jobs`, job cancellations, manual run-now triggers, and YAML reloads trigger an internal `asyncio.Event`. A reminder scheduled for +90 seconds wakes the loop immediately without waiting for the 300s timeout cap.
+- **300-Second Sleep Cap:** Protects against clock skew, host NTP synchronizations, and edge-case timezone transitions.
+- **Job Creation Semantics:**
+  - `once`: Persists `next_run_at = run_at` converted to UTC (resolving naive ISO strings with default `TZ`).
+  - `cron`: Evaluates five-field cron expressions against `America/Sao_Paulo` and persists the next future occurrence in UTC.
+- **Downtime Catch-up:**
+  - Overdue `once` jobs: Dispatched once upon startup/tick recovery.
+  - Overdue `cron` jobs with missed iterations: Coalesced and dispatched exactly once, advancing immediately to the next future occurrence without bursting historical missed runs.
+- **Run Now Semantics:** Dispatches immediately via outbound gateway without mutating the future `next_run_at` of scheduled one-off jobs.
 
-**Cap 5 min:** relógio do host, DST, NTP. Sem busy-loop.
+## 3. Alternatives Considered
 
-**Criação:**
-- `once`: `next_run_at = run_at` convertido a UTC (`TZ` se o ISO vier sem offset).
-- `cron`: cinco campos no fuso `America/Sao_Paulo`; grava a próxima ocorrência futura em UTC.
+- **Fixed 30-second polling sleep:** Simpler, but introduces average 15-second dispatch latency and causes continuous disk/CPU wakeups.
+- **APScheduler in-memory job store:** Rejected per ADR-001.
+- **Host systemd timers:** Couples scheduling logic with host OS and breaks container portability.
 
-**Atraso (container dormiu):**
-- `once` vencido e ainda `scheduled` → dispara **uma** vez no próximo tick (o aviso atrasado ainda vale).
-- `cron` com N períodos perdidos → dispara **uma** vez (coalesce), depois pula para a próxima futura. Não manda 12 “segunda 9h” atrasadas.
+## 4. Consequences and Trade-offs
 
-**Run now:** POST `/send` no gateway imediato; **não** altera `next_run_at` do `once` futuro.
+### Positive
 
-**Precisão:** da ordem de centenas de ms após o sleep acordar — suficiente para lembrete humano. Latência extra do gateway de envio não é observada aqui.
+- Zero CPU utilization during idle periods (event loop sleep).
+- Clean separation of concerns: HTTP API and MCP only mutate database records; the tick loop is the sole dispatcher.
 
-Não usar `SELECT` a cada 30s fixos como desenho principal (jitter inútil). Poll fixo só se o Event falhar nos testes — aí documentar.
+### Negative / Accepted Risks
 
-## 3. Alternativas Consideradas
+- Omitting `notebook_changed_event.set()` on write paths causes dispatch delays up to 300 seconds. Automated tests verify immediate wake-up for +2s jobs.
+- Cron DST transitions: Evaluated using Python `zoneinfo`; database always stores unambiguous UTC timestamps.
 
-- **Sleep fixo 30s:** mais simples, atraso médio 15s; rejeitado como *principal* porque o Event + `MIN(next_run_at)` é pouco código a mais e acerta “daqui 2 min”.
-- **APScheduler:** descartado (ADR-001).
-- **systemd timer no host:** fora do container.
+## 5. References and Links
 
-## 4. Consequências e Trade-offs
-
-### Positivas
-
-- CPU idle real (sleep da event loop).
-- HTTP/MCP só escrevem o caderno; o tick é o único disparo agendado.
-
-### Negativas / Riscos Assumidos
-
-- Esquecer o Event no `POST /jobs` → atraso até o cap (5 min). Teste obrigatório: criar job +2s e assert dispatch sem esperar 5 min.
-- Cron DST (ex. 2:30 inexistente no horário de verão antigo): usar `zoneinfo`; se a parede pular, próxima ocorrência válida. Brasil sem DST hoje; ainda assim UTC no banco.
-
-## 5. Referências e Links
-
-- `.agent/ENDPOINTS.md` (`next_run_at`)
+- `.agent/ENDPOINTS.md`
 - `.agent/skills/due-tick/SKILL.md`
+- [ADR-001: Python Monolith](001-monolito-python-uv.md)

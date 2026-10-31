@@ -1,274 +1,252 @@
-# INTERFACE.md — Contrato de superfície de UI
+# INTERFACE.md — UI Surface Contract
 
-> Fonte da verdade para um agente de implementação. Sem tela/ação aqui, não há UI.
-> Preenchido pela skill `ui-contract`. Stack fica em ADR do repo de frontend, não neste arquivo.
-> Chrome (seção 8) é obrigatório mesmo sem rota de preferências.
-> Duas cópias (backend e frontend) devem ser o **mesmo** arquivo após cada aprovação. API mudou → `Desatualizado` até o Passo 6 da skill.
+> Single source of truth for frontend implementation agents. If a screen or action is not declared here, it does not exist in the UI.
+> Derived following the `ui-contract` skill. Technical stack definitions belong in ADRs, not in this specification file.
+> Section 8 (Chrome) is mandatory even without a dedicated settings route.
+> Dual backend and frontend copies MUST maintain identical contents across iterations.
 
-**Status do contrato:** `Aprovado` (2026-09-12 — mapa das quatro telas; contas/OTP ficam de fora desta versão)  
+**Contract Status:** `Approved` (2026-09-12 — 4-screen layout; user accounts/OTP omitted in current version)
 **Backend:** `yegear1/homelab-schedule`  
 **Base URL (dev):** `http://localhost:8003` (`APP_PORT` / env)  
-**Última derivação:** `2026-09-12` · fontes: `src/homelab_schedule/*_router.py`, `src/schemas/`, `.agent/ENDPOINTS.md`, `README.md`
+**Last Derivation:** `2026-09-12` · Sources: `src/homelab_schedule/*_router.py`, `src/schemas/`, `.agent/ENDPOINTS.md`, `README.md`
 
 ---
 
-## 1. Contexto
+## 1. Context
 
-- **Atores:** operador do homelab (uma pessoa). Contatos **não** autenticam na UI.
-- **Auth:** header — nome exato: `x-api-key` = `SCHEDULE_API_KEY`. Sem `Authorization: Bearer`. Só `GET /health` dispensa chave.
-- **Restrições globais do domínio:** um processo / um SQLite; disparo é o tick no servidor (a UI não chama `POST /send`). `202` em `run` = gateway **enfileirou**, não entrega. Jobs `source: yaml` não se cancelam/reagendam pela HTTP (editar `routines.yaml`). Query `to` em `GET /jobs` é **fim de intervalo de data**, não destino; pessoa = `phone`.
+- **Actors:** Homelab operator (single user). External contacts do NOT authenticate against the UI.
+- **Authentication:** Header — exact key name: `x-api-key: {SCHEDULE_API_KEY}`. Prohibit `Authorization: Bearer`. Only `GET /health` bypasses key verification.
+- **Domain Invariants:** Single OS process / single SQLite database; scheduled dispatch is driven by server background tick (the UI never invokes `POST /send` directly). HTTP `202 Accepted` on run actions indicates gateway enqueued the message, not confirmed delivery. Jobs with `source: yaml` cannot be cancelled or rescheduled via HTTP API (must edit `routines.yaml`). Query parameter `to` on `GET /jobs` represents date range upper bound (`datetime`), NOT recipient phone number (recipient filtering uses `GET /jobs?phone=`).
 
 ---
 
-## 2. Mapa de telas
+## 2. Screen Map
 
-| ID | Rota de UI | Propósito | Tela pai / nav |
+| ID | UI Route | Purpose | Parent / Navigation |
 | :--- | :--- | :--- | :--- |
-| `scr-contacts` | `/contacts` | Caderno de pessoas (nome + telefone) | Home / nav |
-| `scr-contact` | `/contacts/{contactId}` | Ficha: editar contato + agendas **para** ou **criadas por** o telefone | `scr-contacts` |
-| `scr-templates` | `/templates` | Catálogo de textos com placeholders | Nav |
-| `scr-jobs` | `/jobs` | Agenda global (listagem curta + criar / detalhe) | Nav |
+| `scr-contacts` | `/contacts` | Contact directory (name + phone) | Navigation root |
+| `scr-contact` | `/contacts/{contactId}` | Contact detail: edit info + filter jobs to/from phone | `scr-contacts` |
+| `scr-templates` | `/templates` | Reusable message template catalog | Navigation |
+| `scr-jobs` | `/jobs` | Global schedule overview (table/timeline/calendar + create + inspect) | Navigation |
 
 ---
 
-## 3. Ficha de tela (copie por ID)
+## 3. Screen Specifications
 
-### Tela `scr-contacts` — Contatos
+### Screen `scr-contacts` — Contacts
 
-- **Rota de UI:** `/contacts`
-- **Propósito:** listar e cadastrar pessoas (nome + número). Clique no item abre a ficha.
-- **Widgets / regiões:**
+- **UI Route:** `/contacts`
+- **Purpose:** List and register contacts (name + phone). Clicking a row opens contact detail.
+- **Widgets / Regions:**
 
-| Região | Binding | Campos visíveis | Obrigatório na UI? |
-| :--- | :--- | :---: | :---: |
-| `wdg-contact-list` | `GET /contacts` → `{ contacts: Contact[] }` | `id`, `name`, `phone` | — (leitura) |
-| `wdg-contact-create` | (form local) | `name`, `phone` | `name` sim; `phone` sim |
+| Region | Binding | Visible Fields | Mandatory in UI? |
+| :--- | :--- | :--- | :---: |
+| `wdg-contact-list` | `GET /contacts` → `{ contacts: Contact[] }` | `id`, `name`, `phone` | — (Read-only) |
+| `wdg-contact-create` | Local form | `name`, `phone` | `name`: yes; `phone`: yes |
 
-- **Ações:**
+- **Actions:**
 
-| Ação | Binding | Pré-condição | Sucesso | Erros → copy |
+| Action | Binding | Precondition | Success | Error Mapping |
 | :--- | :--- | :--- | :--- | :--- |
-| Criar contato | `POST /contacts` body `{ name, phone }` | `name` 1–80; `phone` 1–64 | `201` Contact; atualizar lista | `401` → chave inválida ou ausente; `422` → dados inválidos; `409` → nome ou telefone já existe |
-| Abrir ficha | navegação UI | item da lista | `scr-contact` | — |
+| Create contact | `POST /contacts` body `{ name, phone }` | `name` length 1–80; `phone` length 1–64 | `201 Created` Contact; refresh list | `401` → invalid/missing key; `422` → validation error; `409` → name/phone duplicate |
+| Open detail | UI navigation | Click list item | Navigate to `scr-contact` | — |
 
-- **Estados:**
-  - `loading`: lista ainda não chegou
-  - `empty`: `contacts` vazio — cadastre o primeiro contato
-  - `error` (rede / 5xx): falha ao carregar; `401` tratado como auth, não como 5xx
-  - `domínio`: nenhum além de lista vazia
-- **Não mostrar:** path de SQLite; valor de `SCHEDULE_API_KEY`
+- **States:**
+  - `loading`: Awaiting list response
+  - `empty`: `contacts` array is empty
+  - `error`: Network or 5xx failure (`401` treated as auth failure)
+  - `domain`: None beyond empty list
+- **Hidden Fields:** SQLite storage path; literal value of `SCHEDULE_API_KEY`
 
 ---
 
-### Tela `scr-contact` — Ficha da pessoa
+### Screen `scr-contact` — Contact Details
 
-- **Rota de UI:** `/contacts/{contactId}`
-- **Propósito:** ver/editar o contato e a união de jobs cujo destino **ou** criador é o telefone da pessoa.
-- **Widgets / regiões:**
+- **UI Route:** `/contacts/{contactId}`
+- **Purpose:** Inspect/edit contact details and display union of jobs whose destination or creator matches the contact's phone number.
+- **Widgets / Regions:**
 
-| Região | Binding | Campos visíveis | Obrigatório na UI? |
-| :--- | :--- | :---: | :---: |
+| Region | Binding | Visible Fields | Mandatory in UI? |
+| :--- | :--- | :--- | :---: |
 | `wdg-contact-header` | `GET /contacts/{id}` | `id`, `name`, `phone` | — |
-| `wdg-contact-edit` | (form) | `name`, `phone` (schema PATCH: ambos opcionais) | não (enviar só o que mudou) |
-| `wdg-job-list` | `GET /jobs?status=all&phone={phone}` | `JobListItem`: `id`, `title`, `to`, `target_number`, `kind`, `run_at`, `cron_expr`, `enabled`, `source`, `status`, `next_run_at`, `last_run_at`, `last_status`, `created_by`, `template_id` — **sem** `content` | `phone` no query (valor do contato, não digitado se já na ficha) |
-| `wdg-job-detail` | `GET /jobs/{id}` | Job completo: inclui `content`, `last_error`, `retry_count` | após seleção |
-| `wdg-job-create` | (form) | `title`; `kind`; `run_at` se `once`; `cron_expr` se `cron`; `content` **ou** `template_id` (não os dois); `to` pré-preenchido com o contato; `created_by` pré-preenchido com `phone` (opcional no schema) | `title` sim; `kind` sim; `run_at` se once; `cron_expr` se cron; `content` xor `template_id` |
-| `wdg-template-pick` | `GET /templates` | `id`, `name` (picker) | não |
+| `wdg-contact-edit` | Form | `name`, `phone` (PATCH schema: both optional) | No (send changed fields only) |
+| `wdg-job-list` | `GET /jobs?status=all&phone={phone}` | `JobListItem`: `id`, `title`, `to`, `target_number`, `kind`, `run_at`, `cron_expr`, `enabled`, `source`, `status`, `next_run_at`, `last_run_at`, `last_status`, `created_by`, `template_id` (omits `content`) | `phone` query parameter bound to contact |
+| `wdg-job-detail` | `GET /jobs/{id}` | Complete job record including `content`, `last_error`, `retry_count` | On item selection |
+| `wdg-job-create` | Form | `title`, `kind`, `run_at` (if once), `cron_expr` (if cron), `content` xor `template_id`, `to` (pre-filled), `created_by` (optional) | `title`, `kind`, timing parameter, `content` xor `template_id` |
+| `wdg-template-pick` | `GET /templates` | `id`, `name` (picker dropdown) | No |
 
-Query `from` / `to` / `limit` de `GET /jobs` são opcionais (`limit` 1–100 se usado). Filtro de pessoa **só** `phone`. Default de `status` na API é `upcoming`; nesta ficha o contrato pede `status=all` para “todas as agendas”.
+- **Actions:**
 
-- **Ações:**
-
-| Ação | Binding | Pré-condição | Sucesso | Erros → copy |
+| Action | Binding | Precondition | Success | Error Mapping |
 | :--- | :--- | :--- | :--- | :--- |
-| Salvar contato | `PATCH /contacts/{id}` `{ name?, phone? }` | contato carregado | `200` Contact; se `phone` mudou, recarregar jobs com o novo número | `401`; `404` → contato não encontrado; `409` → nome ou telefone já existe; `422` |
-| Excluir contato | `DELETE /contacts/{id}` | contato carregado | `204` → voltar a `scr-contacts` | `401`; `404`; `409` → há job `scheduled` para este telefone |
-| Agendar | `POST /jobs` | ver form | `201` Job; atualizar `wdg-job-list` | `401`; `404` → template inexistente; `422` → content/template_id/kind/run_at/cron |
-| Ver detalhe | `GET /jobs/{id}` | job na lista | preencher `wdg-job-detail` | `401`; `404` → recado não encontrado |
-| Cancelar recado | `POST /jobs/{id}/cancel` | `source=sqlite` | `204`; atualizar lista | `401`; `404`; `409` → edite `routines.yaml` (job YAML) |
-| Reagendar | `POST /jobs/{id}/reschedule` `{ run_at }` **ou** `{ cron_expr }` | `source=sqlite`; um dos dois campos | `200` Job | `401`; `404`; `409` YAML; `422` se nenhum campo ou cron ≠ 5 campos |
-| Disparar agora | `POST /jobs/{id}/run` | ação explícita (nunca home) | `202` `{ status: queued, job_id }` — enfileirado no gateway, não é entrega | `401`; `404`; `502` → gateway não aceitou |
+| Save contact | `PATCH /contacts/{id}` `{ name?, phone? }` | Contact loaded | `200 OK` Contact; reload jobs if phone changed | `401`; `404` → not found; `409` → duplicate; `422` |
+| Delete contact | `DELETE /contacts/{id}` | Contact loaded | `204 No Content` → navigate to `scr-contacts` | `401`; `404`; `409` → scheduled jobs exist for this contact |
+| Schedule job | `POST /jobs` | Valid form | `201 Created` Job; refresh `wdg-job-list` | `401`; `404` → missing template; `422` |
+| View details | `GET /jobs/{id}` | Click job row | Populate `wdg-job-detail` | `401`; `404` → job not found |
+| Cancel job | `POST /jobs/{id}/cancel` | `source='sqlite'` | `204 No Content`; refresh list | `401`; `404`; `409` → YAML jobs cannot be cancelled via HTTP |
+| Reschedule | `POST /jobs/{id}/reschedule` `{ run_at }` or `{ cron_expr }` | `source='sqlite'` | `200 OK` Job | `401`; `404`; `409` YAML job; `422` invalid cron expression |
+| Run now | `POST /jobs/{id}/run` | Explicit operator click | `202 Accepted` `{ status: 'queued', job_id }` | `401`; `404`; `502` → gateway rejected dispatch |
 
-Na lista, distinguir visualmente destino (`target_number` = telefone da ficha) vs criador (`created_by` = telefone da ficha). Job YAML: cancelar/reagendar indisponíveis (a API responde `409`).
-
-- **Estados:**
-  - `loading`: header e/ou lista de jobs
-  - `empty`: jobs `[]` — nenhuma agenda para este telefone
-  - `error` (rede / 5xx)
-  - `domínio`: `status` do job `scheduled` \| `done` \| `paused` \| `error`; `source` `yaml` vs `sqlite`
-- **Não mostrar:** stack em `last_error` (a API já não envia); `target_number` cru como único rótulo se houver `name` do contato; payload de `/send`
+- **States:**
+  - `loading`: Header and/or job list loading
+  - `empty`: Zero jobs associated with this phone number
+  - `error`: Network or server error
+  - `domain`: Job status `scheduled` \| `done` \| `paused` \| `error`; source `yaml` vs `sqlite`
+- **Hidden Fields:** Stack trace in `last_error`; raw `target_number` when contact name exists; internal `/send` payloads
 
 ---
 
-### Tela `scr-templates` — Modelos
+### Screen `scr-templates` — Templates
 
-- **Rota de UI:** `/templates`
-- **Propósito:** CRUD de textos reutilizáveis. Placeholders no disparo (não na UI): relógio `{{date}}`, `{{date_iso}}`, `{{time}}`, `{{weekday}}`, `{{day_name}}`, `{{month_name}}`, `{{year}}`; `{{name}}` = nome do contato **destino**. Tag desconhecida permanece literal.
-- **Widgets / regiões:**
+- **UI Route:** `/templates`
+- **Purpose:** CRUD management of reusable text templates. Runtime placeholders: `{{date}}`, `{{date_iso}}`, `{{time}}`, `{{weekday}}`, `{{day_name}}`, `{{month_name}}`, `{{year}}`, `{{name}}` (destination contact name). Unrecognized tags remain literal.
+- **Widgets / Regions:**
 
-| Região | Binding | Campos visíveis | Obrigatório na UI? |
-| :--- | :--- | :---: | :---: |
+| Region | Binding | Visible Fields | Mandatory in UI? |
+| :--- | :--- | :--- | :---: |
 | `wdg-template-list` | `GET /templates` → `{ templates }` | `id`, `name`, `body` | — |
-| `wdg-template-form` | `GET /templates/{id}` ao editar | `name`, `body` | criar: `name` sim, `body` sim; PATCH: ambos opcionais |
+| `wdg-template-form` | `GET /templates/{id}` on edit | `name`, `body` | Create: `name` yes, `body` yes; PATCH: optional |
 
-- **Ações:**
+- **Actions:**
 
-| Ação | Binding | Pré-condição | Sucesso | Erros → copy |
+| Action | Binding | Precondition | Success | Error Mapping |
 | :--- | :--- | :--- | :--- | :--- |
-| Criar | `POST /templates` `{ name, body }` | `name` 1–80; `body` min 1 | `201`; atualizar lista | `401`; `422`; `409` → nome já existe |
-| Salvar | `PATCH /templates/{id}` `{ name?, body? }` | item selecionado | `200` | `401`; `404`; `409`; `422` |
-| Excluir | `DELETE /templates/{id}` | item selecionado | `204` | `401`; `404`; `409` → há job `scheduled` com este `template_id` |
+| Create template | `POST /templates` `{ name, body }` | `name` length 1–80; `body` min length 1 | `201 Created`; refresh list | `401`; `422`; `409` → template name exists |
+| Update template | `PATCH /templates/{id}` `{ name?, body? }` | Item selected | `200 OK`; update row | `401`; `404`; `409`; `422` |
+| Delete template | `DELETE /templates/{id}` | Item selected | `204 No Content` | `401`; `404`; `409` → active jobs reference this template |
 
-- **Estados:**
-  - `loading`
-  - `empty`: nenhum modelo
-  - `error` (rede / 5xx)
-  - `domínio`: nenhum extra
-- **Não mostrar:** Jinja / linguagens de template que a API não tem
+- **States:** `loading`, `empty`, `error`
+- **Hidden Fields:** Jinja template directives (prohibited)
 
 ---
 
-### Tela `scr-jobs` — Agenda
+### Screen `scr-jobs` — Agenda Overview
 
-- **Rota de UI:** `/jobs`
-- **Propósito:** ver recados sem filtrar por pessoa; criar recado avulso; detalhe + cancelar / reagendar / disparar agora.
-- **Widgets / regiões:**
+- **UI Route:** `/jobs`
+- **Purpose:** Global agenda view across all contacts; quick creation; detail inspection, cancel, reschedule, and manual trigger.
+- **Widgets / Regions:**
 
-| Região | Binding | Campos visíveis | Obrigatório na UI? |
-| :--- | :--- | :---: | :---: |
-| `wdg-job-filters` | query de `GET /jobs` | `status` default `upcoming` (`upcoming` \| `done` \| `paused` \| `error` \| `all`); `from` / `to` opcionais (intervalo de **tempo**); `phone` opcional; `limit` opcional 1–100 | `status` não (API tem default) |
-| `wdg-job-list` | `GET /jobs` | `JobListItem` (sem `content`) | — |
-| `wdg-job-detail` | `GET /jobs/{id}` | Job completo | após seleção |
-| `wdg-job-create` | (form) | iguais ao create da ficha; `to` default API `"eu"`; `created_by` opcional; picker `GET /contacts` e `GET /templates` | `title`, `kind`; `content` xor `template_id`; `run_at` se once; `cron_expr` se cron |
-| `wdg-contact-pick` | `GET /contacts` | `id`, `name`, `phone` para `to` / `created_by` | não |
+| Region | Binding | Visible Fields | Mandatory in UI? |
+| :--- | :--- | :--- | :---: |
+| `wdg-job-filters` | `GET /jobs` query params | `status` (default `upcoming` \| `done` \| `paused` \| `error` \| `all`), `from`, `to`, `phone`, `limit` (1–100) | `status` optional (API default applied) |
+| `wdg-job-list` | `GET /jobs` | `JobListItem` (omits `content`) | — |
+| `wdg-job-detail` | `GET /jobs/{id}` | Complete job record | On selection |
+| `wdg-job-create` | Form | Same fields as contact job form; default `to="eu"`; contact/template pickers | Mandatory fields matching job schema |
+| `wdg-contact-pick` | `GET /contacts` | `id`, `name`, `phone` for `to` / `created_by` | No |
 
-- **Ações:** mesmas de job que em `scr-contact` (`POST /jobs`, `GET /jobs/{id}`, cancel, reschedule, run) com os mesmos erros. Filtro `phone` nesta tela é opcional (não substitui a ficha).
-
-- **Estados:**
-  - `loading`
-  - `empty`: nenhum job no filtro atual
-  - `error` (rede / 5xx)
-  - `domínio`: `scheduled` \| `done` \| `paused` \| `error`; YAML imutável
-- **Não mostrar:** `content` na lista; interpretar query `to` como destinatário
+- **Actions:** Identical job actions as in `scr-contact` (`POST /jobs`, `GET /jobs/{id}`, cancel, reschedule, run).
+- **States:** `loading`, `empty`, `error`, domain status badges.
+- **Hidden Fields:** Full message `content` in list view; interpreting query `to` as recipient.
 
 ---
 
-## 4. NFRs (só com evidência)
+## 4. Non-Functional Requirements (NFRs)
 
-| ID | Requisito | Evidência (arquivo, status HTTP, doc) |
+| ID | Requirement | Verification Anchor |
 | :--- | :--- | :--- |
-| `nfr-auth` | Toda rota de produto exige `x-api-key` = `SCHEDULE_API_KEY`; mismatch → `401` `{ detail }` | `auth.py`, `ENDPOINTS.md` |
-| `nfr-quota` | — | Sem `429` / `Retry-After` neste serviço |
-| `nfr-offline` | Falha de rede / 5xx genérico; sem estado de domínio “equipamento off” | README: tick e gateway no servidor |
-| `nfr-poll` | — | Sem SSE/poll documentado; refresh é ação do usuário (disparo é o tick) |
-| `nfr-run` | `POST /jobs/{id}/run` → `202` queued ou `502` se o gateway não aceitar | `jobs_router.py`, `ENDPOINTS.md`, ADR-004 |
-
-A UI guarda a chave só no cliente (não há rota de sessão). Sem tela `/login` na API.
+| `nfr-auth` | All product endpoints require `x-api-key: {SCHEDULE_API_KEY}`; mismatch returns `401 Unauthorized` | `auth.py`, `ENDPOINTS.md` |
+| `nfr-quota` | No rate-limiting headers (`429` / `Retry-After`) in this service | Source code audit |
+| `nfr-offline` | Handled as standard network failure; no domain "device offline" states | Background tick operates on server |
+| `nfr-poll` | No SSE/WebSocket polling; UI refreshes on user action or mutation | `api.ts` |
+| `nfr-run` | `POST /jobs/{id}/run` returns `202 Accepted` on dispatch or `502 Bad Gateway` if outbound gateway fails | `jobs_router.py`, `ENDPOINTS.md`, ADR-004 |
 
 ---
 
-## 5. Inventário de rotas
+## 5. Route Inventory
 
-Toda rota do backend aparece **uma** vez.
+Every backend API endpoint is mapped exactly once:
 
-| Método | Path | Classe | Destino (ID tela / ação / —) |
+| Method | Path | Category | Target (Screen ID / Action / —) |
 | :---: | :--- | :--- | :--- |
-| `GET` | `/health` | `ops-only` | — |
-| `GET` | `/jobs` | `screen` | `scr-jobs` (`wdg-job-list`); também `widget` em `scr-contact` com `phone` |
-| `POST` | `/jobs` | `action` | `scr-jobs` / `scr-contact` criar |
-| `GET` | `/jobs/{id}` | `widget` | `wdg-job-detail` em `scr-jobs` e `scr-contact` |
-| `POST` | `/jobs/{id}/cancel` | `action` | `scr-jobs` / `scr-contact` |
-| `POST` | `/jobs/{id}/reschedule` | `action` | `scr-jobs` / `scr-contact` |
-| `POST` | `/jobs/{id}/run` | `action` | `scr-jobs` / `scr-contact` (explícita) |
-| `GET` | `/contacts` | `screen` | `scr-contacts`; picker em `scr-jobs` |
-| `POST` | `/contacts` | `action` | `scr-contacts` |
-| `GET` | `/contacts/{id}` | `widget` | `wdg-contact-header` em `scr-contact` |
-| `PATCH` | `/contacts/{id}` | `action` | `scr-contact` |
-| `DELETE` | `/contacts/{id}` | `action` | `scr-contact` |
-| `GET` | `/templates` | `screen` | `scr-templates`; picker em create de job |
-| `POST` | `/templates` | `action` | `scr-templates` |
-| `GET` | `/templates/{id}` | `widget` | `wdg-template-form` |
-| `PATCH` | `/templates/{id}` | `action` | `scr-templates` |
-| `DELETE` | `/templates/{id}` | `action` | `scr-templates` |
-| `POST` | `/routines/reload` | `deferred` | §7 |
-| `POST` | `/housekeeping/purge` | `deferred` | §7 |
+| `GET` | `/health` | `ops-only` | Liveness probe (no UI screen) |
+| `GET` | `/jobs` | `screen` | `scr-jobs` (`wdg-job-list`); also `wdg-job-list` in `scr-contact` |
+| `POST` | `/jobs` | `action` | Create job in `scr-jobs` and `scr-contact` |
+| `GET` | `/jobs/{id}` | `widget` | `wdg-job-detail` in `scr-jobs` and `scr-contact` |
+| `POST` | `/jobs/{id}/cancel` | `action` | Cancel job in `scr-jobs` and `scr-contact` |
+| `POST` | `/jobs/{id}/reschedule` | `action` | Reschedule job in `scr-jobs` and `scr-contact` |
+| `POST` | `/jobs/{id}/run` | `action` | Manual dispatch trigger |
+| `GET` | `/contacts` | `screen` | `scr-contacts`; contact picker in `scr-jobs` |
+| `POST` | `/contacts` | `action` | Create contact in `scr-contacts` |
+| `GET` | `/contacts/{id}` | `widget` | `wdg-contact-header` in `scr-contact` |
+| `PATCH` | `/contacts/{id}` | `action` | Update contact in `scr-contact` |
+| `DELETE` | `/contacts/{id}` | `action` | Delete contact in `scr-contact` |
+| `GET` | `/templates` | `screen` | `scr-templates`; template picker in job forms |
+| `POST` | `/templates` | `action` | Create template in `scr-templates` |
+| `GET` | `/templates/{id}` | `widget` | `wdg-template-form` in `scr-templates` |
+| `PATCH` | `/templates/{id}` | `action` | Update template in `scr-templates` |
+| `DELETE` | `/templates/{id}` | `action` | Delete template in `scr-templates` |
+| `POST` | `/routines/reload` | `deferred` | Admin maintenance endpoint |
+| `POST` | `/housekeeping/purge` | `deferred` | Scheduled retention purge |
 
 ---
 
-## 6. Fora de escopo
+## 6. Out of Scope
 
-- `GET /health` (probe; Vector pode descartar no HDD)
-- Cliente de mensageiro, bot, `POST /send` direto (gateway fora deste host de produto)
-- Tools MCP (`schedule`, `list_agenda`, …) — caneta de agente, não tela
-- Edição de `routines.yaml` no browser
-- Tela `/settings` só para tema/idioma
-- Cadastro / login / reset por telefone+OTP+senha; papéis admin vs conta (revisitar depois de validar esta UI)
-
-## 7. Adiado
-
-- `POST /routines/reload` — operador Git/YAML; sem fluxo na UI simples
-- `POST /housekeeping/purge` — manutenção (`JOB_RETENTION_DAYS`); o tick já expurga; sem tela nesta versão
-- Expressões amigáveis de `when` (backlog MCP, não HTTP)
-- Contas de pessoa: OTP 5 min via gateway, senha, sessão no browser, allowlist de operador. Auth desta versão = só `x-api-key` de operador.
+- `GET /health` probe monitoring in UI.
+- Direct outbound `POST /send` messaging calls (managed by scheduler tick).
+- MCP agent stdio tools (consumed by Cursor/AI agents, not Web UI).
+- In-browser editing of `routines.yaml`.
+- Dedicated settings page solely for theme/locale toggles.
+- User registration, OTP login, passwords, and multi-tenant authorization roles.
 
 ---
 
-## 8. Chrome (não deriva de rota)
+## 7. Deferred Items
 
-Preferências de superfície. **Não** é tela de produto: não criar `scr-settings` nem rota `/settings` só por isto. Tema: especifique comportamento, não o widget. Locale `selectable`: o seletor **leva bandeira por território** (ver abaixo).
+- `POST /routines/reload`: Invoked via git hooks or CLI; no UI flow required.
+- `POST /housekeeping/purge`: Automated by background tick loop.
+- User accounts and authentication sessions (system uses operator `x-api-key`).
 
-Não há perfil de usuário com tema/locale no schema.
+---
 
-### Tema (obrigatório)
+## 8. Chrome Configuration
 
-| Campo | Valor |
+Surface preferences applied across application shell:
+
+### Theme (Mandatory)
+
+| Field | Value |
 | :--- | :--- |
-| Valores | `light` \| `system` \| `dark` (três modos; nunca só claro/escuro) |
-| Default | `system` (`prefers-color-scheme` + override) |
-| Persistência | `local` (cliente) — sem binding HTTP |
-| Onde | chrome global (header, overflow, rodapé) |
+| Options | `light` \| `system` \| `dark` (three modes) |
+| Default | `system` (`prefers-color-scheme` with manual override) |
+| Persistence | `localStorage` (client-side only) |
+| Location | Global shell (header segmented control) |
 
-### Locale (obrigatório — acordar no Passo 5)
+### Locale (Mandatory)
 
-| Campo | Valor |
+| Field | Value |
 | :--- | :--- |
-| Política | `fixed` |
-| Acordo humano | `sim` — `pt-BR` combinado no ciclo `[00.x]` / tarefa `[00.4]` (não reabrir salvo pedido) |
-| Locales | `pt-BR` |
-| Fallback | `pt-BR` |
-| Persistência | `local` — sem binding |
-| `Accept-Language` nas requests | `não` (handlers não leem o header) |
-
-Sem seletor de idioma. Copy das fichas neste arquivo está em português (idioma de trabalho). A UI implementada usa só `pt-BR`.
+| Policy | `fixed` |
+| Active Locale | `pt-BR` (operator UI language agreed in task [00.4]) |
+| Persistence | `local` |
+| Request Header | Do NOT send `Accept-Language` (backend does not vary responses by language) |
 
 ---
 
-## 9. Âncoras de implementação (stack-agnóstico)
+## 9. DOM Anchors (Stack-Agnostic)
 
-O proto HTML e o porte (Svelte ou outro) **reutilizam** estes identificadores. Sem âncora aqui, o implementador não inventa `id`.
+Implementations MUST preserve exact DOM IDs and `data-state` markers:
 
-**Documento:** `<html data-theme="system">` (valores: `light` \| `system` \| `dark`). Locale `fixed`: sem seletor de bandeira.
+- Root Document: `<html data-theme="system">` (values: `light` \| `system` \| `dark`).
 
-**Por região:**
-
-| Tela | Região / widget | `id` DOM | `name` dos campos (schema) | `data-state` usados |
+| Screen | Region / Widget | DOM `id` | Field `name` attributes | `data-state` values |
 | :--- | :--- | :--- | :--- | :--- |
-| `scr-contacts` | página | `scr-contacts` | — | `loading` \| `empty` \| `error` |
-| `scr-contacts` | `wdg-contact-list` | `wdg-contact-list` | — | `loading` \| `empty` \| `error` |
-| `scr-contacts` | `wdg-contact-create` | `wdg-contact-create` | `name`, `phone` | `error` |
-| `scr-contact` | página | `scr-contact` | — | `loading` \| `empty` \| `error` |
-| `scr-contact` | `wdg-contact-header` | `wdg-contact-header` | — | `loading` \| `error` |
-| `scr-contact` | `wdg-contact-edit` | `wdg-contact-edit` | `name`, `phone` | `error` |
-| `scr-contact` | `wdg-job-list` | `wdg-job-list` | `status`, `phone` (query) | `loading` \| `empty` \| `error` |
-| `scr-contact` | `wdg-job-detail` | `wdg-job-detail` | — | `loading` \| `empty` \| `error` |
-| `scr-contact` | `wdg-job-create` | `wdg-job-create` | `title`, `content`, `to`, `kind`, `run_at`, `cron_expr`, `created_by`, `template_id` | `error` |
-| `scr-contact` | `wdg-template-pick` | `wdg-template-pick` | `template_id` | `loading` \| `empty` \| `error` |
-| `scr-templates` | página | `scr-templates` | — | `loading` \| `empty` \| `error` |
-| `scr-templates` | `wdg-template-list` | `wdg-template-list` | — | `loading` \| `empty` \| `error` |
-| `scr-templates` | `wdg-template-form` | `wdg-template-form` | `name`, `body` | `error` |
-| `scr-jobs` | página | `scr-jobs` | — | `loading` \| `empty` \| `error` |
-| `scr-jobs` | `wdg-job-filters` | `wdg-job-filters` | `status`, `from`, `to`, `phone`, `limit` | — |
-| `scr-jobs` | `wdg-job-list` | `wdg-job-list` | — | `loading` \| `empty` \| `error` |
-| `scr-jobs` | `wdg-job-detail` | `wdg-job-detail` | — | `loading` \| `empty` \| `error` |
-| `scr-jobs` | `wdg-job-create` | `wdg-job-create` | `title`, `content`, `to`, `kind`, `run_at`, `cron_expr`, `created_by`, `template_id` | `error` |
-| `scr-jobs` | `wdg-contact-pick` | `wdg-contact-pick` | `to`, `created_by` | `loading` \| `empty` \| `error` |
+| `scr-contacts` | Page container | `scr-contacts` | — | `loading` \| `empty` \| `error` |
+| `scr-contacts` | Contact list | `wdg-contact-list` | — | `loading` \| `empty` \| `error` |
+| `scr-contacts` | Contact create form | `wdg-contact-create` | `name`, `phone` | `error` |
+| `scr-contact` | Page container | `scr-contact` | — | `loading` \| `empty` \| `error` |
+| `scr-contact` | Header widget | `wdg-contact-header` | — | `loading` \| `error` |
+| `scr-contact` | Edit form | `wdg-contact-edit` | `name`, `phone` | `error` |
+| `scr-contact` | Job list | `wdg-job-list` | `status`, `phone` (query) | `loading` \| `empty` \| `error` |
+| `scr-contact` | Job detail drawer | `wdg-job-detail` | — | `loading` \| `empty` \| `error` |
+| `scr-contact` | Create job form | `wdg-job-create` | `title`, `content`, `to`, `kind`, `run_at`, `cron_expr`, `created_by`, `template_id` | `error` |
+| `scr-contact` | Template picker | `wdg-template-pick` | `template_id` | `loading` \| `empty` \| `error` |
+| `scr-templates` | Page container | `scr-templates` | — | `loading` \| `empty` \| `error` |
+| `scr-templates` | Template list | `wdg-template-list` | — | `loading` \| `empty` \| `error` |
+| `scr-templates` | Template form | `wdg-template-form` | `name`, `body` | `error` |
+| `scr-jobs` | Page container | `scr-jobs` | — | `loading` \| `empty` \| `error` |
+| `scr-jobs` | Filter widget | `wdg-job-filters` | `status`, `from`, `to`, `phone`, `limit` | — |
+| `scr-jobs` | Job list table | `wdg-job-list` | — | `loading` \| `empty` \| `error` |
+| `scr-jobs` | Job detail drawer | `wdg-job-detail` | — | `loading` \| `empty` \| `error` |
+| `scr-jobs` | Create job form | `wdg-job-create` | `title`, `content`, `to`, `kind`, `run_at`, `cron_expr`, `created_by`, `template_id` | `error` |
+| `scr-jobs` | Contact picker | `wdg-contact-pick` | `to`, `created_by` | `loading` \| `empty` \| `error` |
