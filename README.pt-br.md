@@ -130,6 +130,17 @@ No disparo, placeholders de data/hora no `content` são interpolados no `TZ` (pa
 
 Jobs podem referenciar `template_id` do catálogo persistido (`/templates`) ou conter mensagem direta. No disparo, `{{name}}` e variáveis customizadas são mescladas com os placeholders temporais.
 
+
+### Resumo operacional
+
+Use MCP `health_metrics(window_hours=24)` ou `GET /health/metrics` autenticado
+(`x-api-key`). A janela aceita 1–168 horas. Retorna contagens de jobs SQLite/YAML,
+atrasos, próxima execução ativa, totais de tentativas retidas, percentual de sucesso
+e duração média. `attention_required` indica jobs atrasados/em erro ou tentativas
+com falha na janela. Sucesso significa aceitação pelo gateway, sem confirmar
+entrega. O resumo não verifica disponibilidade do scheduler/gateway; `/health`
+continua público.
+
 ## Repositório
 
 GitHub: [`yegear1/homelab-schedule`](https://github.com/yegear1/homelab-schedule).

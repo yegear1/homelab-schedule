@@ -220,3 +220,10 @@ def handle_upcoming_runs(
         return compact_json(data)
     except AgendaToolError as exc:
         return compact_json({"error": exc.message})
+
+
+def handle_health_metrics(api: AgendaApi, window_hours: int = 24) -> str:
+    try:
+        return compact_json(api.health_metrics(window_hours))
+    except AgendaToolError as exc:
+        return compact_json({"error": exc.message})

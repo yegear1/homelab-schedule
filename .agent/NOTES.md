@@ -33,6 +33,12 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 ## Architectural Decisions Beyond ADRs
 
+### [2026-10-31] Operational Metrics (Task [02.16])
+
+- Authenticated `GET /health/metrics` and the explicit `health_metrics` MCP tool return only aggregate counts and timestamps. The MCP remains an HTTP bridge; ADR-005 authorizes this bounded read-only addition. Public `/health` stays unchanged.
+- Job counts include persisted SQLite/YAML rows. Overdue means enabled scheduled jobs strictly before the UTC reference instant. Attempt metrics cover all retained manual/scheduled attempts in the inclusive 1–168 hour window (default 24), without list truncation. Empty history yields null percentage, mean duration, and latest timestamp.
+- `attention_required` means overdue/error jobs or failed attempts in the window. Gateway acceptance is attempt success, not delivery confirmation. This is not a scheduler/gateway availability probe. Separate aggregate reads can reflect concurrent changes, and retention bounds history.
+
 ### [2026-10-31] Tabular CSV Export
 
 - Authenticated `/jobs/export.csv` reuses agenda filters and includes SQLite/YAML jobs; `/jobs/runs/export.csv` supports status/job filters. Both export all matching rows independently of list limits, with stable model-field columns, UTF-8 BOM, CRLF, ISO timestamps, compact JSON compound cells, and empty null cells.
@@ -221,7 +227,7 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 | HTTP `/contacts` | Web UI / curl | homelab-schedule API | [ENDPOINTS.md](ENDPOINTS.md) | Contact catalog management |
 | HTTP `/templates` | Web UI / curl | homelab-schedule API | [ENDPOINTS.md](ENDPOINTS.md) | Message template catalog |
 | HTTP `/backup` | Web UI / scripts | homelab-schedule API | [ENDPOINTS.md](ENDPOINTS.md) | SQLite snapshot, JSON export/import |
-| MCP stdio | AI agents | Local HTTP daemon | [ADR-005](adr/005-closed-mcp-surface.md) | Closed surface (11 tools) |
+| MCP stdio | AI agents | Local HTTP daemon | [ADR-005](adr/005-closed-mcp-surface.md) | Closed surface (12 tools) |
 | `routines.yaml` | Git / operator | YAML loader + tick watch | [CHANNELS.md](CHANNELS.md) | Declarative permanent routines |
 | `POST /send` | Dispatcher tick | Gateway `{WHATSAPP_API_URL}` | `phone_number`, `content`, `quote_id`, `x-api-key` | Outbound dispatch gateway |
 

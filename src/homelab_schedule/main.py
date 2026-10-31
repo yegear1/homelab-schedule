@@ -6,14 +6,16 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
+from typing import Annotated
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from homelab_schedule.aliases import parse_aliases, resolve_destination
+from homelab_schedule.auth import Auth
 from homelab_schedule.backup_router import router as backup_router
 from homelab_schedule.backup_service import BackupService
 from homelab_schedule.clock import SystemClock
@@ -42,6 +44,7 @@ from homelab_schedule.templates_router import router as templates_router
 from homelab_schedule.templates_service import TemplateService
 from homelab_schedule.tick import run_tick
 from schemas.api import HealthResponse
+from schemas.health import HealthMetricsResponse
 
 
 def create_app(
@@ -178,6 +181,17 @@ def create_app(
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
         return HealthResponse(status=ping())
+
+    @app.get("/health/metrics", response_model=HealthMetricsResponse)
+    def health_metrics(
+        request: Request,
+        _: Auth,
+        window_hours: Annotated[int, Query(ge=1, le=168)] = 24,
+    ) -> HealthMetricsResponse:
+        service = request.app.state.job_service
+        if not isinstance(service, JobService):
+            raise RuntimeError("job service is not configured")
+        return service.health_metrics(window_hours)
 
     return app
 

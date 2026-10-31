@@ -178,6 +178,12 @@ class AgendaApi:
         response = self._request("POST", "/jobs/preview", json=payload)
         return _json_object(response)
 
+    def health_metrics(self, window_hours: int = 24) -> dict[str, object]:
+        response = self._request(
+            "GET", "/health/metrics", params={"window_hours": str(window_hours)}
+        )
+        return _json_object(response)
+
     def daily_digest(
         self,
         date: str = "hoje",

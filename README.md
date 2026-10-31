@@ -130,6 +130,16 @@ At dispatch time, date/time placeholders in `content` are interpolated in the co
 
 Jobs can reference a persisted `template_id` (`/templates`) or contain inline content. At dispatch time, `{{name}}` and custom variables are merged alongside temporal placeholders.
 
+
+### Operational summary
+
+Use MCP `health_metrics(window_hours=24)` or authenticated `GET /health/metrics`
+(`x-api-key`). The window accepts 1–168 hours. Returns SQLite/YAML job counts,
+overdue jobs, earliest active runtime, retained attempt counts, success percentage,
+and mean duration. `attention_required` flags overdue/error jobs or failed attempts
+in the window. Success means gateway acceptance, not delivery confirmation. This
+summary does not probe scheduler/gateway availability; `/health` remains public.
+
 ## Repository
 
 GitHub: [`yegear1/homelab-schedule`](https://github.com/yegear1/homelab-schedule).

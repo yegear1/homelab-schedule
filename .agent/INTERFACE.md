@@ -159,6 +159,7 @@ Every backend API endpoint is mapped exactly once:
 | Method | Path | Category | Target (Screen ID / Action / —) |
 | :---: | :--- | :--- | :--- |
 | `GET` | `/health` | `ops-only` | Liveness probe (no UI screen) |
+| `GET` | `/health/metrics` | `ops-only` | Authenticated operational aggregates for HTTP/MCP; no UI screen |
 | `GET` | `/jobs` | `screen` | `scr-jobs` (`wdg-job-list`); also `wdg-job-list` in `scr-contact` |
 | `POST` | `/jobs` | `action` | Create job in `scr-jobs` and `scr-contact` |
 | `GET` | `/jobs/{id}` | `widget` | `wdg-job-detail` in `scr-jobs` and `scr-contact` |

@@ -1,5 +1,8 @@
+from typing import Annotated
+
 import httpx
 from mcp.server import MCPServer
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from homelab_schedule.mcp_http import AgendaApi
@@ -7,6 +10,7 @@ from homelab_schedule.mcp_tools import (
     handle_cancel,
     handle_daily_digest,
     handle_get_item,
+    handle_health_metrics,
     handle_list_agenda,
     handle_pause,
     handle_preview,
@@ -160,6 +164,16 @@ def build_mcp(api: AgendaApi) -> MCPServer:
         Returns a compact summary with scheduled timestamps in UTC and local time.
         """
         return handle_upcoming_runs(api, job_id=job_id, limit=limit)
+
+    @mcp.tool()
+    def health_metrics(
+        window_hours: Annotated[int, Field(ge=1, le=168)] = 24,
+    ) -> str:
+        """Summarize stored job counts and retained attempts over 1–168 hours (default 24).
+        Status flags overdue/error jobs or failed attempts. Success means gateway acceptance,
+        not delivery. This does not probe scheduler or gateway availability.
+        """
+        return handle_health_metrics(api, window_hours)
 
     return mcp
 

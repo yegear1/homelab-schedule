@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import Callable, Iterator
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from homelab_schedule.aliases import normalize_whatsapp_phone, resolve_destination
@@ -40,6 +40,7 @@ from schemas.api import (
     UpcomingRunItem,
     UpcomingRunsResponse,
 )
+from schemas.health import HealthMetricsResponse
 from schemas.job import (
     Job,
     JobKind,
@@ -93,6 +94,23 @@ class JobService:
         self._now = now
         self._contacts = contacts
         self._templates = templates
+
+    def health_metrics(self, window_hours: int = 24) -> HealthMetricsResponse:
+        if not 1 <= window_hours <= 168:
+            raise ValueError("window_hours must be between 1 and 168")
+        now = self._now().astimezone(UTC)
+        since = now - timedelta(hours=window_hours)
+        jobs = self._repo.job_metrics(now)
+        runs = self._repo.run_metrics(since, now)
+        return HealthMetricsResponse(
+            status="attention_required" if jobs.overdue or jobs.error or runs.error else "ok",
+            generated_at=now,
+            window_hours=window_hours,
+            window_start=since,
+            jobs=jobs,
+            runs=runs,
+            success_percentage=100 * runs.success / runs.total if runs.total else None,
+        )
 
     def create(self, payload: CreateJobRequest) -> Job:
         target = (

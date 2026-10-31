@@ -2,7 +2,7 @@
 
 - **Status:** Approved
 - **Date:** 2026-09-11
-- **Updated:** 2026-09-12 (Added `reschedule`), 2026-09-19 (Added `preview` for dry-run), 2026-09-20 (Added `pause`, `resume`, `snooze` for lifecycle), 2026-09-29 (Added `daily_digest` for morning synthesis and conflict detection), 2026-10-04 (Added `upcoming_runs` for timeline projection)
+- **Updated:** 2026-09-12 (Added `reschedule`), 2026-09-19 (Added `preview` for dry-run), 2026-09-20 (Added `pause`, `resume`, `snooze` for lifecycle), 2026-09-29 (Added `daily_digest` for morning synthesis and conflict detection), 2026-10-04 (Added `upcoming_runs` for timeline projection), 2026-10-31 (Added `health_metrics` for operational aggregates)
 - **Author(s):** yegear / design session
 
 ---
@@ -27,6 +27,9 @@ Exposed MCP Tools:
 9. `preview`: Side-effect-free dry-run testing temporal parsing, recipient resolution, and dynamic template variable interpolation.
 10. `daily_digest`: Morning/daily agenda consolidation detecting time overlaps for identical recipients.
 11. `upcoming_runs`: Deterministic projection of future occurrences in UTC and local timezone respecting lifecycle bounds (`until`, `max_runs`).
+12. `health_metrics`: Read-only aggregate job state and retained execution attempts over a bounded 1–168 hour window, without exposing recipients or content.
+
+The explicit `health_metrics` addition avoids reconstructing operational totals from truncated agenda/history lists. It uses the authenticated HTTP boundary and exposes no arbitrary queries or mutation capabilities. Its status describes stored agenda/history, not scheduler or gateway availability.
 
 Forbidden: Generic REST `PATCH`, generic SQL queries, and full CRUD endpoints for contacts/templates over MCP.
 `list_agenda` returns compact summaries and omits full message content bodies. Direct production database mutations via MCP require human operator consent per `AGENTS.md`.

@@ -7,12 +7,53 @@ from datetime import UTC, datetime
 from homelab_schedule.cron import next_cron_utc
 from homelab_schedule.store import _dt_from_db, _dt_to_db, _row_to_job, _row_to_job_run
 from schemas.api import JobListFilter
+from schemas.health import JobMetrics, RunMetrics
 from schemas.job import Job, JobKind, JobRun, JobSource, JobStatus
 
 
 class JobRepository:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
+
+    def job_metrics(self, now: datetime) -> JobMetrics:
+        row = self._conn.execute(
+            """
+            SELECT COUNT(*) AS total,
+                COUNT(CASE WHEN status = 'scheduled' THEN 1 END) AS scheduled,
+                COUNT(CASE WHEN status = 'done' THEN 1 END) AS done,
+                COUNT(CASE WHEN status = 'paused' THEN 1 END) AS paused,
+                COUNT(CASE WHEN status = 'error' THEN 1 END) AS error,
+                COUNT(CASE WHEN source = 'sqlite' THEN 1 END) AS sqlite,
+                COUNT(CASE WHEN source = 'yaml' THEN 1 END) AS yaml,
+                COUNT(CASE WHEN enabled = 1 AND status = 'scheduled'
+                    THEN 1 END) AS enabled_scheduled,
+                COUNT(CASE WHEN enabled = 1 AND status = 'scheduled'
+                    AND next_run_at < ? THEN 1 END) AS overdue,
+                MIN(CASE WHEN enabled = 1 AND status = 'scheduled'
+                    THEN next_run_at END) AS next_run_at
+            FROM jobs
+            """,
+            (_dt_to_db(now),),
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("job metrics query returned no aggregate")
+        return JobMetrics.model_validate(dict(row))
+
+    def run_metrics(self, since: datetime, now: datetime) -> RunMetrics:
+        row = self._conn.execute(
+            """
+            SELECT COUNT(*) AS total,
+                COUNT(CASE WHEN status = 'success' THEN 1 END) AS success,
+                COUNT(CASE WHEN status = 'error' THEN 1 END) AS error,
+                AVG(duration_ms) AS mean_duration_ms,
+                MAX(ran_at) AS latest_run_at
+            FROM job_runs WHERE ran_at >= ? AND ran_at <= ?
+            """,
+            (_dt_to_db(since), _dt_to_db(now)),
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("run metrics query returned no aggregate")
+        return RunMetrics.model_validate(dict(row))
 
     def insert(self, job: Job) -> Job:
         to_store = _with_next_run(job)

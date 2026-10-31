@@ -10,6 +10,33 @@ Base local: `http://localhost:8003`.
 | :--- | :--- | :--- | :--- |
 | `GET` | `/health` | ops-only | `{ "status": "ok" }`. Vector pode descartar no HDD. |
 
+### `GET /health/metrics`
+
+Requires `x-api-key`. Query: `window_hours` (integer, 1–168, default 24).
+Returns `200` with `status` (`ok` or `attention_required`), `generated_at` (UTC),
+`window_hours`, `window_start` (UTC), `jobs`, `runs`, and `success_percentage`.
+Invalid/missing credentials return `401`; invalid window values return `422`.
+
+- `jobs`: `total`, `scheduled`, `done`, `paused`, `error`, `sqlite`, `yaml`,
+  `enabled_scheduled`, `overdue`, and `next_run_at` (UTC or null). Counts cover all
+  stored jobs, including YAML. Overdue means enabled, scheduled, and
+  `next_run_at < generated_at`. `next_run_at` is the earliest enabled scheduled
+  runtime, including overdue jobs; no runtime yields null.
+- `runs`: `total`, `success`, `error`, `mean_duration_ms`, and `latest_run_at`
+  (UTC). All retained attempts (manual and scheduled) within the inclusive window
+  `[window_start, generated_at]` contribute; there is no list pagination limit.
+  Empty history yields null duration, latest timestamp, and success percentage.
+- `success_percentage`: `100 * runs.success / runs.total`. Attempt success means
+  gateway acceptance (including HTTP 202), not confirmed message delivery.
+- `attention_required`: Any overdue job, job in error, or failed attempt in the
+  window; otherwise `ok`. HTTP stays `200` for this operational summary.
+
+This read-only report exposes no job identifiers, titles, recipients, message
+content, raw errors, credentials, or database paths. Separate aggregate reads may
+reflect concurrent writes; it does not promise a cross-table snapshot. Retention
+limits available history. Status does not certify tick or gateway availability.
+Public `GET /health` remains the unchanged liveness probe.
+
 ## Jobs
 
 Job persistido (SQLite). Rotinas YAML aparecem na listagem com `source: yaml` e **não** aceitam `DELETE` via HTTP (edite o arquivo). Recados `source: sqlite` aceitam cancelamento.

@@ -23,6 +23,7 @@ Implementation in this repository: `uv run homelab-schedule-mcp` (stdio). Commun
 | `preview` | Pure in-memory dry-run: resolves destination contact, computes `next_run_at` (UTC and local), renders template variables, validates lifecycle limits, and surfaces preventive conflict warnings |
 | `daily_digest` | Morning synthesis: aggregates daily schedule, calculates totals, and detects overlapping conflicts ($\le 5$ min) for identical recipients |
 | `upcoming_runs` | Deterministic projection of future occurrences in UTC and local timezone respecting lifecycle bounds |
+| `health_metrics` | Read-only job counts and retained attempt aggregates; `window_hours` 1–168 (default 24). Flags overdue/error jobs or failed attempts; no recipient/content fields or availability probes |
 
 Operator Skill: [`anotar-agenda`](skills/anotar-agenda/SKILL.md). Field Contract: [`agenda-job`](skills/agenda-job/SKILL.md).
 
