@@ -26,13 +26,14 @@ The agent MUST minimize default token load by following progressive disclosure:
 - **Architectural Decisions (`.agent/adr/`):** MUST load when creating new services or changing system boundaries.
 - **Domain Skills (`.agent/skills/<name>/SKILL.md`):** MUST load only when the active task touches that skill's trigger.
 - **API & UI Contracts (`.agent/ENDPOINTS.md`, `.agent/INTERFACE.md`):** MUST load when modifying HTTP routes, gateway dispatch, or Web UI components.
+- **Transversal Skills:** Reference external organizational playbooks (`agent-skills`) ONLY when tasks require UI porting, QA audit, sequential/parallel subagent queue execution (`task-queue`), or host-level orchestration.
 
 ---
 
 ## Execution Protocol
 
 1. Read `AGENTS.md`, `.agent/TASK.md`, and `.agent/NOTES.md` before editing any files.
-2. **Plan first:** Set `Status` in `.agent/TASK.md` to `PLANNING`; present plan; await approval; then set to `RUNNING`.
+2. **Plan first (or Pre-Approved Fast-Track):** If `Status` in `.agent/TASK.md` is `READY FOR PLANNING`, set to `PLANNING`, present plan, await approval, then set to `RUNNING`. If task scope was already decided during planning (`Status: APPROVED`) with zero open questions/blockers, transition directly to `RUNNING` on `proceed` (or use the `task-queue` skill on `proceed queue` to execute sequential/parallel subagents with multi-account quota routing; tag independent tasks that have strictly disjoint file scopes with `[PARALLEL: Wx]` and `Paths:`). Halt and revert to `PLANNING` if any ambiguity or unapproved dependency arises.
 3. Work on exactly ONE active task at a time.
 4. **Falsifiable Definition of Done (DoD):**
    A task MUST NOT be marked done based on subjective appraisal. It MUST satisfy:
