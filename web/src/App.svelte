@@ -5,6 +5,8 @@
   import ContactDetailPage from './pages/ContactDetailPage.svelte';
   import TemplatesPage from './pages/TemplatesPage.svelte';
   import JobsPage from './pages/JobsPage.svelte';
+  import HistoryPage from './pages/HistoryPage.svelte';
+  import DataPage from './pages/DataPage.svelte';
 </script>
 
 <AppShell>
@@ -16,5 +18,9 @@
     <TemplatesPage />
   {:else if router.route === 'jobs'}
     <JobsPage />
+  {:else if router.route === 'history'}
+    <HistoryPage />
+  {:else if router.route === 'data'}
+    <DataPage />
   {/if}
 </AppShell>

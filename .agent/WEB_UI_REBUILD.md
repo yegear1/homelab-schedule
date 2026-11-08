@@ -347,3 +347,43 @@ Operator approved this plan, pt-BR/surface decisions, and the named dependency
 changes with `proceed`. Earlier pending-approval statements describe the planning
 gate at drafting time. Execute [02.18]–[02.25] sequentially; no repeated approval
 is required within the approved scope. Extra dependencies remain separately gated.
+
+
+## 10. Implemented replacement and behavior traceability — 2026-11-08
+
+Tasks [02.18]–[02.25] replace every product presentation body with semantic Svelte 5
+components. Historic "proposed" wording above records the approved planning baseline;
+`INTERFACE.md` describes the implemented routes. `BackupModal` is a compatibility
+navigation bridge with no retained dialog presentation. Transport, public methods,
+auth storage, original route/DOM entry points, branding and `proto/` are preserved.
+No backend routes, dependencies, production requests or deployments were added.
+
+| Capability | Browser behavior coverage (`web/tests/`) | Preserved source requirements |
+|---|---|---|
+| C01 | `foundation.spec.ts`: absent/saved credentials, HTML errors; `shell.spec.ts`: access persistence | `test_api_auth.py` transport regressions |
+| C02 | `shell.spec.ts`, `catalogs.spec.ts`, `history-data.spec.ts`: direct routes/reload/back/forward/backup entries | Original screens and root routing; History/Data added |
+| C03 | `shell.spec.ts`: themes before hydration, focus/stack/Escape, contrast, live region, widths/zoom/reduced motion | Theme tokens, branding, access IDs |
+| C04–C05 | `catalogs.spec.ts`: search/create/edit/discard/delete/conflicts, union-phone refresh, missing resources | Contact IDs, field names, status queries |
+| C06 | `composer.spec.ts`: contact defaults/template clear; `inspector.spec.ts`: shared actions | Contact composer/inspection entry points |
+| C07–C08 | `catalogs.spec.ts`: catalog CRUD/reset/counters, 17 cursor insertions, illustrative/unknown preview | `test_templates_placeholders.py` follows extracted tools |
+| C09 | `agenda.spec.ts`: applied filters/CSV/reset/error shortcut and loaded counts | Filter IDs and recipient/date distinction |
+| C10–C11 | `composer.spec.ts`: exact once/cron/batch bodies, picker/chips, tags/variables/lifecycle, validation and failure drafts | `test_jobs_variables.py`, `test_jobs_tags.py` follow extracted fields |
+| C12 | `agenda.spec.ts`, `inspector.spec.ts`: group expansion, mixed status, bounded members | `test_jobs_grouping.py`, data-group-id |
+| C13–C14 | `inspector.spec.ts`: all individual/group actions, YAML restrictions, errors, metadata/recovery | `test_jobs_lifecycle.py`, `test_jobs_dead_letter.py` follow shared controls |
+| C15 | `inspector.spec.ts`: bounded independent history/projection, late results, refresh/empty/error | `test_jobs_runs.py`, `test_jobs_upcoming.py` follow extracted sections |
+| C16–C17 | `agenda.spec.ts`: sorted timeline modes and calendar keyboard/date/counts; `history-data.spec.ts`: global status/limit/stale/error | `test_jobs_calendar_timeline.py` follows retained wrappers |
+| C18 | `agenda.spec.ts`, `inspector.spec.ts`, `history-data.spec.ts`: authenticated filtered/global/selected CSV, no list limit, errors | Download anchors and transport/media checks |
+| C19 | `history-data.spec.ts`: downloads, optional runs, file shape/counts, merge/replace/cancel/Escape, busy/error, summaries/warnings, FK details | `test_backup_ui.py` moves anchors to Data and its extracted panels |
+
+The integrated `history-data.spec.ts` smoke runs the actual app, disposable SQLite
+and a fake loopback gateway. It creates catalog records and a future job, inspects
+and explicitly runs it through the job API, checks queued history, exports CSV,
+round-trips a real JSON bundle, downloads a snapshot and checks integrity.
+The browser never calls `/send`; only the isolated app dispatcher reaches its fake
+gateway. Imported data refreshes through new reads when destination screens mount.
+
+Visual QA captures History/Data at 320/390/768/1440 px in light and dark with
+reduced motion, plus 200% zoom/confirmation. Existing feature suites cover these
+accessibility axes for the rest of the app. Screenshots are review artifacts under
+`/tmp`, not production assets. Physical touch-device QA is unavailable and is not
+claimed. Source assertions remain compatibility checks, backed by runtime behavior.

@@ -17,6 +17,12 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
+      command: 'uv run python tests/integration_server.py',
+      url: 'http://127.0.0.1:18004/health',
+      env: { UV_CACHE_DIR: '/tmp/uv-cache' },
+      reuseExistingServer: false,
+    },
+    {
       command: 'npm run dev -- --port 15173 --strictPort',
       url: 'http://127.0.0.1:15173',
       env: { SCHEDULE_DEV_API_URL: 'http://127.0.0.1:18003' },

@@ -10,6 +10,9 @@ TYPES_TS = REPO_ROOT / "web" / "src" / "lib" / "types.ts"
 def test_backup_ui_and_api_contract() -> None:
     shell_content = APP_SHELL.read_text(encoding="utf-8")
     modal_content = BACKUP_MODAL.read_text(encoding="utf-8")
+    data_content = (REPO_ROOT / "web/src/pages/DataPage.svelte").read_text()
+    components = REPO_ROOT / "web/src/components/data"
+    data_content += "".join(p.read_text() for p in components.glob("*.svelte"))
     api_content = API_TS.read_text(encoding="utf-8")
     types_content = TYPES_TS.read_text(encoding="utf-8")
 
@@ -27,20 +30,15 @@ def test_backup_ui_and_api_contract() -> None:
     assert "importData(payload: ImportDataRequest): Promise<ImportDataResponse>" in api_content
     assert "checkIntegrity(): Promise<IntegrityCheckResponse>" in api_content
 
-    # Verify AppShell triggers and modal inclusion
-    assert "showBackupModal = $state(false);" in shell_content
+    # Entry anchors now navigate to Data; browser scenarios verify their behavior.
     assert 'id="btn-open-backup-modal-sidebar"' in shell_content
     assert 'id="btn-open-backup-modal-header"' in shell_content
-    assert "<BackupModal open={showBackupModal}" in shell_content
-
-    # Verify BackupModal elements
-    assert "Backup & Dados SQLite" in modal_content
-    assert 'id="btn-download-sqlite"' in modal_content
-    assert 'id="btn-export-json"' in modal_content
-    assert 'id="input-import-file"' in modal_content
-    assert 'id="btn-execute-import"' in modal_content
-    assert 'id="btn-check-integrity"' in modal_content
-    assert "Snapshot Físico" in modal_content
-    assert "Exportar JSON" in modal_content
-    assert "Importar JSON" in modal_content
-    assert "Integridade" in modal_content
+    assert "router.navigate('/data')" in shell_content
+    assert "router.navigate('/data')" in modal_content
+    for anchor in (
+        "btn-download-sqlite", "btn-export-json", "input-import-file",
+        "btn-execute-import", "btn-check-integrity",
+    ):
+        assert f'id="{anchor}"' in data_content
+    for label in ("Snapshot físico", "Exportar JSON", "Importar JSON", "Integridade"):
+        assert label in data_content

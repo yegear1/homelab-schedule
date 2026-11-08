@@ -1,4 +1,4 @@
-export type RouteName = 'contacts' | 'contact-detail' | 'templates' | 'jobs';
+export type RouteName = 'contacts' | 'contact-detail' | 'templates' | 'jobs' | 'history' | 'data';
 
 class Router {
   path = $state<string>('/contacts');
@@ -47,6 +47,8 @@ class Router {
   get route(): RouteName {
     if (this.path === '/templates') return 'templates';
     if (this.path === '/jobs') return 'jobs';
+    if (this.path === '/history') return 'history';
+    if (this.path === '/data') return 'data';
     if (this.path.startsWith('/contacts/')) return 'contact-detail';
     return 'contacts';
   }

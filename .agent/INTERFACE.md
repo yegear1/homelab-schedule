@@ -1,7 +1,7 @@
 # INTERFACE.md — UI Surface Contract
 
 **Contract Status:** `Approved` — operator approved rebuild on 2026-11-08;
-observed baseline and planned destinations remain distinguished. Prior approval: 2026-09-12.
+implemented surface verified through task [02.25]. Prior approval: 2026-09-12.
 **Sources:** `src/homelab_schedule/*router.py`, `main.py`, `src/schemas/`,
 `web/src/`, `tests/web/`, `.agent/ENDPOINTS.md`, `.agent/NOTES.md`.
 **Plan and capability traceability:** [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md).
@@ -13,8 +13,8 @@ Single homelab operator; contacts do not log in. Product API requests require
 and assets are not protected product API resources. Do not use Bearer auth or
 introduce accounts/OTP. Keep browser storage keys `SCHEDULE_API_KEY`,
 `homelab_api_base_url`, `homelab_theme`; blank base URL means same origin.
-The embedded key fallback is a defect explicitly scheduled for removal, not an
-authentication compatibility requirement. Never include credentials in fixtures.
+The embedded key fallback was removed in [02.18]. Empty browser storage sends no key.
+Fixtures use synthetic credentials only.
 
 Server tick/services own scheduling, cron, rendering, dispatch and persistence.
 Browser never calls gateway `/send`. Run `202` means accepted/queued, not delivered.
@@ -28,18 +28,18 @@ DATE bound; `phone` filters destination OR creator. Create-body `to` is recipien
 
 ## 2. Screen map
 
-| ID | UI path | Observed baseline | Proposed destination |
+| ID | UI path | Observed baseline | Implemented destination |
 |---|---|---|---|
 | `scr-contacts` | `/contacts` | Directory/search/create | Rebuilt directory; same URL |
 | `scr-contact` | `/contacts/{contactId}` | Identity/edit/scoped jobs/create/inspect | Shared composer/inspector in contact workspace |
 | `scr-templates` | `/templates` | Catalog/search/editor/preview | Rebuilt catalog/editor; same URL |
 | `scr-jobs` | `/jobs` | Agenda table/timeline/calendar, composer/inspector | Agenda with shared job components |
-| `scr-history` | `/history` | No dedicated route; global attempts in agenda | Proposed extraction; global attempts/filter/export |
-| `scr-data` | `/data` | No dedicated route; shell BackupModal | Proposed extraction; snapshot/export/import/integrity |
+| `scr-history` | `/history` | No dedicated route; global attempts in agenda | Global attempts/status/limit, inspector and filtered CSV |
+| `scr-data` | `/data` | No dedicated route; shell BackupModal | Snapshot/export/import/integrity with explicit replace dialog |
 
 Keep `/` opening Contacts, browser history and direct links. Access dialog, theme
 selector and notifications remain global. Existing backup entry points lead to
-Data after approval. No health/dashboard/settings-only screen is proposed.
+Data. No health/dashboard/settings-only screen is proposed.
 
 ## 3. Screen specifications and actions
 
@@ -81,7 +81,7 @@ browser sample is not a guarantee of recipient/time-specific output. No Jinja.
 - Filters: `status` (upcoming/done/paused/error/all), date `from/to`, `phone`,
   `limit` (1–100 when supplied; current UI 50), `tag`; reset, refresh and
   error-summary shortcut. Tag autocomplete uses `GET /jobs/tags`.
-  Text `query` control is proposed; existing client/API support it already.
+  Text `query` control is implemented; existing client/API support it already.
 - List omits full content. Show title, recipient/contact alias, timing, kind,
   source/status, group, tags/variable count and errors. Counts derive from loaded
   records; do not label them as global aggregate metrics.
@@ -152,15 +152,16 @@ API limit 1–50, bounded by lifecycle and snooze. Empty projection is valid. Bo
 regions need independent loading/error/empty states. Switching selection must not
 allow a stale response to overwrite the active job.
 
-### History (`scr-history`, proposed, C16/C18)
+### History (`scr-history`, C16/C18)
 
 Extract existing global attempt browsing while retaining Agenda timeline history.
 Bind `GET /jobs/runs` (limit 1–100, default 50; UI may request 100), sorted latest
-first. Proposed status selector uses existing success/error query. Display
+first. Status selector uses the existing success/error query; initial list limit is 50. Display
 retention/limit scope; selecting attempt opens associated job inspector. Manual
-refresh and complete retained-run CSV export remain available.
+refresh and retained-run CSV export remain available. CSV uses applied status and
+omits list limit; unapplied drafts do not affect export.
 
-### Data (`scr-data`, proposed extraction, C19)
+### Data (`scr-data`, C19)
 
 Four existing operations: SQLite snapshot (`GET /backup/database`), JSON export
 (`GET /backup/export?include_runs=true|false`), JSON import
@@ -172,7 +173,8 @@ validates shape before sending, previews counts, chooses merge/replace, and
 requires explicit replacement confirmation. Cancelling confirmation makes no
 request. `mode` required; contacts/templates/jobs/job_runs arrays optional per
 schema. Preserve returned created/updated/skipped summaries and warnings;
-success invalidates affected views. Invalid JSON/schema/network/server errors
+success clears the import draft; navigating to affected screens mounts fresh reads.
+No cached list survives route teardown. Invalid JSON/schema/network/server errors
 retain actionable feedback. Integrity shows both database and foreign-key checks,
 details/violations. Downloads need authenticated requests and Blob cleanup.
 
@@ -255,7 +257,7 @@ No use of metrics endpoint to silently change loaded-list count semantics.
 Preview/digest remain HTTP/MCP-only; reload/purge remain maintenance operations.
 Browser adoption would need an explicit task, screen binding and acceptance tests.
 
-## 8. Chrome configuration and proposed surface
+## 8. Chrome configuration and approved surface
 
 Preserve fixed `pt-BR`; no `Accept-Language` header. Themes light/system/dark,
 default system, persisted locally with early first-paint application. Do not change
@@ -293,7 +295,7 @@ source is `web/src/` and the associated `tests/web/` before replacement.
 | Downloads/data | `btn-export-jobs-csv`, `btn-export-runs-csv`, `btn-export-job-runs-csv`, `btn-open-backup-modal-sidebar`, `btn-open-backup-modal-header`, `btn-download-sqlite`, `btn-export-json`, `input-import-file`, `btn-execute-import`, `btn-check-integrity` |
 | Access/theme | `input-api-key`, `input-base-url`, `theme-btn-light`, `theme-btn-system`, `theme-btn-dark` |
 
-New proposed screen roots: `scr-history`, `scr-data`. Interactive regions expose
+Implemented additional screen roots: `scr-history`, `scr-data`. Interactive regions expose
 `data-state=loading|empty|error|ready`; forms expose busy/error/ready as appropriate.
 Use accessible names/roles to test behavior; source handler names/file layout are
 not user-facing contracts. Additional test-supported anchors must be migrated
@@ -301,7 +303,7 @@ with the feature, not dropped silently.
 
 ## 10. CSV export actions
 
-Agenda export uses current status/from/to/phone/tag and any proposed query/group
+Agenda export uses current status/from/to/phone/tag and any applied query/group
 filters; omit limit to download every match. Global history exports all retained
 attempts, with status when selected; inspector export adds `job_id`. Requests use
 `x-api-key`, validate CSV media type, create/revoke Blob URLs, disable busy actions,

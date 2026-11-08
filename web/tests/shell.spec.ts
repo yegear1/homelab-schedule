@@ -102,9 +102,10 @@ test('both backup entry points remain usable', async ({ page }) => {
   await page.goto('/contacts');
   for (const id of ['btn-open-backup-modal-sidebar', 'btn-open-backup-modal-header']) {
     await page.locator(`#${id}`).click();
-    await expect(page.getByRole('dialog', { name: 'Backup & Dados SQLite' })).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.locator(`#${id}`)).toBeFocused();
+    await expect(page.locator('#scr-data')).toBeVisible();
+    await expect(page).toHaveURL('/data');
+    await page.goBack();
+    await expect(page.locator('#scr-contacts')).toBeVisible();
   }
 });
 
@@ -127,7 +128,7 @@ for (const theme of ['light', 'dark', 'system']) {
   test(`theme is correct before application hydration: ${theme}`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.addInitScript((value) => localStorage.setItem('homelab_theme', value), theme);
-    await page.route('**/src/main.ts', (route) => route.abort());
+    await page.route(/\/src\/main\.ts(?:\?.*)?$/,  (route) => route.abort());
     await page.goto('/contacts');
     await expect(page.locator('#app')).toBeEmpty();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);

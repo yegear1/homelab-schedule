@@ -19,7 +19,7 @@ build/
 *.log
 
 # SQLite runtime (keep schema/migrations in git)
-data/
+/data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm

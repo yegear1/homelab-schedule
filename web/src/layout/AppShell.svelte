@@ -5,7 +5,6 @@
   import { api } from '../lib/api';
   import Toast from '../components/Toast.svelte';
   import ApiKeyModal from '../components/ApiKeyModal.svelte';
-  import BackupModal from '../components/BackupModal.svelte';
   import Button from '../components/ui/Button.svelte';
   import Icon from '../components/ui/Icon.svelte';
   import SegmentedControl from '../components/ui/SegmentedControl.svelte';
@@ -15,7 +14,6 @@
   type Props = { children: Snippet };
   let { children }: Props = $props();
   let showApiKeyModal = $state(false);
-  let showBackupModal = $state(false);
   let hasApiKey = $state(Boolean(api.getApiKey()));
   const themeOptions: { value: ThemeMode; label: string; id: string }[] = [
     { value: 'light', label: 'Claro', id: 'theme-btn-light' },
@@ -26,6 +24,8 @@
     { name: 'Agenda', icon: 'agenda', path: '/jobs', id: 'scr-jobs', route: 'jobs' },
     { name: 'Contatos', icon: 'contacts', path: '/contacts', id: 'scr-contacts', route: 'contacts' },
     { name: 'Modelos', icon: 'templates', path: '/templates', id: 'scr-templates', route: 'templates' },
+    { name: 'Histórico', icon: 'agenda', path: '/history', id: 'scr-history', route: 'history' },
+    { name: 'Dados', icon: 'data', path: '/data', id: 'scr-data', route: 'data' },
   ] as const;
   const currentPage = $derived(router.route === 'contact-detail' ? 'Contato' : navItems.find((item) => item.route === router.route)?.name);
 
@@ -52,7 +52,7 @@
     </nav>
     <div class="shell-sidebar-footer">
       <span class="shell-section-label">Ferramentas</span>
-      <Button id="btn-open-backup-modal-sidebar" variant="quiet" onclick={() => (showBackupModal = true)}><Icon name="data" />Backup e dados</Button>
+      <Button id="btn-open-backup-modal-sidebar" variant="quiet" onclick={() => router.navigate('/data')}><Icon name="data" />Backup e dados</Button>
       <Button variant="quiet" title="Configurar chave da API" onclick={() => (showApiKeyModal = true)}><Icon name="key" />Configurar acesso</Button>
     </div>
   </aside>
@@ -61,7 +61,7 @@
       <div class="shell-toolbar">
         <div class="shell-location"><span class="shell-section-label">Biblioteca</span><strong>{currentPage}</strong></div>
         <div class="shell-tools">
-          <Button id="btn-open-backup-modal-header" title="Backup e dados" onclick={() => (showBackupModal = true)}><Icon name="data" /><span>Dados</span></Button>
+          <Button id="btn-open-backup-modal-header" title="Backup e dados" onclick={() => router.navigate('/data')}><Icon name="data" /><span>Dados</span></Button>
           <Button title="Configurações da API" onclick={() => (showApiKeyModal = true)}><Icon name="key" /><span>Acesso</span></Button>
         </div>
       </div>
@@ -76,4 +76,3 @@
 
 <Toast />
 <ApiKeyModal open={showApiKeyModal} onclose={closeApiKeyModal} />
-<BackupModal open={showBackupModal} onclose={() => (showBackupModal = false)} />

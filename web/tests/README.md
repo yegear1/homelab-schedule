@@ -9,15 +9,14 @@ npm --prefix web run test:e2e
 
 Requires Node 22 and Python 3.13+ (standard library only for the disposable API).
 Playwright launches Chromium headless shell, a loopback API fixture on port 18003,
-and Vite on port 15173. Both ports must be free; existing servers are never reused.
+and Vite on port 15173. The real-app smoke adds port 18004 and a randomly assigned loopback gateway port. All fixed ports must be free; existing servers are never reused.
 Browser traffic outside the local Vite origin is blocked, including remote fonts.
-No production API, database or gateway is used. Credentials are synthetic.
+The integrated smoke runs FastAPI against disposable SQLite and a local fake gateway; no production API, database or gateway is used. Credentials are synthetic.
 
 The tests exercise absent/saved/cleared credentials, wrong JSON content type,
-all API proxy prefixes, direct entry to the four existing screens, and generated
+all API proxy prefixes, direct entry to all six screens, and generated
 color/alpha/spacing/radius utilities under both themes. Existing Python source
-contract tests remain in place. These tests establish a foundation; they do not
-claim full feature, mobile, real-device or production integration coverage.
+contract tests remain in place. Feature suites cover the C01–C19 rebuild contract, responsive emulation, keyboard use and reduced motion. Physical-device and production QA are not claimed.
 
 `npm --prefix web run check:e2e` strictly typechecks configuration and browser tests.
 Failed traces/results are written under `/tmp/homelab-schedule-playwright-results`.
