@@ -181,7 +181,7 @@ for (const theme of ['light', 'dark']) {
     expect(await _contrast(page, '#input-api-key', 'color')).toBeGreaterThanOrEqual(4.5);
     expect(await _contrast(page, '#input-api-key', 'borderTopColor')).toBeGreaterThanOrEqual(3);
     expect(await _contrast(page, '#input-api-key', 'outlineColor')).toBeGreaterThanOrEqual(3);
-    expect(await _contrast(page, '.ui-button[data-variant="primary"]', 'color')).toBeGreaterThanOrEqual(4.5);
+    expect(await _contrast(page, '[role="dialog"] .ui-button[data-variant="primary"]', 'color')).toBeGreaterThanOrEqual(4.5);
     await page.screenshot({ path: `/tmp/homelab-access-${theme}.png`, fullPage: true, animations: 'disabled' });
   });
 }
