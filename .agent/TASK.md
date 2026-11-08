@@ -7,17 +7,19 @@
 
 ## Active Task
 
-- **Task:** [02.21] Rebuild shared composer and contact/template pickers.
-- **Status:** `RUNNING`
+- **Task:** [02.22] Rebuild inspector, lifecycle and group actions.
+- **Status:** `APPROVED`
 - **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md), surface/locale and named dependencies on 2026-11-08.
-- **Scope:** Shared job composer for Agenda/Contact, recipient and creator pickers, tags, variables and lifecycle inputs. Preserve payloads and existing contact defaults.
-- **Paths:** `web/src/components/jobs/JobComposer.svelte` and editor helpers, `web/src/components/ContactPickerModal.svelte`, `web/src/lib/jobs/`, `web/src/pages/JobsPage.svelte`, `web/src/pages/ContactDetailPage.svelte`, `tests/web/test_jobs_variables.py`, `tests/web/test_jobs_tags.py`, `web/tests/composer.spec.ts`.
-- **Acceptance:** C06/C10/C11 exact single/batch request bodies; preserve contact defaults; validate once/cron and content XOR template; retain recipient chips/pickers, creator, tags, variables and lifecycle fields; invalid form sends no request; failure retains inputs; duplicate submissions prevented.
-- **Next Step:** Execute the approved shared composer/picker rebuild with behavior coverage. Extra dependencies remain gated; release/tag remains gated.
+- **Scope:** Shared job inspector, individual/group lifecycle and recovery controls, history/upcoming sections and downloads. Preserve API semantics, anchors and YAML restrictions.
+- **Paths:** `web/src/components/jobs/` inspector/action/history/upcoming components, `web/src/components/RescheduleModal.svelte`, `web/src/components/SnoozeModal.svelte`, `web/src/pages/JobsPage.svelte`, `web/src/pages/ContactDetailPage.svelte`, `tests/web/test_jobs_lifecycle.py`, `tests/web/test_jobs_dead_letter.py`, `tests/web/test_jobs_runs.py`, `tests/web/test_jobs_upcoming.py`, `web/tests/inspector.spec.ts`.
+- **Acceptance:** C13–C15 and group/CSV variants; forbidden YAML mutations unavailable; 202 labelled queued; retry distinct from run-now; snooze preserves cron; stale selection responses ignored; independent loading/error/empty states; mobile modal and desktop panel retain anchors.
+- **Next Step:** Execute the approved inspector/lifecycle rebuild with behavior coverage. Extra dependencies remain gated; release/tag remains gated.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.21] Shared Agenda/Contact composer, typed payload validation, contact/template pickers and advanced editors | [`d1d4f0e`] | 2026-11-08 | 42 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, mobile screenshot and diff check: exit 0
 
 - [02.20] Responsive labelled shell, shared Svelte primitives, stack-aware modal focus and pre-hydration themes | [`716f48b`] | 2026-11-08 | 31 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, screenshot review and diff check: exit 0
 
@@ -62,7 +64,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 Approved sequential queue; scope and acceptance criteria: [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md#8-sequential-implementation-tasks-draft). Approved by operator on 2026-11-08.
 
-- [02.22] Rebuild inspector, lifecycle and group actions.
 - [02.23] Rebuild agenda table, timeline and calendar.
 - [02.24] Rebuild contacts and templates workspaces.
 - [02.25] Extract History/Data pages and verify full replacement.
