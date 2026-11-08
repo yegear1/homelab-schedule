@@ -36,6 +36,14 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 - **Pre-Approved Tasks (`APPROVED`), Parallel Waves (`[PARALLEL: Wx]`) & `task-queue` Skill:** Tasks finalized during interactive planning use `Status: APPROVED` in `.agent/TASK.md` (with independent disjoint-file tasks tagged `[PARALLEL: Wx]` + `Paths:`), allowing fresh sessions (`proceed`) or isolated worker subagents and multi-account quota failover (`task-queue` skill on `proceed queue`) to transition directly to `RUNNING` without a redundant `PLANNING` pause, halting only when ambiguities, unapproved dependencies, or blockers require human intervention.
 
 
+### [2026-11-08] Tailwind 4 and Browser Foundation (Task [02.19])
+
+- Pinned `tailwindcss`/`@tailwindcss/vite` 4.3.5 and development-only `@playwright/test` 1.65.0. Peer metadata permits existing Vite 5.4.21 and Svelte plugin 4.0.4; neither was upgraded. Clean `npm ci` succeeded. Removed unused direct PostCSS/Autoprefixer dependencies; config files remain explicit retired stubs.
+- CSS `@theme inline` replaces the JS theme config; RGB channel storage now uses `--palette-*` for legacy colors, avoiding collisions with Tailwind's full-color `--color-*` namespace. Semantic channel names (`--label`, `--accent`, etc.) and alpha behavior remain. Existing consumers of raw legacy color variables were confined to app.css and the updated token tests.
+- Vite defaults to a loopback backend at localhost:8003, configurable through server-only `SCHEDULE_DEV_API_URL`. All seven API prefixes are proxied, including backup. HTML document navigation on shared paths bypasses the API proxy for the SPA; JSON requests retain backend meaning.
+- `npm --prefix web run test:e2e` strictly typechecks its configuration/tests and runs Chromium against fresh loopback Vite/Python fixtures. Ports 15173/18003 are reserved for this harness and never reused. External browser traffic is blocked. No real DB, key or gateway is involved; outputs are under /tmp. See `web/tests/README.md` for browser installation and commands.
+- Validation: 10 browser scenarios and 247 Python tests passed; strict mypy, Ruff, frontend/config type checks and build passed. Browser coverage is foundational; full feature/mobile/device QA remains assigned to later tasks.
+
 ### [2026-11-08] Operator Credentials and Browser Transport (Task [02.18])
 
 - Removed browser credential fallback. Absent storage/server-side access returns an empty key; JSON, CSV and SQLite requests attach `x-api-key` only when the operator supplied a key. Existing key/base URL storage names and public client methods remain unchanged.

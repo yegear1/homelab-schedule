@@ -2,14 +2,15 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TAILWIND_CONFIG = REPO_ROOT / "web" / "tailwind.config.js"
 APP_CSS = REPO_ROOT / "web" / "src" / "app.css"
 
 
 def test_tailwind_opacity_uses_slash_syntax_for_space_separated_rgb() -> None:
-    config = TAILWIND_CONFIG.read_text(encoding="utf-8")
-    assert "rgba(var(" not in config
-    assert "rgb(var(${variableName}) /" in config
+    css = APP_CSS.read_text(encoding="utf-8")
+    assert "rgba(var(" not in css
+    assert "@theme inline" in css
+    assert "--color-primary: rgb(var(--palette-primary));" in css
+    assert "@custom-variant dark" in css
 
 
 def _resolve_rgb(tokens: dict[str, str], name: str) -> tuple[int, ...]:
@@ -44,8 +45,8 @@ def test_app_css_defines_light_and_dark_surface_tokens() -> None:
         block = re.search(re.escape(selector) + r"\s*\{([^}]+)\}", css)
         assert block is not None
         tokens = dict(re.findall(r"(--[\w-]+):\s*([^;]+);", block[1]))
-        surface = _resolve_rgb(tokens, "--color-surface")
-        label = _resolve_rgb(tokens, "--color-on-surface")
+        surface = _resolve_rgb(tokens, "--palette-surface")
+        label = _resolve_rgb(tokens, "--palette-on-surface")
         luminances = sorted((_luminance(surface), _luminance(label)))
         assert (luminances[1] + 0.05) / (luminances[0] + 0.05) >= 4.5
         surfaces.append(surface)

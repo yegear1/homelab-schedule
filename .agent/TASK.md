@@ -8,7 +8,7 @@
 ## Active Task
 
 - **Task:** [02.19] Add browser behavior harness and Tailwind 4 foundation.
-- **Status:** `APPROVED`
+- **Status:** `RUNNING`
 - **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md), surface/locale and named dependencies on 2026-11-08.
 - **Scope:** Approved Tailwind 4 Vite integration, development-only Playwright harness, local API proxy and semantic-token compatibility; keep current screens functional.
 - **Paths:** `web/package.json`, `web/package-lock.json`, `web/vite.config.ts`, `web/postcss.config.js`, `web/tailwind.config.js`, `web/src/app.css`, `web/playwright.config.ts`, `web/tests/`, `tests/web/test_theme_tokens.py`.

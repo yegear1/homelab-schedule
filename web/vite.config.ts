@@ -1,29 +1,22 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv, type ProxyOptions } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import tailwindcss from '@tailwindcss/vite';
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [svelte()],
-  server: {
-    host: '0.0.0.0',
-    port: 5173,
-    proxy: {
-      '/contacts': {
-        target: 'http://192.168.0.201:8003',
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, '.', '');
+  const target = env.SCHEDULE_DEV_API_URL || 'http://localhost:8003';
+  const proxy: Record<string, ProxyOptions> = {};
+  for (const prefix of ['/contacts', '/jobs', '/templates', '/health', '/backup', '/routines', '/housekeeping']) {
+    proxy[prefix] = {
+      target,
+      changeOrigin: true,
+      // Browser document navigation belongs to the SPA, even on shared API paths.
+      bypass(request: { method?: string; headers: { accept?: string } }) {
+        if (request.method === 'GET' && request.headers.accept?.includes('text/html')) {
+          return '/index.html';
+        }
       },
-      '/jobs': {
-        target: 'http://192.168.0.201:8003',
-        changeOrigin: true,
-      },
-      '/templates': {
-        target: 'http://192.168.0.201:8003',
-        changeOrigin: true,
-      },
-      '/health': {
-        target: 'http://192.168.0.201:8003',
-        changeOrigin: true,
-      },
-    }
+    };
   }
+  return { plugins: [svelte(), tailwindcss()], server: { host: '127.0.0.1', port: 5173, proxy } };
 });
