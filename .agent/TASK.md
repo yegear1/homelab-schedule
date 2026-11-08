@@ -7,17 +7,19 @@
 
 ## Active Task
 
-- **Task:** [02.20] Replace shell and shared presentation primitives.
-- **Status:** `RUNNING`
+- **Task:** [02.21] Rebuild shared composer and contact/template pickers.
+- **Status:** `APPROVED`
 - **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md), surface/locale and named dependencies on 2026-11-08.
-- **Scope:** Replace shell/shared visual primitives using semantic tokens; preserve original navigation, access settings, branding and theme persistence.
-- **Paths:** `web/src/layout/AppShell.svelte`, `web/src/components/ui/`, `web/src/components/ApiKeyModal.svelte`, `web/src/components/Toast.svelte`, `web/src/lib/focusTrap.ts`, `web/src/lib/theme.svelte.ts`, `web/src/app.css`, `web/index.html`, `web/tests/shell.spec.ts`.
-- **Acceptance:** 320/390/768/1440 px and 200% zoom keep controls reachable; persisted light/system/dark without flash; text/focus contrast passes; topmost Escape and focus restoration work; status announcements and reduced motion verified.
-- **Next Step:** Execute the approved shell/primitives replacement with behavior coverage. Extra dependencies remain gated; release/tag remains gated.
+- **Scope:** Shared job composer for Agenda/Contact, recipient and creator pickers, tags, variables and lifecycle inputs. Preserve payloads and existing contact defaults.
+- **Paths:** `web/src/components/jobs/JobComposer.svelte` and editor helpers, `web/src/components/ContactPickerModal.svelte`, `web/src/lib/jobs/`, `web/src/pages/JobsPage.svelte`, `web/src/pages/ContactDetailPage.svelte`, `tests/web/test_jobs_variables.py`, `tests/web/test_jobs_tags.py`, `web/tests/composer.spec.ts`.
+- **Acceptance:** C06/C10/C11 exact single/batch request bodies; preserve contact defaults; validate once/cron and content XOR template; retain recipient chips/pickers, creator, tags, variables and lifecycle fields; invalid form sends no request; failure retains inputs; duplicate submissions prevented.
+- **Next Step:** Execute the approved shared composer/picker rebuild with behavior coverage. Extra dependencies remain gated; release/tag remains gated.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.20] Responsive labelled shell, shared Svelte primitives, stack-aware modal focus and pre-hydration themes | [`716f48b`] | 2026-11-08 | 31 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, screenshot review and diff check: exit 0
 
 - [02.19] Tailwind 4 CSS theme/Vite migration, loopback API proxy and typed Playwright foundation | [`913589e`] | 2026-11-08 | 10 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, clean npm ci and diff check: exit 0
 
@@ -60,7 +62,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 Approved sequential queue; scope and acceptance criteria: [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md#8-sequential-implementation-tasks-draft). Approved by operator on 2026-11-08.
 
-- [02.21] Rebuild shared composer and contact/template pickers.
 - [02.22] Rebuild inspector, lifecycle and group actions.
 - [02.23] Rebuild agenda table, timeline and calendar.
 - [02.24] Rebuild contacts and templates workspaces.
