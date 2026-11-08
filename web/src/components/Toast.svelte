@@ -1,17 +1,11 @@
 <script lang="ts">
   import { toast } from '../lib/toast.svelte';
+  import Icon from './ui/Icon.svelte';
 </script>
 
-<div
-  class="toast-surface pointer-events-none flex items-center gap-space-sm font-body-md text-body-md"
-  data-visible={toast.state.visible}
-  role="status"
-  aria-live="polite"
-  aria-atomic="true"
-  id="toast-notify"
->
-  <span aria-hidden="true" class="material-symbols-outlined text-[18px] {toast.state.colorClass}">
-    {toast.state.icon}
-  </span>
-  <span>{toast.state.message}</span>
+<div class="ui-toast" data-visible={toast.state.visible} data-tone={toast.state.isError ? 'error' : 'neutral'} role="status" aria-live="polite" aria-atomic="true" id="toast-notify">
+  {#if toast.state.visible}
+    <Icon name={toast.state.isError ? 'warning' : toast.state.icon === 'check_circle' ? 'check' : 'info'} />
+    <span>{toast.state.message}</span>
+  {/if}
 </div>

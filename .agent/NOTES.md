@@ -33,6 +33,10 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 ## Architectural Decisions Beyond ADRs
 
+- **Task [02.20] — Shared shell and modal presentation (2026-11-08):** Rebuilt labelled responsive navigation, access controls and theme selection using typed Svelte 5 primitives and existing semantic tokens. No new dependencies or backend contracts. Original routes, branding, storage names, backup entry IDs and toast live-region ID remain.
+- **Modal stack contract:** Shared focus action makes background branches inert, locks body scroll, routes Escape/Tab only to the top trap and restores the connected trigger. Existing modal close buttons bridge the old entry points until their planned rebuild. Dialog height is bounded by its containing viewport, including CSS zoom; cancelled initial-focus frames cannot steal focus after close.
+- **Shell validation:** 31 local browser tests and 247 Python tests passed, including all specified widths, 200% CSS zoom, pre-hydration light/dark/system themes, nested Escape, contrast, reduced motion and relative base-URL compatibility. Screenshot review covers mobile shell and light/dark access dialogs; physical-device testing is not claimed.
+
 - **Pre-Approved Tasks (`APPROVED`), Parallel Waves (`[PARALLEL: Wx]`) & `task-queue` Skill:** Tasks finalized during interactive planning use `Status: APPROVED` in `.agent/TASK.md` (with independent disjoint-file tasks tagged `[PARALLEL: Wx]` + `Paths:`), allowing fresh sessions (`proceed`) or isolated worker subagents and multi-account quota failover (`task-queue` skill on `proceed queue`) to transition directly to `RUNNING` without a redundant `PLANNING` pause, halting only when ambiguities, unapproved dependencies, or blockers require human intervention.
 
 

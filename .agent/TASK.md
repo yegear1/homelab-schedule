@@ -8,7 +8,7 @@
 ## Active Task
 
 - **Task:** [02.20] Replace shell and shared presentation primitives.
-- **Status:** `APPROVED`
+- **Status:** `RUNNING`
 - **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md), surface/locale and named dependencies on 2026-11-08.
 - **Scope:** Replace shell/shared visual primitives using semantic tokens; preserve original navigation, access settings, branding and theme persistence.
 - **Paths:** `web/src/layout/AppShell.svelte`, `web/src/components/ui/`, `web/src/components/ApiKeyModal.svelte`, `web/src/components/Toast.svelte`, `web/src/lib/focusTrap.ts`, `web/src/lib/theme.svelte.ts`, `web/src/app.css`, `web/index.html`, `web/tests/shell.spec.ts`.
