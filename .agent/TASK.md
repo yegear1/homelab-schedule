@@ -7,16 +7,19 @@
 
 ## Active Task
 
-- **Task:** [02.18] Remove credential fallback and preserve transport behavior.
-- **Status:** `RUNNING`
-- **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md) and named dependencies on 2026-11-08.
-- **Scope:** Browser client/auth configuration, shell credential indicator and regression tests; retain presentation and public API methods/types.
-- **Acceptance:** Blank key has no fallback/header; saved key/base URL survive reload; JSON/CSV/SQLite use only supplied auth; 204 succeeds; media/network/401/404/409/422/502 failures are explicit.
-- **Next Step:** Implement and validate transport/auth regression coverage, then promote [02.19].
+- **Task:** [02.19] Add browser behavior harness and Tailwind 4 foundation.
+- **Status:** `APPROVED`
+- **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md), surface/locale and named dependencies on 2026-11-08.
+- **Scope:** Approved Tailwind 4 Vite integration, development-only Playwright harness, local API proxy and semantic-token compatibility; keep current screens functional.
+- **Paths:** `web/package.json`, `web/package-lock.json`, `web/vite.config.ts`, `web/postcss.config.js`, `web/tailwind.config.js`, `web/src/app.css`, `web/playwright.config.ts`, `web/tests/`, `tests/web/test_theme_tokens.py`.
+- **Acceptance:** Peer-compatible pinned lockfile; `test:e2e` script; synthetic/local API only; every API prefix including backup reaches local dev target; existing screens build/render; alpha tokens resolve in both themes; credential/media browser scenarios pass.
+- **Next Step:** Verify package peer metadata and execute the approved migration. Extra toolchain dependencies remain gated; release/tag remains gated.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.18] Remove embedded browser credential fallback, unify authenticated transport errors and refresh shell credential status | [`c752aca`] | 2026-11-08 | 247 tests, mypy, Ruff, Svelte check/build, source/build credential scan and diff check: exit 0
 
 - [02.17] Approved Web UI capability inventory, contract, surface and sequential implementation plan | [`208a632`] | 2026-11-08 | 234 tests, mypy, Ruff, Svelte check/build and diff check: exit 0
 
@@ -55,7 +58,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 Approved sequential queue; scope and acceptance criteria: [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md#8-sequential-implementation-tasks-draft). Approved by operator on 2026-11-08.
 
-- [02.19] Add browser behavior harness and Tailwind 4 foundation (dependency approval required).
 - [02.20] Replace shell and shared presentation primitives.
 - [02.21] Rebuild shared composer and contact/template pickers.
 - [02.22] Rebuild inspector, lifecycle and group actions.
