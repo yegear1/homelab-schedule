@@ -7,17 +7,19 @@
 
 ## Active Task
 
-- **Task:** [02.22] Rebuild inspector, lifecycle and group actions.
+- **Task:** [02.23] Rebuild agenda table, timeline and calendar.
 - **Status:** `APPROVED`
 - **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md), surface/locale and named dependencies on 2026-11-08.
-- **Scope:** Shared job inspector, individual/group lifecycle and recovery controls, history/upcoming sections and downloads. Preserve API semantics, anchors and YAML restrictions.
-- **Paths:** `web/src/components/jobs/` inspector/action/history/upcoming components, `web/src/components/RescheduleModal.svelte`, `web/src/components/SnoozeModal.svelte`, `web/src/pages/JobsPage.svelte`, `web/src/pages/ContactDetailPage.svelte`, `tests/web/test_jobs_lifecycle.py`, `tests/web/test_jobs_dead_letter.py`, `tests/web/test_jobs_runs.py`, `tests/web/test_jobs_upcoming.py`, `web/tests/inspector.spec.ts`.
-- **Acceptance:** C13–C15 and group/CSV variants; forbidden YAML mutations unavailable; 202 labelled queued; retry distinct from run-now; snooze preserves cron; stale selection responses ignored; independent loading/error/empty states; mobile modal and desktop panel retain anchors.
-- **Next Step:** Execute the approved inspector/lifecycle rebuild with behavior coverage. Extra dependencies remain gated; release/tag remains gated.
+- **Scope:** Agenda filters, grouped table, timeline, calendar and CSV controls. Preserve shared composer/inspector integration, API semantics and bounded loaded-record meaning.
+- **Paths:** `web/src/pages/JobsPage.svelte`, `web/src/components/jobs/` agenda components, `web/src/components/JobTimelineView.svelte`, `web/src/components/JobCalendarView.svelte`, `web/src/lib/jobs/`, `tests/web/test_jobs_grouping.py`, `tests/web/test_jobs_calendar_timeline.py`, `web/tests/agenda.spec.ts`.
+- **Acceptance:** C09/C12/C16–C18; filters/reset/view transitions and group expansion work; loaded counts and calendar scope explicit; selected day keyboard access; CSV excludes list limit and preserves active filters; approved text query uses existing API; loading/error/empty states distinct; inspector/composer remain usable in all views.
+- **Next Step:** Execute the approved agenda rebuild on proceed. Extra dependencies and release/tag remain gated.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.22] Shared responsive inspector, individual/group lifecycle and recovery controls, independent bounded reads and authenticated history CSV | [`818a452`] | 2026-11-08 | 71 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, mobile/desktop screenshot review and diff check: exit 0
 
 - [02.21] Shared Agenda/Contact composer, typed payload validation, contact/template pickers and advanced editors | [`d1d4f0e`] | 2026-11-08 | 42 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, mobile screenshot and diff check: exit 0
 
@@ -64,7 +66,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 Approved sequential queue; scope and acceptance criteria: [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md#8-sequential-implementation-tasks-draft). Approved by operator on 2026-11-08.
 
-- [02.23] Rebuild agenda table, timeline and calendar.
 - [02.24] Rebuild contacts and templates workspaces.
 - [02.25] Extract History/Data pages and verify full replacement.
 
