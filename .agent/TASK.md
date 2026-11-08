@@ -7,17 +7,19 @@
 
 ## Active Task
 
-- **Task:** [02.23] Rebuild agenda table, timeline and calendar.
+- **Task:** [02.24] Rebuild contacts and templates workspaces.
 - **Status:** `APPROVED`
 - **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md), surface/locale and named dependencies on 2026-11-08.
-- **Scope:** Agenda filters, grouped table, timeline, calendar and CSV controls. Preserve shared composer/inspector integration, API semantics and bounded loaded-record meaning.
-- **Paths:** `web/src/pages/JobsPage.svelte`, `web/src/components/jobs/` agenda components, `web/src/components/JobTimelineView.svelte`, `web/src/components/JobCalendarView.svelte`, `web/src/lib/jobs/`, `tests/web/test_jobs_grouping.py`, `tests/web/test_jobs_calendar_timeline.py`, `web/tests/agenda.spec.ts`.
-- **Acceptance:** C09/C12/C16–C18; filters/reset/view transitions and group expansion work; loaded counts and calendar scope explicit; selected day keyboard access; CSV excludes list limit and preserves active filters; approved text query uses existing API; loading/error/empty states distinct; inspector/composer remain usable in all views.
-- **Next Step:** Execute the approved agenda rebuild on proceed. Extra dependencies and release/tag remain gated.
+- **Scope:** Contact directory/detail and template catalog/editor presentation. Preserve CRUD semantics, scoped job flows, placeholder insertion and illustrative previews.
+- **Paths:** `web/src/pages/ContactsPage.svelte`, `web/src/pages/ContactDetailPage.svelte`, `web/src/pages/TemplatesPage.svelte`, `web/src/components/contacts/`, `web/src/components/templates/`, `tests/web/test_templates_placeholders.py`, `web/tests/catalogs.spec.ts`.
+- **Acceptance:** C04–C08; search/CRUD/reset/counters/confirmation and 409 conflicts; contact edits refresh phone-bound jobs; shared job flows work; all placeholder buttons insert at cursor; preview remains illustrative and unknown tags persist; no fabricated telemetry/status; original route links work after reload/history.
+- **Next Step:** Execute the approved contact/template rebuild on proceed. Extra dependencies and release/tag remain gated.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.23] Rebuilt filtered agenda, grouped table, timeline and keyboard calendar with bounded counts, shared actions and synchronized CSV filters | [`1f4361f`] | 2026-11-08 | 95 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, mobile/desktop/dark screenshot review and diff check: exit 0
 
 - [02.22] Shared responsive inspector, individual/group lifecycle and recovery controls, independent bounded reads and authenticated history CSV | [`818a452`] | 2026-11-08 | 71 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, mobile/desktop screenshot review and diff check: exit 0
 
@@ -66,7 +68,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 Approved sequential queue; scope and acceptance criteria: [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md#8-sequential-implementation-tasks-draft). Approved by operator on 2026-11-08.
 
-- [02.24] Rebuild contacts and templates workspaces.
 - [02.25] Extract History/Data pages and verify full replacement.
 
 ---
