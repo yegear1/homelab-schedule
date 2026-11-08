@@ -8,7 +8,7 @@
 ## Active Task
 
 - **Task:** [02.21] Rebuild shared composer and contact/template pickers.
-- **Status:** `APPROVED`
+- **Status:** `RUNNING`
 - **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md), surface/locale and named dependencies on 2026-11-08.
 - **Scope:** Shared job composer for Agenda/Contact, recipient and creator pickers, tags, variables and lifecycle inputs. Preserve payloads and existing contact defaults.
 - **Paths:** `web/src/components/jobs/JobComposer.svelte` and editor helpers, `web/src/components/ContactPickerModal.svelte`, `web/src/lib/jobs/`, `web/src/pages/JobsPage.svelte`, `web/src/pages/ContactDetailPage.svelte`, `tests/web/test_jobs_variables.py`, `tests/web/test_jobs_tags.py`, `web/tests/composer.spec.ts`.

@@ -2,7 +2,8 @@
   import { api, ApiClientError } from '../lib/api';
   import { router } from '../lib/router.svelte';
   import { toast } from '../lib/toast.svelte';
-  import type { Contact, JobListItem, Job, MessageTemplate, JobKind, JobListFilter } from '../lib/types';
+  import type { Contact, JobListItem, Job, JobListFilter } from '../lib/types';
+  import JobComposer from '../components/jobs/JobComposer.svelte';
   import RescheduleModal from '../components/RescheduleModal.svelte';
 
   const contactId = $derived(router.params.contactId || '');
@@ -10,7 +11,6 @@
   let contact = $state<Contact | null>(null);
   let jobs = $state<JobListItem[]>([]);
   let selectedJob = $state<Job | null>(null);
-  let templates = $state<MessageTemplate[]>([]);
 
   let loading = $state(true);
   let jobsLoading = $state(false);
@@ -24,16 +24,6 @@
   let editPhone = $state('');
   let savingContact = $state(false);
 
-  // Create job form
-  let jobTitle = $state('');
-  let jobKind = $state<JobKind>('once');
-  let jobRunAt = $state('');
-  let jobCronExpr = $state('');
-  let jobContent = $state('');
-  let jobTemplateId = $state<string | null>(null);
-  let jobCreatedBy = $state('');
-  let creatingJob = $state(false);
-
   // Reschedule modal
   let rescheduleModalOpen = $state(false);
   let rescheduleTargetJobId = $state('');
@@ -41,17 +31,8 @@
   $effect(() => {
     if (contactId) {
       loadContactData();
-      loadTemplates();
     }
   });
-
-  async function loadTemplates() {
-    try {
-      templates = await api.getTemplates();
-    } catch {
-      // Non-critical
-    }
-  }
 
   async function loadContactData() {
     loading = true;
@@ -60,7 +41,6 @@
       contact = await api.getContact(contactId);
       editName = contact.name;
       editPhone = contact.phone;
-      jobCreatedBy = contact.phone;
       await loadJobsForContact(contact.phone);
     } catch (err: unknown) {
       if (err instanceof ApiClientError && err.status === 404) {
@@ -157,60 +137,6 @@
     }
   }
 
-  async function handleCreateJob(e: SubmitEvent) {
-    e.preventDefault();
-    if (!contact) return;
-
-    if (!jobTitle.trim()) {
-      toast.error('Informe o título do agendamento.');
-      return;
-    }
-
-    if (jobKind === 'once' && !jobRunAt) {
-      toast.error('Informe data e hora para execução única.');
-      return;
-    }
-
-    if (jobKind === 'cron') {
-      if (!jobCronExpr.trim() || jobCronExpr.trim().split(/\s+/).length !== 5) {
-        toast.error('Expressão cron precisa de 5 campos.');
-        return;
-      }
-    }
-
-    if (!jobContent.trim() && !jobTemplateId) {
-      toast.error('Forneça o conteúdo da mensagem ou selecione um template.');
-      return;
-    }
-
-    creatingJob = true;
-    try {
-      await api.createJob({
-        title: jobTitle.trim(),
-        to: contact.phone,
-        kind: jobKind,
-        run_at: jobKind === 'once' && jobRunAt ? new Date(jobRunAt).toISOString() : null,
-        cron_expr: jobKind === 'cron' ? jobCronExpr.trim() : null,
-        content: jobTemplateId ? null : jobContent.trim(),
-        template_id: jobTemplateId || null,
-        created_by: jobCreatedBy.trim() || null,
-      });
-
-      toast.success(`Job "${jobTitle}" agendado com sucesso.`);
-      jobTitle = '';
-      jobContent = '';
-      jobTemplateId = null;
-      jobRunAt = '';
-      jobCronExpr = '';
-      await loadJobsForContact(contact.phone);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Falha ao criar job';
-      toast.error(msg);
-    } finally {
-      creatingJob = false;
-    }
-  }
-
   async function handleRunJob(jobId: string) {
     try {
       const res = await api.runJob(jobId);
@@ -250,16 +176,6 @@
     rescheduleModalOpen = true;
   }
 
-  function selectTemplate(tpl: MessageTemplate) {
-    jobTemplateId = tpl.id;
-    jobContent = tpl.body;
-    toast.info(`Modelo ${tpl.name} selecionado.`);
-  }
-
-  function clearTemplate() {
-    jobTemplateId = null;
-    jobContent = '';
-  }
 </script>
 
 <div class="support-page flex flex-col w-full" data-state={loading ? 'loading' : errorMsg ? 'error' : 'ready'} id="scr-contact">
@@ -424,202 +340,9 @@
           </form>
         </div>
 
-        <!-- wdg-job-create: Criar Agendamento Vinculado -->
-        <div class="support-panel bg-secondary-system-background rounded-xl p-space-lg shadow-sm border border-separator/60" id="wdg-job-create">
-          <div class="flex items-center justify-between pb-space-sm mb-space-md">
-            <div class="flex items-center gap-space-xs">
-              <span aria-hidden="true" class="material-symbols-outlined text-accent text-[18px]">add_alarm</span>
-              <h2 class="font-headline-sm text-headline-sm text-label">Agendar Novo Recado</h2>
-            </div>
-            <span class="font-label-code-sm text-label-code-sm text-tertiary font-mono">POST /jobs</span>
-          </div>
-
-          <form class="flex flex-col gap-space-md" id="form-create-job" onsubmit={handleCreateJob}>
-            <div class="flex flex-col gap-1">
-              <label class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label" for="job-input-title">
-                Título do Agendamento *
-              </label>
-              <input
-                class="bg-system-background text-label rounded-xl px-space-md py-space-sm font-body-md text-body-md focus:outline-none focus:ring-1 focus:ring-accent"
-                id="job-input-title"
-                name="title"
-                placeholder="Ex: Lembrete Backup Diário"
-                required
-                type="text"
-                bind:value={jobTitle}
-              />
-            </div>
-
-            <!-- Kind Selection (once vs cron) -->
-            <div class="flex flex-col gap-1.5">
-              <span class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label">Tipo de Disparo (kind) *</span>
-              <div class="grid grid-cols-2 gap-space-sm bg-system-background p-1 rounded-xl">
-                <button
-                  class="flex items-center justify-center gap-space-xs p-space-xs rounded-xl transition-colors duration-selection ease-fluid {jobKind === 'once' ? 'bg-fill text-accent font-bold' : 'text-secondary-label hover:text-label'}"
-                  aria-pressed={jobKind === 'once'}
-                  onclick={() => (jobKind = 'once')}
-                  type="button"
-                >
-                  <span aria-hidden="true" class="material-symbols-outlined text-[16px]">today</span>
-                  <span class="font-label-ui text-label-ui uppercase">Único (once)</span>
-                </button>
-                <button
-                  class="flex items-center justify-center gap-space-xs p-space-xs rounded-xl transition-colors duration-selection ease-fluid {jobKind === 'cron' ? 'bg-fill text-accent font-bold' : 'text-secondary-label hover:text-label'}"
-                  aria-pressed={jobKind === 'cron'}
-                  onclick={() => (jobKind = 'cron')}
-                  type="button"
-                >
-                  <span aria-hidden="true" class="material-symbols-outlined text-[16px]">repeat</span>
-                  <span class="font-label-ui text-label-ui uppercase">Recorrente (cron)</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Dynamic: Run At (Once) -->
-            {#if jobKind === 'once'}
-              <div class="flex flex-col gap-1" id="field-run-at">
-                <label class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label" for="job-input-run-at">
-                  Data &amp; Hora de Execução (run_at) *
-                </label>
-                <input
-                  class="bg-system-background text-label rounded-xl px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-accent"
-                  id="job-input-run-at"
-                  name="run_at"
-                  type="datetime-local"
-                  required
-                  bind:value={jobRunAt}
-                />
-                <span class="font-body-sm text-body-sm text-secondary-label">Fuso horário local da máquina do despachante.</span>
-              </div>
-            {:else}
-              <!-- Dynamic: Cron Expr (Cron) -->
-              <div class="flex flex-col gap-1" id="field-cron-expr">
-                <div class="flex items-center justify-between">
-                  <label class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label" for="job-input-cron-expr">
-                    Expressão Cron (5 campos) *
-                  </label>
-                  <span class="font-label-code-sm text-label-code-sm text-tertiary font-mono">min h dom m dow</span>
-                </div>
-                <input
-                  class="bg-system-background text-label rounded-xl px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-accent font-mono"
-                  id="job-input-cron-expr"
-                  name="cron_expr"
-                  placeholder="0 9 * * 1-5"
-                  required
-                  type="text"
-                  bind:value={jobCronExpr}
-                />
-                <div class="flex items-center gap-space-xs mt-0.5">
-                  <span class="font-label-code-sm text-label-code-sm text-secondary-label">Exemplo:</span>
-                  <button class="font-label-code-sm text-label-code-sm text-accent hover:underline font-mono" onclick={() => (jobCronExpr = '0 9 * * 1-5')} type="button">
-                    0 9 * * 1-5
-                  </button>
-                  <span class="text-secondary-label">|</span>
-                  <button class="font-label-code-sm text-label-code-sm text-accent hover:underline font-mono" onclick={() => (jobCronExpr = '0 2 * * *')} type="button">
-                    0 2 * * *
-                  </button>
-                </div>
-              </div>
-            {/if}
-
-            <!-- Destino (to) & Criador (created_by) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
-              <div class="flex flex-col gap-1">
-                <label class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label" for="job-input-to">
-                  Destino (to) *
-                </label>
-                <input
-                  class="bg-system-background text-label rounded-xl px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-accent font-mono opacity-80"
-                  id="job-input-to"
-                  name="to"
-                  disabled
-                  value={contact.phone}
-                />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label" for="job-input-created-by">
-                  Criador (created_by)
-                </label>
-                <input
-                  class="bg-system-background text-label rounded-xl px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-accent font-mono"
-                  id="job-input-created-by"
-                  name="created_by"
-                  placeholder="Telefone ou sysadmin"
-                  type="text"
-                  bind:value={jobCreatedBy}
-                />
-              </div>
-            </div>
-
-            <!-- wdg-template-pick: Picker Rápido de Template (XOR content vs template_id) -->
-            <div class="bg-fill/40 rounded-xl p-space-sm flex flex-col gap-space-xs" id="wdg-template-pick">
-              <div class="flex items-center justify-between">
-                <span class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label flex items-center gap-1">
-                  <span aria-hidden="true" class="material-symbols-outlined text-[14px]">auto_stories</span>
-                  Modelos Rápidos (GET /templates)
-                </span>
-                <span class="font-label-code-sm text-label-code-sm text-secondary-label">XOR Content / Template</span>
-              </div>
-
-              {#if templates.length > 0}
-                <div class="grid grid-cols-2 gap-space-xs">
-                  {#each templates.slice(0, 4) as tpl}
-                    <button
-                      class="p-space-xs text-left bg-tertiary-system-background rounded-xl hover:bg-fill transition-colors duration-selection ease-fluid {jobTemplateId === tpl.id ? 'ring-1 ring-accent' : ''}"
-                      aria-pressed={jobTemplateId === tpl.id}
-                  onclick={() => selectTemplate(tpl)}
-                      type="button"
-                    >
-                      <div class="font-label-ui text-label-ui text-label truncate">{tpl.name}</div>
-                      <div class="font-body-sm text-body-sm text-secondary-label truncate">{tpl.body}</div>
-                    </button>
-                  {/each}
-                </div>
-              {:else}
-                <span class="font-label-code-sm text-label-code-sm text-secondary-label">Nenhum modelo cadastrado no catálogo.</span>
-              {/if}
-
-              {#if jobTemplateId}
-                <div class="flex items-center justify-between bg-accent/10 px-space-sm py-1 rounded-xl text-accent font-label-code-sm text-label-code-sm mt-1" id="selected-template-pill">
-                  <span>Modelo Ativo: {jobTemplateId}</span>
-                  <button class="text-accent hover:text-accent" aria-label="Remover modelo selecionado" onclick={clearTemplate} type="button">
-                    <span aria-hidden="true" class="material-symbols-outlined text-[14px]">close</span>
-                  </button>
-                </div>
-              {/if}
-            </div>
-
-            <!-- Mensagem Livre (content) -->
-            <div class="flex flex-col gap-1">
-              <div class="flex items-center justify-between">
-                <label class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label" for="job-input-content">
-                  Conteúdo da Mensagem (content)
-                </label>
-                <span class="font-label-code-sm text-label-code-sm text-secondary-label font-mono">
-                  {jobContent.length} / 4096
-                </span>
-              </div>
-              <textarea
-                class="bg-system-background text-label rounded-xl p-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-accent"
-                id="job-input-content"
-                name="content"
-                placeholder={jobTemplateId ? 'Preenchido a partir do modelo selecionado acima...' : 'Digite a mensagem direta...'}
-                rows="3"
-                bind:value={jobContent}
-                disabled={Boolean(jobTemplateId)}
-              ></textarea>
-            </div>
-
-            <button
-              class="w-full py-space-sm rounded-xl bg-accent hover:bg-accent/90 text-on-primary font-label-ui text-label-ui uppercase tracking-wider transition-colors duration-selection ease-fluid flex items-center justify-center gap-space-xs shadow-sm font-semibold mt-space-xs"
-              type="submit"
-              disabled={creatingJob}
-            >
-              <span aria-hidden="true" class="material-symbols-outlined text-[18px]">send_time_extension</span>
-              <span>{creatingJob ? 'Agendando...' : 'Agendar Recado'}</span>
-            </button>
-          </form>
-        </div>
+        {#key contact.phone}
+          <JobComposer inline recipient={contact.phone} createdBy={contact.phone} oncreated={async () => { if (contact) await loadJobsForContact(contact.phone); }} />
+        {/key}
       </div>
 
       <!-- Coluna Direita (7 Colunas): wdg-job-list & wdg-job-detail -->

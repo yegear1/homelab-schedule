@@ -21,23 +21,14 @@ def test_api_implements_tags_contract() -> None:
 def test_jobs_page_implements_tags_contract() -> None:
     content = JOBS_PAGE.read_text(encoding="utf-8")
 
-    # State and handlers for tags
-    assert "let filterTag = $state('');" in content
-    assert "let availableTags = $state<string[]>([]);" in content
-    assert "let createTags = $state<string[]>([]);" in content
-    assert "let newTagInput = $state('');" in content
-    assert "function addTag(" in content
-    assert "function removeTag(" in content
-    assert "async function loadTags()" in content
-
-    # Filter section
-    assert 'id="filter-tag"' in content
-    assert 'id="tags-datalist"' in content
-
-    # Modal form elements for tags
-    assert 'id="section-tags"' in content
-    assert 'id="input-tag"' in content
-    assert 'id="btn-add-tag"' in content
+    editor = (REPO_ROOT / "web/src/components/jobs/TagInput.svelte").read_text()
+    advanced = (REPO_ROOT / "web/src/components/jobs/JobAdvancedFields.svelte").read_text()
+    assert "<JobComposer" in content
+    assert "bind:tags={draft.tags}" in advanced
+    for anchor in ("section-tags", "input-tag", "btn-add-tag"):
+        assert f'id="{anchor}"' in editor
+    for anchor in ("filter-tag", "tags-datalist"):
+        assert f'id="{anchor}"' in content
 
     # Listing indicator and detail drawer inspector
     assert "badge-tag" in content
