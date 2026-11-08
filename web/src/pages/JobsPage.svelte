@@ -2,9 +2,10 @@
   import { api, ApiClientError } from '../lib/api';
   import { router } from '../lib/router.svelte';
   import { toast } from '../lib/toast.svelte';
-  import type { Contact, Job, JobListItem, JobListFilter, JobKind, JobRun, MessageTemplate, UpcomingRunItem } from '../lib/types';
+  import type { Contact, Job, JobListItem, JobListFilter, JobKind, JobRun, MessageTemplate } from '../lib/types';
   import RescheduleModal from '../components/RescheduleModal.svelte';
   import SnoozeModal from '../components/SnoozeModal.svelte';
+  import JobInspector from '../components/jobs/JobInspector.svelte';
   import JobComposer from '../components/jobs/JobComposer.svelte';
   import JobTimelineView from '../components/JobTimelineView.svelte';
   import JobCalendarView from '../components/JobCalendarView.svelte';
@@ -14,11 +15,9 @@
   let loadingAllRuns = $state(false);
 
   let jobs = $state<JobListItem[]>([]);
-  let selectedJob = $state<Job | null>(null);
-  let selectedJobRuns = $state<JobRun[]>([]);
-  let loadingJobRuns = $state(false);
-  let selectedJobUpcoming = $state<UpcomingRunItem[]>([]);
-  let loadingUpcoming = $state(false);
+  let selectedId = $state<string | null>(null);
+  let detailRevision = $state(0);
+  const selectedJob = $derived(jobs.find(job => job.id === selectedId) ?? null);
 
   let templates = $state<MessageTemplate[]>([]);
   let contacts = $state<Contact[]>([]);
@@ -37,9 +36,6 @@
   let filterTag = $state('');
   let availableTags = $state<string[]>([]);
 
-  // Group & Batch State
-  let groupMembers = $state<JobListItem[]>([]);
-  let loadingGroupMembers = $state(false);
   let expandedGroups = $state<Set<string>>(new Set());
 
   interface GroupedJobRow {
@@ -272,17 +268,8 @@
       ]);
       jobs = fetchedJobs;
 
-      if (jobs.length > 0) {
-        if (!selectedJob || !jobs.find((j) => j.id === selectedJob?.id)) {
-          await inspectJob(jobs[0].id);
-        } else {
-          await inspectJob(selectedJob.id);
-        }
-      } else {
-        selectedJob = null;
-        selectedJobRuns = [];
-        selectedJobUpcoming = [];
-      }
+      detailRevision++;
+
     } catch (err: unknown) {
       if (err instanceof ApiClientError && err.status === 401) {
         errorMsg = 'Chave x-api-key ausente ou inválida. Configure pelo ícone de perfil.';
@@ -294,83 +281,39 @@
     }
   }
 
-  async function loadJobRuns(jobId: string) {
-    loadingJobRuns = true;
-    try {
-      selectedJobRuns = await api.getJobRuns(jobId, 20);
-    } catch {
-      selectedJobRuns = [];
-    } finally {
-      loadingJobRuns = false;
-    }
+  function inspectJob(id: string): void {
+    selectedId = id;
   }
 
-  async function loadJobUpcoming(jobId: string, limit: number = 5) {
-    loadingUpcoming = true;
-    try {
-      const res = await api.getUpcomingRuns(jobId, limit);
-      selectedJobUpcoming = res.runs;
-    } catch {
-      selectedJobUpcoming = [];
-    } finally {
-      loadingUpcoming = false;
-    }
-  }
-
-  async function inspectJob(id: string) {
-    try {
-      selectedJob = await api.getJob(id);
-      await Promise.all([
-        loadJobRuns(id),
-        loadJobUpcoming(id),
-      ]);
-      if (selectedJob?.group_id) {
-        await loadGroupMembers(selectedJob.group_id);
-      } else {
-        groupMembers = [];
-      }
-    } catch (err: unknown) {
-      toast.error('Falha ao carregar detalhe do job.');
-    }
-  }
-
-
-  async function loadGroupMembers(groupId: string) {
-    loadingGroupMembers = true;
-    try {
-      groupMembers = await api.getJobs({ status: 'all', group_id: groupId });
-    } catch {
-      groupMembers = [];
-    } finally {
-      loadingGroupMembers = false;
-    }
-  }
+  const pendingActions = $state(new Set<string>());
 
   async function handleRunGroup(groupId: string) {
+    if (pendingActions.has(groupId)) return;
+    pendingActions.add(groupId);
     try {
       const res = await api.runGroup(groupId);
       toast.queued(`Grupo ${groupId}: ${res.affected} recados enfileirados para disparo.`);
       await loadJobs();
-      if (selectedJob?.group_id === groupId) {
-        await loadGroupMembers(groupId);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao disparar grupo';
       toast.error(msg);
+    } finally {
+      pendingActions.delete(groupId);
     }
   }
 
   async function handleCancelGroup(groupId: string) {
+    if (pendingActions.has(groupId)) return;
+    pendingActions.add(groupId);
     try {
       const res = await api.cancelGroup(groupId);
       toast.success(`Grupo ${groupId}: ${res.affected} recados cancelados.`);
       await loadJobs();
-      if (selectedJob?.group_id === groupId) {
-        await loadGroupMembers(groupId);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao cancelar grupo';
       toast.error(msg);
+    } finally {
+      pendingActions.delete(groupId);
     }
   }
 
@@ -390,20 +333,18 @@
   }
 
   async function handleRun(jobId: string) {
+    if (pendingActions.has(jobId)) return;
+    pendingActions.add(jobId);
     try {
       const res = await api.runJob(jobId);
       toast.queued(`POST /jobs/${jobId}/run -> 202 Accepted (${res.status}). Enfileirado no despachante.`);
       await loadJobs();
-      if (selectedJob?.id === jobId) {
-        selectedJob = await api.getJob(jobId);
-        await loadJobRuns(jobId);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao disparar';
       toast.error(msg);
-      if (selectedJob?.id === jobId) {
-        await loadJobRuns(jobId);
-      }
+
+    } finally {
+      pendingActions.delete(jobId);
     }
   }
 
@@ -413,16 +354,17 @@
       return;
     }
 
+    if (pendingActions.has(jobItem.id)) return;
+    pendingActions.add(jobItem.id);
     try {
       await api.cancelJob(jobItem.id);
       toast.success(`Recado ${jobItem.id} cancelado.`);
       await loadJobs();
-      if (selectedJob?.id === jobItem.id) {
-        selectedJob = await api.getJob(jobItem.id);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao cancelar';
       toast.error(msg);
+    } finally {
+      pendingActions.delete(jobItem.id);
     }
   }
 
@@ -432,32 +374,32 @@
       return;
     }
 
+    if (pendingActions.has(jobItem.id)) return;
+    pendingActions.add(jobItem.id);
     try {
       await api.retryJob(jobItem.id);
       toast.success(`Recado ${jobItem.id} re-enfileirado com sucesso.`);
       await loadJobs();
-      if (selectedJob?.id === jobItem.id) {
-        selectedJob = await api.getJob(jobItem.id);
-        await loadJobRuns(jobItem.id);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao re-enfileirar';
       toast.error(msg);
+    } finally {
+      pendingActions.delete(jobItem.id);
     }
   }
 
   async function handleRetryGroup(groupId: string) {
+    if (pendingActions.has(groupId)) return;
+    pendingActions.add(groupId);
     try {
       const res = await api.retryGroup(groupId);
       toast.success(`Grupo ${groupId}: ${res.affected} recado(s) em erro re-enfileirado(s).`);
       await loadJobs();
-      if (selectedJob?.group_id === groupId) {
-        await loadGroupMembers(groupId);
-        selectedJob = await api.getJob(selectedJob.id);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao re-enfileirar grupo';
       toast.error(msg);
+    } finally {
+      pendingActions.delete(groupId);
     }
   }
 
@@ -466,16 +408,17 @@
       toast.error('HTTP 409 Conflict: Recados YAML são imutáveis via API.');
       return;
     }
+    if (pendingActions.has(jobItem.id)) return;
+    pendingActions.add(jobItem.id);
     try {
       await api.pauseJob(jobItem.id);
       toast.success(`Recado ${jobItem.id} pausado.`);
       await loadJobs();
-      if (selectedJob?.id === jobItem.id) {
-        selectedJob = await api.getJob(jobItem.id);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao pausar';
       toast.error(msg);
+    } finally {
+      pendingActions.delete(jobItem.id);
     }
   }
 
@@ -484,46 +427,47 @@
       toast.error('HTTP 409 Conflict: Recados YAML são imutáveis via API.');
       return;
     }
+    if (pendingActions.has(jobItem.id)) return;
+    pendingActions.add(jobItem.id);
     try {
       await api.resumeJob(jobItem.id);
       toast.success(`Recado ${jobItem.id} retomado.`);
       await loadJobs();
-      if (selectedJob?.id === jobItem.id) {
-        selectedJob = await api.getJob(jobItem.id);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao retomar';
       toast.error(msg);
+    } finally {
+      pendingActions.delete(jobItem.id);
     }
   }
 
   async function handlePauseGroup(groupId: string) {
+    if (pendingActions.has(groupId)) return;
+    pendingActions.add(groupId);
     try {
       const res = await api.pauseGroup(groupId);
       toast.success(`Grupo ${groupId}: ${res.affected} recados pausados.`);
       await loadJobs();
-      if (selectedJob?.group_id === groupId) {
-        await loadGroupMembers(groupId);
-        selectedJob = await api.getJob(selectedJob.id);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao pausar grupo';
       toast.error(msg);
+    } finally {
+      pendingActions.delete(groupId);
     }
   }
 
   async function handleResumeGroup(groupId: string) {
+    if (pendingActions.has(groupId)) return;
+    pendingActions.add(groupId);
     try {
       const res = await api.resumeGroup(groupId);
       toast.success(`Grupo ${groupId}: ${res.affected} recados retomados.`);
       await loadJobs();
-      if (selectedJob?.group_id === groupId) {
-        await loadGroupMembers(groupId);
-        selectedJob = await api.getJob(selectedJob.id);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao retomar grupo';
       toast.error(msg);
+    } finally {
+      pendingActions.delete(groupId);
     }
   }
 
@@ -552,8 +496,8 @@
           rescheduleModalOpen = false;
         } else if (snoozeModalOpen) {
           snoozeModalOpen = false;
-        } else if (selectedJob) {
-          selectedJob = null;
+        } else if (selectedId && !document.querySelector('[aria-modal="true"]')) {
+          selectedId = null;
         }
       }
     }
@@ -885,7 +829,7 @@
         <!-- Keyboard focus enables native arrow-key scrolling of the wide table. -->
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
         <div class="agenda-table-scroll overflow-x-auto w-full" role="region" aria-label="Tabela de agendamentos" tabindex="0">
-        <table aria-label="Agendamentos" class="agenda-table w-full min-w-[660px] table-fixed text-left font-body-sm text-body-sm text-on-surface">
+        <table aria-label="Agendamentos" class="agenda-table w-full min-w-[1080px] table-fixed text-left font-body-sm text-body-sm text-on-surface">
           <colgroup>
             <col style="width: 145px;" class="w-[145px]" />
             <col />
@@ -1031,7 +975,7 @@
                     <td class="py-2.5 px-space-sm text-right w-[240px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
                       <div class="flex items-center justify-end gap-1.5 flex-nowrap">
                         {#if job.source !== 'yaml' && job.status === 'error'}
-                          <button
+                          <button disabled={pendingActions.has(job.id)}
                             class="px-2 py-1 rounded bg-error/15 hover:bg-error hover:text-on-error text-error font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1 cursor-pointer"
                             onclick={() => handleRetry(job)}
                             title="Re-enfileirar (Resetar erro e agendar)"
@@ -1041,7 +985,7 @@
                             <span>Retry</span>
                           </button>
                         {/if}
-                        <button
+                        <button disabled={pendingActions.has(job.id)}
                           class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                           onclick={() => handleRun(job.id)}
                           title="POST /jobs/{job.id}/run"
@@ -1052,7 +996,7 @@
 
                         {#if job.source !== 'yaml'}
                           {#if job.status === 'paused'}
-                            <button
+                            <button disabled={pendingActions.has(job.id)}
                               class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary hover:text-on-secondary text-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                               onclick={() => handleResume(job)}
                               title="Retomar Recado (POST /jobs/{job.id}/resume)"
@@ -1061,7 +1005,7 @@
                               Retomar
                             </button>
                           {:else if job.status === 'scheduled'}
-                            <button
+                            <button disabled={pendingActions.has(job.id)}
                               class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                               onclick={() => handlePause(job)}
                               title="Pausar Recado (POST /jobs/{job.id}/pause)"
@@ -1071,7 +1015,7 @@
                             </button>
                           {/if}
                           {#if job.status === 'scheduled' || job.status === 'paused'}
-                            <button
+                            <button disabled={pendingActions.has(job.id)}
                               class="p-1 rounded bg-surface-container-lowest hover:bg-primary/20 text-primary transition-all cursor-pointer flex items-center"
                               onclick={() => openSnoozeJob(job.id, job.source)}
                               title="Adiar Recado (Snooze)"
@@ -1081,7 +1025,7 @@
                               <span class="material-symbols-outlined text-[16px]">snooze</span>
                             </button>
                           {/if}
-                          <button
+                          <button disabled={pendingActions.has(job.id)}
                             class="px-2 py-1 rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                             onclick={() => openReschedule(job.id, job.source)}
                             title="Reagendar"
@@ -1089,7 +1033,7 @@
                           >
                             Editar
                           </button>
-                          <button
+                          <button disabled={pendingActions.has(job.id)}
                             class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all cursor-pointer"
                             onclick={() => handleCancel(job)}
                             title="Cancelar Recado"
@@ -1215,7 +1159,7 @@
                     <td class="py-2.5 px-space-sm text-right w-[210px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
                       <div class="flex items-center justify-end gap-1.5 flex-nowrap">
                         {#if row.source !== 'yaml' && row.statusSummary.error > 0}
-                          <button
+                          <button disabled={pendingActions.has(row.groupId)}
                             class="px-2 py-1 rounded bg-error/15 hover:bg-error hover:text-on-error text-error font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1 cursor-pointer"
                             onclick={() => handleRetryGroup(row.groupId)}
                             title="Re-enfileirar {row.statusSummary.error} recado(s) em erro deste grupo"
@@ -1226,7 +1170,7 @@
                           </button>
                         {/if}
 
-                        <button
+                        <button disabled={pendingActions.has(row.groupId)}
                           class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary text-secondary hover:text-on-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1 cursor-pointer"
                           onclick={() => handleRunGroup(row.groupId)}
                           title="Disparar todos os recados deste grupo"
@@ -1238,7 +1182,7 @@
 
                         {#if row.source !== 'yaml'}
                           {#if row.statusSummary.scheduled > 0}
-                            <button
+                            <button disabled={pendingActions.has(row.groupId)}
                               class="px-2 py-1 rounded bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                               onclick={() => handlePauseGroup(row.groupId)}
                               title="Pausar todos os recados deste grupo"
@@ -1248,7 +1192,7 @@
                             </button>
                           {/if}
                           {#if row.statusSummary.paused > 0}
-                            <button
+                            <button disabled={pendingActions.has(row.groupId)}
                               class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary hover:text-on-secondary text-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                               onclick={() => handleResumeGroup(row.groupId)}
                               title="Retomar todos os recados deste grupo"
@@ -1257,7 +1201,7 @@
                               Retomar
                             </button>
                           {/if}
-                          <button
+                          <button disabled={pendingActions.has(row.groupId)}
                             class="p-1 rounded bg-surface-container-lowest hover:bg-primary/20 text-primary transition-all cursor-pointer flex items-center"
                             onclick={() => openSnoozeGroup(row.groupId)}
                             title="Adiar todos os recados deste grupo (Snooze)"
@@ -1266,7 +1210,7 @@
                           >
                             <span class="material-symbols-outlined text-[16px]">snooze</span>
                           </button>
-                          <button
+                          <button disabled={pendingActions.has(row.groupId)}
                             class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all flex items-center gap-1 font-label-ui text-label-ui uppercase tracking-wider cursor-pointer"
                             onclick={() => handleCancelGroup(row.groupId)}
                             title="Cancelar todos os recados deste grupo"
@@ -1387,7 +1331,7 @@
                         <td class="py-2.5 px-space-sm text-right w-[240px] whitespace-nowrap" onclick={(e) => e.stopPropagation()}>
                           <div class="flex items-center justify-end gap-1.5 flex-nowrap">
                             {#if memberJob.source !== 'yaml' && memberJob.status === 'error'}
-                              <button
+                              <button disabled={pendingActions.has(memberJob.id)}
                                 class="px-2 py-1 rounded bg-error/15 hover:bg-error hover:text-on-error text-error font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold flex items-center gap-1 cursor-pointer"
                                 onclick={() => handleRetry(memberJob)}
                                 title="Re-enfileirar apenas este destinatário"
@@ -1397,7 +1341,7 @@
                                 <span>Retry</span>
                               </button>
                             {/if}
-                            <button
+                            <button disabled={pendingActions.has(memberJob.id)}
                               class="px-2 py-1 rounded bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                               onclick={() => handleRun(memberJob.id)}
                               title="Disparar apenas este destinatário"
@@ -1408,7 +1352,7 @@
 
                             {#if memberJob.source !== 'yaml'}
                               {#if memberJob.status === 'paused'}
-                                <button
+                                <button disabled={pendingActions.has(memberJob.id)}
                                   class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary hover:text-on-secondary text-secondary font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                                   onclick={() => handleResume(memberJob)}
                                   title="Retomar Recado"
@@ -1417,7 +1361,7 @@
                                   Retomar
                                 </button>
                               {:else if memberJob.status === 'scheduled'}
-                                <button
+                                <button disabled={pendingActions.has(memberJob.id)}
                                   class="px-2 py-1 rounded bg-surface-container hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                                   onclick={() => handlePause(memberJob)}
                                   title="Pausar Recado"
@@ -1427,7 +1371,7 @@
                                 </button>
                               {/if}
                               {#if memberJob.status === 'scheduled' || memberJob.status === 'paused'}
-                                <button
+                                <button disabled={pendingActions.has(memberJob.id)}
                                   class="p-1 rounded bg-surface-container hover:bg-primary/20 text-primary transition-all cursor-pointer flex items-center"
                                   onclick={() => openSnoozeJob(memberJob.id, memberJob.source)}
                                   title="Adiar Recado (Snooze)"
@@ -1437,7 +1381,7 @@
                                   <span class="material-symbols-outlined text-[16px]">snooze</span>
                                 </button>
                               {/if}
-                              <button
+                              <button disabled={pendingActions.has(memberJob.id)}
                                 class="px-2 py-1 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider transition-all font-semibold cursor-pointer"
                                 onclick={() => openReschedule(memberJob.id, memberJob.source)}
                                 title="Reagendar este destinatário"
@@ -1445,7 +1389,7 @@
                               >
                                 Editar
                               </button>
-                              <button
+                              <button disabled={pendingActions.has(memberJob.id)}
                                 class="px-1.5 py-1 rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error transition-all cursor-pointer"
                                 onclick={() => handleCancel(memberJob)}
                                 title="Cancelar apenas este destinatário"
@@ -1492,553 +1436,8 @@
     {/if}
   </section>
 
-    <!-- WIDGET 3: JOB DETAIL (wdg-job-detail) - 5 cols on Desktop -->
-    {#if selectedJob}
-      {@const recipient = resolveRecipient(selectedJob)}
-      {@const creatorContact = selectedJob.created_by ? contactsByPhone.get(selectedJob.created_by) : null}
-      <section class="agenda-panel lg:col-span-5 bg-surface-container-low p-space-md rounded shadow-sm flex flex-col gap-space-md sticky top-20 border border-outline-variant/10" id="wdg-job-detail">
-        <div class="flex items-center justify-between pb-space-xs">
-          <div class="flex items-center gap-space-xs">
-            <span class="material-symbols-outlined text-primary text-[20px]">policy</span>
-            <div>
-              <h3 class="font-headline-sm text-headline-sm text-on-surface">Inspeção do Job</h3>
-              <span class="font-label-code-sm text-label-code-sm text-outline font-mono" id="detail-job-id">ID: {selectedJob.id}</span>
-            </div>
-          </div>
-          <div class="flex items-center gap-space-sm" id="detail-source-badge">
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-ui text-label-ui uppercase tracking-wider {selectedJob.source === 'yaml' ? 'bg-surface-container-highest text-primary-fixed' : 'bg-surface-container-high text-tertiary'}">
-              <span class="material-symbols-outlined text-[13px]">{selectedJob.source === 'yaml' ? 'code_blocks' : 'database'}</span>
-              {selectedJob.source === 'yaml' ? 'YAML (Imutável)' : 'SQLite'}
-            </span>
-            <button
-              class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-              onclick={() => (selectedJob = null)}
-              title="Fechar inspeção (Esc)"
-              type="button"
-              aria-label="Fechar inspeção"
-            >
-              <span class="material-symbols-outlined text-[18px]">close</span>
-            </button>
-          </div>
-        </div>
-
-        {#if selectedJob.source === 'yaml'}
-          <div class="p-space-sm rounded bg-surface-container-lowest text-on-surface-variant font-body-sm text-body-sm flex items-start gap-space-xs border border-outline-variant/10" id="detail-yaml-warning">
-            <span class="material-symbols-outlined text-primary text-[16px] mt-0.5">lock</span>
-            <div>
-              <span class="font-semibold text-on-surface">Recado Declarativo:</span> Definido em <code class="text-primary font-label-code-sm font-mono">routines.yaml</code>. Alterações devem ser commitadas no arquivo YAML. Tentativas de mutação direta retornam <strong>HTTP 409 Conflict</strong>.
-            </div>
-          </div>
-        {/if}
-
-        {#if selectedJob.status === 'error'}
-          <div class="p-space-sm rounded bg-error-container/20 text-on-surface flex flex-col gap-space-xs border border-error/30" id="detail-dead-letter-box">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-1.5 text-error font-semibold font-body-sm">
-                <span class="material-symbols-outlined text-[18px]">report_problem</span>
-                <span>Dead-Letter: Execução com Falha</span>
-              </div>
-              <span class="font-label-code-sm text-label-code-sm font-mono px-1.5 py-0.5 rounded bg-error/20 text-error font-bold" id="detail-dead-letter-retries">
-                {selectedJob.retry_count} / 3 tentativas
-              </span>
-            </div>
-            <div class="font-label-code-sm text-label-code-sm font-mono text-error break-words whitespace-pre-wrap bg-surface-container-lowest/80 p-space-xs rounded border border-error/20" id="detail-dead-letter-error">
-              {selectedJob.last_error || 'Falha permanente sem mensagem detalhada.'}
-            </div>
-            <div class="flex items-center gap-2 pt-1 flex-wrap">
-              {#if selectedJob.source !== 'yaml'}
-                <button
-                  type="button"
-                  class="px-space-sm py-1.5 rounded bg-error text-on-error hover:brightness-110 active:brightness-95 font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 font-semibold cursor-pointer shadow-sm"
-                  id="btn-dead-letter-retry"
-                  onclick={() => handleRetry(selectedJob!)}
-                >
-                  <span class="material-symbols-outlined text-[15px]">replay</span>
-                  <span>Re-enfileirar (Retry)</span>
-                </button>
-              {/if}
-              <button
-                type="button"
-                class="px-space-sm py-1.5 rounded bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 font-semibold cursor-pointer"
-                id="btn-dead-letter-run-now"
-                onclick={() => handleRun(selectedJob!.id)}
-              >
-                <span class="material-symbols-outlined text-[15px]">send</span>
-                <span>Disparar Agora</span>
-              </button>
-            </div>
-          </div>
-        {/if}
-
-        <!-- Grid de Metadados -->
-        <div class="grid grid-cols-2 gap-space-sm bg-surface-container-lowest p-space-sm rounded border border-outline-variant/10">
-          <div>
-            <span class="font-label-ui text-label-ui uppercase text-outline block">Título</span>
-            <span class="font-body-md text-body-md font-semibold text-on-surface" id="detail-title">{selectedJob.title}</span>
-          </div>
-          <div>
-            <span class="font-label-ui text-label-ui uppercase text-outline block">Status de Fila</span>
-            <span class="inline-flex items-center gap-1 font-label-code-sm text-label-code-sm font-mono {selectedJob.status === 'scheduled' ? 'text-tertiary' : selectedJob.status === 'done' ? 'text-primary' : 'text-error'}" id="detail-status">
-              <span class="h-1.5 w-1.5 rounded-full {selectedJob.status === 'scheduled' ? 'bg-tertiary' : selectedJob.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
-              {formatStatus(selectedJob.status)}
-            </span>
-          </div>
-          <div class="col-span-2 sm:col-span-1">
-            <span class="font-label-ui text-label-ui uppercase text-outline block">Destino (Target)</span>
-            <div class="flex items-start justify-between gap-2 mt-0.5">
-              <div class="flex flex-col">
-                {#if recipient.primaryName}
-                  <div class="flex items-center gap-1 flex-wrap">
-                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded {recipient.contact ? 'bg-primary/10 text-primary' : 'bg-surface-container-highest text-tertiary'} font-label-code-sm text-label-code-sm font-semibold">
-                      <span class="material-symbols-outlined text-[12px]">{recipient.contact ? 'person' : 'bookmark'}</span>
-                      <span>{recipient.primaryName}</span>
-                    </span>
-                    {#if recipient.alias && recipient.contactName && recipient.alias !== recipient.contactName}
-                      <span class="text-outline text-label-code-sm font-mono text-[11px]">(alias: {recipient.alias})</span>
-                    {/if}
-                  </div>
-                {/if}
-                <span class="font-label-code text-label-code text-on-surface font-mono mt-0.5" id="detail-target">
-                  {recipient.targetNumber}
-                </span>
-              </div>
-
-              {#if recipient.contact}
-                <button
-                  type="button"
-                  class="px-2 py-1 rounded bg-primary/10 hover:bg-primary hover:text-on-primary text-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all shrink-0 cursor-pointer"
-                  onclick={() => router.navigate(`/contacts/${recipient.contact!.id}`)}
-                  title="Ver perfil completo de {recipient.contact.name}"
-                >
-                  <span class="material-symbols-outlined text-[14px]">open_in_new</span>
-                  <span>Ver Perfil</span>
-                </button>
-              {/if}
-            </div>
-          </div>
-
-          <div class="col-span-2 sm:col-span-1">
-            <span class="font-label-ui text-label-ui uppercase text-outline block">Criado Por</span>
-            <div class="flex items-center gap-1.5 mt-0.5">
-              {#if creatorContact}
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1 text-primary hover:underline font-label-code text-label-code font-mono cursor-pointer"
-                  onclick={() => router.navigate(`/contacts/${creatorContact.id}`)}
-                  title="Ver perfil de {creatorContact.name}"
-                >
-                  <span class="material-symbols-outlined text-[14px]">person</span>
-                  <span>{creatorContact.name} ({selectedJob.created_by})</span>
-                </button>
-              {:else}
-                <span class="font-label-code text-label-code text-on-surface font-mono" id="detail-created-by">
-                  {selectedJob.created_by || '—'}
-                </span>
-              {/if}
-            </div>
-          </div>
-          <div>
-            <span class="font-label-ui text-label-ui uppercase text-outline block">Tipo (Kind)</span>
-            <span class="font-label-code text-label-code text-secondary font-mono" id="detail-kind">{selectedJob.kind}</span>
-          </div>
-          <div>
-            <span class="font-label-ui text-label-ui uppercase text-outline block">Expressão / Run At</span>
-            <span class="font-label-code text-label-code text-on-surface font-mono" id="detail-schedule">{selectedJob.cron_expr || selectedJob.run_at || '—'}</span>
-          </div>
-          <div>
-            <span class="font-label-ui text-label-ui uppercase text-outline block">Limite (until)</span>
-            <span class="font-label-code text-label-code text-on-surface font-mono" id="detail-until">{selectedJob.until ? new Date(selectedJob.until).toLocaleString('pt-BR') : 'Sem limite'}</span>
-          </div>
-          <div>
-            <span class="font-label-ui text-label-ui uppercase text-outline block">Execuções (run_count / max)</span>
-            <span class="font-label-code text-label-code text-on-surface font-mono" id="detail-runs">{selectedJob.run_count ?? 0}{selectedJob.max_runs ? ` / ${selectedJob.max_runs}` : ' (ilimitado)'}</span>
-          </div>
-        </div>
-
-        <!-- Histórico e Telemetria -->
-        <div class="bg-surface-container p-space-sm rounded flex flex-col gap-space-xs font-label-code-sm text-label-code-sm font-mono border border-outline-variant/10">
-          <div class="flex items-center justify-between text-outline">
-            <span>Última Execução (last_run_at):</span>
-            <span class="text-on-surface">{selectedJob.last_run_at ? new Date(selectedJob.last_run_at).toLocaleString('pt-BR') : 'Nunca executado'}</span>
-          </div>
-          <div class="flex items-center justify-between text-outline">
-            <span>Último Status (last_status):</span>
-            <span class="text-tertiary font-semibold">{selectedJob.last_status || 'Pendente'}</span>
-          </div>
-          <div class="flex items-center justify-between text-outline">
-            <span>Tentativas (retry_count):</span>
-            <span class="text-on-surface">{selectedJob.retry_count} / 3</span>
-          </div>
-          {#if selectedJob.last_error}
-            <div class="flex flex-col gap-1 text-outline pt-1 border-t border-outline-variant/10">
-              <span class="text-error font-semibold">Último Erro (last_error):</span>
-              <span class="text-error font-label-code-sm text-label-code-sm break-words whitespace-pre-wrap leading-relaxed bg-error-container/10 p-space-xs rounded font-mono" id="detail-last-error">{selectedJob.last_error}</span>
-            </div>
-          {/if}
-        </div>
-
-        <!-- Previsão de Próximos Disparos (Upcoming Runs) -->
-        <div class="flex flex-col gap-1.5" id="detail-upcoming-card">
-          <div class="flex items-center justify-between">
-            <span class="font-label-ui text-label-ui uppercase text-on-surface-variant flex items-center gap-1 font-semibold">
-              <span class="material-symbols-outlined text-[15px] text-primary">event_upcoming</span>
-              <span>Próximos Disparos ({selectedJobUpcoming.length})</span>
-            </span>
-            <button
-              type="button"
-              class="text-outline hover:text-on-surface font-label-code-sm text-label-code-sm font-mono flex items-center gap-0.5 cursor-pointer"
-              id="btn-refresh-upcoming"
-              onclick={() => loadJobUpcoming(selectedJob!.id)}
-              title="Atualizar projeção de disparos"
-            >
-              <span class="material-symbols-outlined text-[13px]">refresh</span>
-              <span>Atualizar</span>
-            </button>
-          </div>
-
-          {#if loadingUpcoming}
-            <div class="py-2 text-center text-outline font-label-code-sm font-mono text-xs" id="upcoming-loading">
-              Calculando projeção...
-            </div>
-          {:else if selectedJobUpcoming.length === 0}
-            <div class="p-space-sm rounded bg-surface-container text-outline font-label-code-sm text-xs text-center border border-outline-variant/10" id="upcoming-empty">
-              {selectedJob.status === 'done' ? 'Agendamento concluído (sem próximas execuções).' : 'Nenhuma próxima execução projetada.'}
-            </div>
-          {:else}
-            <div class="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1" id="upcoming-list">
-              {#each selectedJobUpcoming as run, idx (run.run_at)}
-                <div class="p-space-xs rounded bg-surface-container font-mono text-xs border border-primary/20 flex items-center justify-between" id="upcoming-item-{idx}">
-                  <div class="flex items-center gap-2">
-                    <span class="px-1.5 py-0.5 rounded bg-primary/15 text-primary font-bold text-[11px]">
-                      #{idx + 1}
-                    </span>
-                    <span class="text-on-surface text-[12px] font-semibold">
-                      {run.formatted_date}
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span class="px-2 py-0.5 rounded bg-surface-container-lowest text-secondary text-[11px] font-mono border border-outline-variant/20">
-                      {run.time_local}
-                    </span>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-        <!-- Histórico de Execuções (Auditoria de Disparos) -->
-        <div class="flex flex-col gap-1.5" id="detail-runs-section">
-          <div class="flex items-center justify-between">
-            <span class="font-label-ui text-label-ui uppercase text-on-surface-variant flex items-center gap-1">
-              <span class="material-symbols-outlined text-[15px]">history</span>
-              <span>Histórico de Disparos ({selectedJobRuns.length})</span>
-            </span>
-            <button
-              type="button"
-              class="text-outline hover:text-on-surface font-label-code-sm text-label-code-sm font-mono flex items-center gap-0.5 cursor-pointer"
-              id="btn-refresh-runs"
-              onclick={() => loadJobRuns(selectedJob!.id)}
-              title="Atualizar histórico"
-            >
-              <span class="material-symbols-outlined text-[13px]">refresh</span>
-              <span>Atualizar</span>
-            </button>
-          </div>
-
-          <button type="button" id="btn-export-job-runs-csv" class="px-space-md py-2 rounded bg-surface-container hover:bg-surface-bright text-on-surface font-label-ui text-label-ui cursor-pointer"
-            disabled={exportingCsv} onclick={() => downloadCsv('runs', selectedJob!.id)}>
-            Exportar histórico deste agendamento CSV
-          </button>
-          {#if csvError}<p role="alert" class="text-error">{csvError}</p>{/if}
-
-          {#if loadingJobRuns}
-            <div class="py-2 text-center text-outline font-label-code-sm font-mono text-xs" id="runs-loading">
-              Carregando histórico...
-            </div>
-          {:else if selectedJobRuns.length === 0}
-            <div class="p-space-sm rounded bg-surface-container text-outline font-label-code-sm text-xs text-center border border-outline-variant/10" id="runs-empty">
-              Nenhuma tentativa de disparo registrada ainda.
-            </div>
-          {:else}
-            <div class="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1" id="runs-list">
-              {#each selectedJobRuns as run (run.id)}
-                <div class="p-space-xs rounded bg-surface-container font-mono text-xs border border-outline-variant/10 flex flex-col gap-1" id="run-item-{run.id}">
-                  <div class="flex items-center justify-between">
-                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold {run.status === 'success' ? 'bg-primary/15 text-primary' : 'bg-error/15 text-error'}">
-                      <span class="material-symbols-outlined text-[12px]">{run.status === 'success' ? 'check_circle' : 'error'}</span>
-                      <span>{run.status_code || (run.status === 'success' ? '202' : 'ERRO')}</span>
-                    </span>
-                    <span class="inline-flex items-center gap-1 text-on-surface-variant text-[11px]">
-                      <span class="material-symbols-outlined text-[12px]">{run.trigger === 'manual' ? 'touch_app' : 'schedule'}</span>
-                      <span>{run.trigger === 'manual' ? 'Manual' : 'Agendado'}</span>
-                    </span>
-                    <span class="text-secondary text-[11px]">
-                      {run.duration_ms.toFixed(1)} ms
-                    </span>
-                  </div>
-                  <div class="flex items-center justify-between text-outline text-[11px]">
-                    <span>{new Date(run.ran_at).toLocaleString('pt-BR')}</span>
-                    <span class="font-mono text-[10px] text-outline/70">ID: {run.id.slice(0, 8)}</span>
-                  </div>
-                  {#if run.error_message}
-                    <div class="text-error text-[11px] bg-error-container/10 p-1 rounded break-words">
-                      {run.error_message}
-                    </div>
-                  {/if}
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-        <!-- Conteúdo Integral -->
-        <div class="flex flex-col gap-1">
-          <div class="flex items-center justify-between">
-            <span class="font-label-ui text-label-ui uppercase text-on-surface-variant">Conteúdo Integral (content)</span>
-            <span class="font-label-code-sm text-label-code-sm text-outline font-mono">plaintext</span>
-          </div>
-          <div class="p-space-sm rounded bg-surface-container-lowest text-on-surface font-label-code-sm text-label-code-sm whitespace-pre-wrap leading-relaxed max-h-36 overflow-y-auto font-mono border border-outline-variant/10" id="detail-content">
-            {selectedJob.content || (selectedJob.template_id ? `[Template ID: ${selectedJob.template_id}]` : '(vazio)')}
-          </div>
-        </div>
-
-        {#if selectedJob.tags && selectedJob.tags.length > 0}
-          <div class="bg-surface-container p-space-sm rounded flex flex-col gap-space-xs border border-primary/20" id="detail-tags-card">
-            <div class="flex items-center justify-between">
-              <span class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold flex items-center gap-1">
-                <span class="material-symbols-outlined text-[15px] text-primary">label</span>
-                <span>Tags / Categorias ({selectedJob.tags.length})</span>
-              </span>
-              <span class="font-label-code-sm text-label-code-sm text-outline font-mono">tags</span>
-            </div>
-            <div class="flex flex-wrap gap-1.5 pt-1" id="detail-tags-list">
-              {#each selectedJob.tags as t (t)}
-                <span class="badge-tag inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-lowest text-primary font-mono text-label-code-sm border border-outline-variant/20">
-                  <span class="material-symbols-outlined text-[12px]">label</span>
-                  <span>{t}</span>
-                </span>
-              {/each}
-            </div>
-          </div>
-        {/if}
-
-        {#if selectedJob.variables && Object.keys(selectedJob.variables).length > 0}
-          <div class="bg-surface-container p-space-sm rounded flex flex-col gap-space-xs border border-primary/20" id="detail-variables-card">
-            <div class="flex items-center justify-between">
-              <span class="font-label-ui text-label-ui uppercase text-on-surface-variant font-semibold flex items-center gap-1">
-                <span class="material-symbols-outlined text-[15px] text-primary">data_object</span>
-                <span>Variáveis Customizadas ({Object.keys(selectedJob.variables).length})</span>
-              </span>
-              <span class="font-label-code-sm text-label-code-sm text-outline font-mono">variables</span>
-            </div>
-            <div class="flex flex-wrap gap-1.5 pt-1" id="detail-variables-list">
-              {#each Object.entries(selectedJob.variables) as [k, v] (k)}
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-lowest text-secondary font-mono text-label-code-sm border border-outline-variant/20">
-                  <span class="font-semibold text-primary font-mono">&#123;&#123;{k}&#125;&#125;:</span>
-                  <span class="text-on-surface font-normal font-mono">{v}</span>
-                </span>
-              {/each}
-            </div>
-          </div>
-        {/if}
-
-        {#if selectedJob.group_id}
-          <div class="bg-surface-container p-space-sm rounded flex flex-col gap-space-xs border border-secondary/20" id="detail-group-card">
-            <div class="flex items-center justify-between flex-wrap gap-1">
-              <div class="flex items-center gap-1.5 text-secondary font-semibold font-body-sm">
-                <span class="material-symbols-outlined text-[18px]">group</span>
-                <span>Grupo de Envio ({groupMembers.length} destinatários)</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span class="font-label-ui text-label-ui uppercase text-outline text-[11px]">group_id:</span>
-                <span class="font-label-code-sm text-label-code-sm bg-surface-container-lowest text-secondary px-1.5 py-0.5 rounded font-mono font-semibold" id="detail-group-id">{selectedJob.group_id}</span>
-              </div>
-            </div>
-
-            <p class="font-body-sm text-body-sm text-on-surface-variant">
-              Envio coletivo com status e execução individuais por destinatário.
-            </p>
-
-            <!-- Ações em Lote do Grupo -->
-            <div class="flex items-center gap-2 pt-1 flex-wrap">
-              <button
-                type="button"
-                class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary text-secondary hover:text-on-secondary font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer font-semibold"
-                id="btn-group-run-all"
-                onclick={() => handleRunGroup(selectedJob!.group_id!)}
-                title="POST /jobs/group/{selectedJob.group_id}/run"
-              >
-                <span class="material-symbols-outlined text-[14px]">send</span>
-                <span>Disparar Todos</span>
-              </button>
-              {#if selectedJob.source !== 'yaml'}
-                <button
-                  type="button"
-                  class="px-2 py-1 rounded bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer font-semibold"
-                  id="btn-group-pause-all"
-                  onclick={() => handlePauseGroup(selectedJob!.group_id!)}
-                  title="POST /jobs/group/{selectedJob.group_id}/pause"
-                >
-                  <span class="material-symbols-outlined text-[14px]">pause</span>
-                  <span>Pausar Grupo</span>
-                </button>
-                <button
-                  type="button"
-                  class="px-2 py-1 rounded bg-secondary/15 hover:bg-secondary hover:text-on-secondary text-secondary font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer font-semibold"
-                  id="btn-group-resume-all"
-                  onclick={() => handleResumeGroup(selectedJob!.group_id!)}
-                  title="POST /jobs/group/{selectedJob.group_id}/resume"
-                >
-                  <span class="material-symbols-outlined text-[14px]">play_arrow</span>
-                  <span>Retomar Grupo</span>
-                </button>
-                <button
-                  type="button"
-                  class="px-2 py-1 rounded bg-surface-container-highest hover:bg-primary/20 text-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer font-semibold"
-                  id="btn-group-snooze-all"
-                  onclick={() => openSnoozeGroup(selectedJob!.group_id!)}
-                  title="POST /jobs/group/{selectedJob.group_id}/snooze"
-                >
-                  <span class="material-symbols-outlined text-[14px]">snooze</span>
-                  <span>Adiar Grupo</span>
-                </button>
-                <button
-                  type="button"
-                  class="px-2 py-1 rounded bg-error-container/20 hover:bg-error-container text-error hover:text-on-error font-label-ui text-label-ui uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer"
-                  id="btn-group-cancel-all"
-                  onclick={() => handleCancelGroup(selectedJob!.group_id!)}
-                  title="POST /jobs/group/{selectedJob.group_id}/cancel"
-                >
-                  <span class="material-symbols-outlined text-[14px]">cancel</span>
-                  <span>Cancelar Grupo</span>
-                </button>
-              {/if}
-            </div>
-
-            <!-- Lista de Membros do Grupo -->
-            {#if loadingGroupMembers}
-              <div class="py-2 text-center text-outline font-label-code-sm">Carregando membros do grupo...</div>
-            {:else if groupMembers.length > 0}
-              <div class="flex flex-col gap-1 mt-1 max-h-48 overflow-y-auto">
-                {#each groupMembers as member (member.id)}
-                  {@const memberRecipient = resolveRecipient(member)}
-                  {@const isCurrent = member.id === selectedJob.id}
-                  <button
-                    type="button"
-                    class="flex items-center justify-between p-1.5 rounded transition-all text-left font-mono font-label-code-sm cursor-pointer {isCurrent ? 'bg-secondary/20 border border-secondary/30 text-on-surface' : 'bg-surface-container-lowest hover:bg-surface-container-high text-on-surface-variant'}"
-                    onclick={() => inspectJob(member.id)}
-                  >
-                    <div class="flex items-center gap-1.5 truncate">
-                      <span class="material-symbols-outlined text-[14px] {isCurrent ? 'text-secondary' : 'text-outline'}">
-                        {isCurrent ? 'radio_button_checked' : 'radio_button_unchecked'}
-                      </span>
-                      {#if memberRecipient.primaryName}
-                        <span class="font-semibold text-on-surface truncate">{memberRecipient.primaryName}</span>
-                        <span class="text-outline text-[11px]">({memberRecipient.targetNumber})</span>
-                      {:else}
-                        <span class="truncate">{memberRecipient.targetNumber}</span>
-                      {/if}
-                    </div>
-
-                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-label-code-sm text-[10px] uppercase font-mono shrink-0 {member.status === 'scheduled' ? 'bg-tertiary/10 text-tertiary' : member.status === 'done' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}">
-                      <span class="h-1 w-1 rounded-full {member.status === 'scheduled' ? 'bg-tertiary' : member.status === 'done' ? 'bg-primary' : 'bg-error'}"></span>
-                      {member.status}
-                    </span>
-                  </button>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        {/if}
-
-        <!-- Comandos do Operador -->
-        <div class="pt-space-xs flex flex-col gap-space-xs border-t border-outline-variant/10">
-          <span class="font-label-ui text-label-ui uppercase text-outline">Comandos do Operador</span>
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-space-xs">
-            {#if selectedJob.source !== 'yaml' && selectedJob.status === 'error'}
-              <button
-                class="px-space-sm py-2 rounded bg-error text-on-error font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm hover:brightness-110 active:brightness-95 transition-all font-semibold cursor-pointer"
-                id="btn-detail-retry"
-                onclick={() => handleRetry(selectedJob!)}
-                type="button"
-              >
-                <span class="material-symbols-outlined text-[16px]">replay</span>
-                <span>Retry</span>
-              </button>
-            {/if}
-
-            <button
-              class="px-space-sm py-2 rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm hover:brightness-110 active:brightness-95 transition-all font-semibold cursor-pointer"
-              id="btn-detail-run"
-              onclick={() => handleRun(selectedJob!.id)}
-              type="button"
-            >
-              <span class="material-symbols-outlined text-[16px]">send</span>
-              <span>Disparar</span>
-            </button>
-
-            {#if selectedJob.source !== 'yaml'}
-              {#if selectedJob.status === 'paused'}
-                <button
-                  class="px-space-sm py-2 rounded bg-secondary/20 hover:bg-secondary hover:text-on-secondary text-secondary font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer font-semibold"
-                  id="btn-detail-resume"
-                  onclick={() => handleResume(selectedJob!)}
-                  type="button"
-                >
-                  <span class="material-symbols-outlined text-[16px]">play_arrow</span>
-                  <span>Retomar</span>
-                </button>
-              {:else if selectedJob.status === 'scheduled'}
-                <button
-                  class="px-space-sm py-2 rounded bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer font-semibold"
-                  id="btn-detail-pause"
-                  onclick={() => handlePause(selectedJob!)}
-                  type="button"
-                >
-                  <span class="material-symbols-outlined text-[16px]">pause</span>
-                  <span>Pausar</span>
-                </button>
-              {/if}
-
-              {#if selectedJob.status === 'scheduled' || selectedJob.status === 'paused'}
-                <button
-                  class="px-space-sm py-2 rounded bg-surface-container-highest hover:bg-primary/20 text-primary font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer font-semibold"
-                  id="btn-detail-snooze"
-                  onclick={() => openSnoozeJob(selectedJob!.id, selectedJob!.source)}
-                  type="button"
-                >
-                  <span class="material-symbols-outlined text-[16px]">snooze</span>
-                  <span>Adiar</span>
-                </button>
-              {/if}
-
-              <button
-                class="px-space-sm py-2 rounded bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer"
-                id="btn-detail-reschedule"
-                onclick={() => openReschedule(selectedJob!.id, selectedJob!.source)}
-                type="button"
-              >
-                <span class="material-symbols-outlined text-[16px]">schedule</span>
-                <span>Reagendar</span>
-              </button>
-              <button
-                class="px-space-sm py-2 rounded bg-error-container/20 hover:bg-error-container text-error hover:text-on-error font-label-ui text-label-ui uppercase tracking-wider flex items-center justify-center gap-1 transition-all cursor-pointer"
-                id="btn-detail-cancel"
-                onclick={() => handleCancel(selectedJob!)}
-                type="button"
-              >
-                <span class="material-symbols-outlined text-[16px]">delete</span>
-                <span>Cancelar</span>
-              </button>
-            {:else}
-              <div class="col-span-2 flex items-center justify-center p-2 rounded bg-surface-container text-outline font-label-code-sm">
-                Imutável via API (YAML)
-              </div>
-            {/if}
-          </div>
-        </div>
-      </section>
+    {#if selectedId}
+      <JobInspector jobId={selectedId} refreshKey={detailRevision} onclose={() => (selectedId = null)} oninspect={inspectJob} onchange={loadJobs} />
     {/if}
   </div>
 

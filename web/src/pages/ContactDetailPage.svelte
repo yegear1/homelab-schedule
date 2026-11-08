@@ -3,6 +3,7 @@
   import { router } from '../lib/router.svelte';
   import { toast } from '../lib/toast.svelte';
   import type { Contact, JobListItem, Job, JobListFilter } from '../lib/types';
+  import JobInspector from '../components/jobs/JobInspector.svelte';
   import JobComposer from '../components/jobs/JobComposer.svelte';
   import RescheduleModal from '../components/RescheduleModal.svelte';
 
@@ -10,7 +11,9 @@
 
   let contact = $state<Contact | null>(null);
   let jobs = $state<JobListItem[]>([]);
-  let selectedJob = $state<Job | null>(null);
+  let selectedId = $state<string | null>(null);
+  let detailRevision = $state(0);
+  const selectedJob = $derived(jobs.find(job => job.id === selectedId) ?? null);
 
   let loading = $state(true);
   let jobsLoading = $state(false);
@@ -35,6 +38,7 @@
   });
 
   async function loadContactData() {
+    selectedId = null;
     loading = true;
     errorMsg = null;
     try {
@@ -58,11 +62,7 @@
     const status = statusOverride ?? filterStatus;
     try {
       jobs = await api.getJobs({ status, phone });
-      if (jobs.length > 0 && (!selectedJob || !jobs.find(j => j.id === selectedJob?.id))) {
-        await inspectJob(jobs[0].id);
-      } else if (jobs.length === 0) {
-        selectedJob = null;
-      }
+      detailRevision++;
     } catch (err: unknown) {
       toast.error('Falha ao carregar recados do contato.');
     } finally {
@@ -77,12 +77,8 @@
     }
   }
 
-  async function inspectJob(jobId: string) {
-    try {
-      selectedJob = await api.getJob(jobId);
-    } catch (err: unknown) {
-      toast.error('Falha ao carregar detalhes do job selecionado.');
-    }
+  function inspectJob(jobId: string): void {
+    selectedId = jobId;
   }
 
   async function handlePatchContact(e: SubmitEvent) {
@@ -137,7 +133,11 @@
     }
   }
 
+  const pendingActions = $state(new Set<string>());
+
   async function handleRunJob(jobId: string) {
+    if (pendingActions.has(jobId)) return;
+    pendingActions.add(jobId);
     try {
       const res = await api.runJob(jobId);
       toast.queued(`POST /jobs/${jobId}/run: 202 Enfileirado no gateway (${res.status})`);
@@ -145,6 +145,8 @@
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao disparar recado';
       toast.error(msg);
+    } finally {
+      pendingActions.delete(jobId);
     }
   }
 
@@ -154,6 +156,8 @@
       return;
     }
 
+    if (pendingActions.has(jobItem.id)) return;
+    pendingActions.add(jobItem.id);
     try {
       await api.cancelJob(jobItem.id);
       toast.success(`Recado ${jobItem.id} cancelado com sucesso.`);
@@ -164,6 +168,8 @@
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Falha ao cancelar recado';
       toast.error(msg);
+    } finally {
+      pendingActions.delete(jobItem.id);
     }
   }
 
@@ -487,7 +493,7 @@
 
                       {#if job.source !== 'yaml'}
                         {#if job.status === 'scheduled'}
-                          <button
+                          <button disabled={pendingActions.has(job.id)}
                             class="px-space-sm py-1 rounded-xl bg-fill hover:bg-fill text-secondary-label hover:text-label font-label-code text-label-code transition-colors duration-selection ease-fluid flex items-center gap-1"
                             onclick={() => openReschedule(job.id, job.source)}
                             type="button"
@@ -495,7 +501,7 @@
                             <span aria-hidden="true" class="material-symbols-outlined text-[14px]">edit_calendar</span>
                             <span>Reagendar</span>
                           </button>
-                          <button
+                          <button disabled={pendingActions.has(job.id)}
                             class="px-space-sm py-1 rounded-xl bg-error-container/30 hover:bg-error-container text-error font-label-code text-label-code transition-colors duration-selection ease-fluid flex items-center gap-1"
                             onclick={() => handleCancelJob(job)}
                             type="button"
@@ -511,7 +517,7 @@
                         {/if}
                       {/if}
 
-                      <button
+                      <button disabled={pendingActions.has(job.id)}
                         class="px-space-sm py-1 rounded-xl bg-accent hover:bg-accent/90 text-on-primary font-label-code text-label-code transition-colors duration-selection ease-fluid flex items-center gap-1 font-semibold"
                         onclick={() => handleRunJob(job.id)}
                         title="Retorno 202 = enfileirado no gateway, não garante entrega imediata"
@@ -528,124 +534,8 @@
           </div>
         </div>
 
-        <!-- wdg-job-detail: Painel / Inspector do Job Selecionado -->
-        {#if selectedJob}
-          <aside class="support-panel bg-secondary-system-background rounded-xl p-space-lg shadow-md flex flex-col gap-space-md border border-separator/60" id="wdg-job-detail">
-            <div class="flex items-center justify-between pb-space-sm">
-              <div class="flex items-center gap-space-xs">
-                <span aria-hidden="true" class="material-symbols-outlined text-accent text-[20px]">terminal</span>
-                <h2 class="font-headline-sm text-headline-sm text-label">Inspeção Detalhada do Job</h2>
-              </div>
-              <span class="font-label-code text-label-code px-space-sm py-0.5 rounded-xl bg-fill text-accent font-mono" id="detail-job-id-badge">
-                {selectedJob.id}
-              </span>
-            </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-space-sm text-label-code font-mono bg-system-background p-space-md rounded-xl">
-              <div>
-                <span class="text-secondary-label block text-label-code-sm">TIPO</span>
-                <span class="text-label" id="detail-kind">{selectedJob.kind === 'once' ? 'Único' : 'Recorrente (Cron)'}</span>
-              </div>
-              <div>
-                <span class="text-secondary-label block text-label-code-sm">STATUS RECENTE</span>
-                <span class="text-accent font-semibold" id="detail-status">{selectedJob.status === 'scheduled' ? 'AGENDADO' : selectedJob.status === 'done' ? 'CONCLUÍDO' : selectedJob.status === 'paused' ? 'PAUSADO' : 'ERRO'}</span>
-              </div>
-              <div>
-                <span class="text-secondary-label block text-label-code-sm">TENTATIVAS</span>
-                <span class="text-label" id="detail-retries">{selectedJob.retry_count} / 3</span>
-              </div>
-              <div>
-                <span class="text-secondary-label block text-label-code-sm">ÚLTIMA EXECUÇÃO</span>
-                <span class="text-secondary-label" id="detail-last-run">
-                  {selectedJob.last_run_at ? new Date(selectedJob.last_run_at).toLocaleString('pt-BR') : 'Nunca executado'}
-                </span>
-              </div>
-              <div>
-                <span class="text-secondary-label block text-label-code-sm">PRÓXIMA JANELA</span>
-                <span class="text-tertiary" id="detail-next-run">
-                  {selectedJob.next_run_at ? new Date(selectedJob.next_run_at).toLocaleString('pt-BR') : '—'}
-                </span>
-              </div>
-              <div>
-                <span class="text-secondary-label block text-label-code-sm">ORIGEM</span>
-                <span class="text-label font-mono" id="detail-source">{selectedJob.source === 'yaml' ? 'routines.yaml' : 'SQLite'}</span>
-              </div>
-            </div>
-
-            <!-- Conteúdo da Mensagem -->
-            <div class="flex flex-col gap-1">
-              <span class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label">Conteúdo Efetivo da Mensagem</span>
-              <div class="bg-system-background p-space-md rounded-xl font-label-code text-label-code text-label whitespace-pre-wrap font-mono selection:bg-accent selection:text-on-primary max-h-48 overflow-y-auto" id="detail-content">
-                {selectedJob.content || (selectedJob.template_id ? `[Template ID: ${selectedJob.template_id}]` : '(vazio)')}
-              </div>
-            </div>
-
-            <!-- Diagnóstico Sanitizado -->
-            {#if selectedJob.last_error}
-              <div class="bg-error-container/20 rounded-xl p-space-md flex flex-col gap-1" id="detail-error-container">
-                <span class="font-label-ui text-label-ui uppercase tracking-wider text-error flex items-center gap-1">
-                  <span aria-hidden="true" class="material-symbols-outlined text-[16px]">error</span>
-                  Diagnóstico de Falha Recente (Sanitizado)
-                </span>
-                <p class="font-label-code text-label-code text-error font-mono" id="detail-error-msg">
-                  {selectedJob.last_error}
-                </p>
-              </div>
-            {/if}
-
-            <!-- Ações do Job Detail -->
-            <div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs border-t border-separator/60">
-              <div class="flex items-center gap-space-xs">
-                {#if selectedJob.source !== 'yaml'}
-                  {#if selectedJob.status === 'scheduled'}
-                    <button
-                      class="px-space-md py-space-sm rounded-xl bg-tertiary-system-background hover:bg-error-container/40 text-secondary-label hover:text-error font-label-ui text-label-ui uppercase tracking-wider transition-colors duration-selection ease-fluid flex items-center gap-1"
-                      id="detail-btn-cancel"
-                      onclick={() => handleCancelJob(selectedJob!)}
-                      type="button"
-                    >
-                      <span aria-hidden="true" class="material-symbols-outlined text-[16px]">cancel</span>
-                      <span>Cancelar Recado</span>
-                    </button>
-                    <button
-                      class="px-space-md py-space-sm rounded-xl bg-tertiary-system-background hover:bg-fill text-label font-label-ui text-label-ui uppercase tracking-wider transition-colors duration-selection ease-fluid flex items-center gap-1"
-                      id="detail-btn-reschedule"
-                      onclick={() => openReschedule(selectedJob!.id, selectedJob!.source)}
-                      type="button"
-                    >
-                      <span aria-hidden="true" class="material-symbols-outlined text-[16px]">schedule</span>
-                      <span>Reagendar</span>
-                    </button>
-                  {:else}
-                    <span class="font-label-code-sm text-secondary-label px-space-md py-space-sm rounded-xl bg-tertiary-system-background flex items-center gap-1">
-                      <span aria-hidden="true" class="material-symbols-outlined text-[14px]">info</span>
-                      Status: {selectedJob.status === 'paused' ? 'Pausado / Cancelado' : selectedJob.status === 'done' ? 'Concluído' : selectedJob.status}
-                    </span>
-                  {/if}
-                {:else}
-                  <span class="font-label-code-sm text-secondary-label flex items-center gap-1">
-                    <span aria-hidden="true" class="material-symbols-outlined text-[14px]">lock</span>
-                    Rotina YAML (Imutável via API)
-                  </span>
-                {/if}
-              </div>
-
-              <!-- Disparo Forçado com feedback explícito de 202 -->
-              <div class="relative group">
-                <button
-                  class="px-space-lg py-space-sm rounded-xl bg-accent hover:bg-accent/90 text-on-primary font-label-ui text-label-ui uppercase tracking-wider transition-colors duration-selection ease-fluid flex items-center gap-space-xs shadow-sm font-semibold"
-                  onclick={() => handleRunJob(selectedJob!.id)}
-                  type="button"
-                >
-                  <span aria-hidden="true" class="material-symbols-outlined text-[16px]">bolt</span>
-                  <span>Disparar Agora</span>
-                </button>
-                <div class="absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 p-space-xs bg-fill text-label text-label-code-sm font-mono rounded-xl shadow-xl pointer-events-none z-30">
-                  Retorno 202 = enfileirado no gateway, não garante entrega imediata.
-                </div>
-              </div>
-            </div>
-          </aside>
+        {#if selectedId}
+          <JobInspector jobId={selectedId} refreshKey={detailRevision} onclose={() => (selectedId = null)} oninspect={inspectJob} onchange={async () => { if (contact) await loadJobsForContact(contact.phone); }} />
         {/if}
       </div>
     </div>

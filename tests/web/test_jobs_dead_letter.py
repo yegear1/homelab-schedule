@@ -7,7 +7,10 @@ TYPES_TS = REPO_ROOT / "web" / "src" / "lib" / "types.ts"
 
 
 def test_jobs_page_implements_dead_letter_and_retry_contract() -> None:
-    page_content = JOBS_PAGE.read_text(encoding="utf-8")
+    components = REPO_ROOT / "web/src/components/jobs"
+    page_content = JOBS_PAGE.read_text() + "\n".join(
+        path.read_text() for path in components.glob("*.svelte")
+    )
     api_content = API_TS.read_text(encoding="utf-8")
     types_content = TYPES_TS.read_text(encoding="utf-8")
 
@@ -32,6 +35,6 @@ def test_jobs_page_implements_dead_letter_and_retry_contract() -> None:
     assert 'id="detail-dead-letter-box"' in page_content
     assert 'id="detail-dead-letter-error"' in page_content
     assert 'id="detail-dead-letter-retries"' in page_content
-    assert 'id="btn-dead-letter-retry"' in page_content
-    assert 'id="btn-dead-letter-run-now"' in page_content
-    assert 'id="btn-detail-retry"' in page_content
+    assert "btn-dead-letter-retry" in page_content
+    assert "btn-dead-letter-run-now" in page_content
+    assert "btn-detail-retry" in page_content

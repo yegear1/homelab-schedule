@@ -24,12 +24,12 @@ def test_upcoming_runs_types_and_api_contract() -> None:
 
 
 def test_jobs_page_upcoming_runs_contract() -> None:
-    content = JOBS_PAGE.read_text(encoding="utf-8")
+    content = (REPO_ROOT / "web/src/components/jobs/UpcomingRuns.svelte").read_text()
 
     # State and functions
-    assert "selectedJobUpcoming = $state<UpcomingRunItem[]>([]);" in content
-    assert "loadingUpcoming = $state(false);" in content
-    assert "loadJobUpcoming(" in content
+    assert "runs = $state<UpcomingRunItem[]>([]);" in content
+    assert "loading = $state(true);" in content
+    assert "api.getUpcomingRuns(id, 5)" in content
 
     # DOM elements in detail drawer
     assert 'id="detail-upcoming-card"' in content

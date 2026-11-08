@@ -7,7 +7,7 @@ TYPES_TS = REPO_ROOT / "web" / "src" / "lib" / "types.ts"
 
 
 def test_jobs_page_implements_job_runs_audit_contract() -> None:
-    page_content = JOBS_PAGE.read_text(encoding="utf-8")
+    page_content = (REPO_ROOT / "web/src/components/jobs/RunHistory.svelte").read_text()
     api_content = API_TS.read_text(encoding="utf-8")
     types_content = TYPES_TS.read_text(encoding="utf-8")
 
@@ -24,9 +24,9 @@ def test_jobs_page_implements_job_runs_audit_contract() -> None:
     assert "getAllJobRuns(limit: number = 50, status?: string): Promise<JobRun[]>" in api_content
 
     # Verify JobsPage state and loading
-    assert "selectedJobRuns = $state<JobRun[]>([]);" in page_content
-    assert "loadingJobRuns = $state(false);" in page_content
-    assert "loadJobRuns(jobId: string)" in page_content
+    assert "runs = $state<JobRun[]>([]);" in page_content
+    assert "loading = $state(true);" in page_content
+    assert "api.getJobRuns(id, 20)" in page_content
 
     # Verify JobsPage drawer section elements
     assert 'id="detail-runs-section"' in page_content

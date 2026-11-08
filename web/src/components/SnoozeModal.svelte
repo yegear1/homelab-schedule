@@ -1,180 +1,45 @@
 <script lang="ts">
   import { api } from '../lib/api';
   import { toast } from '../lib/toast.svelte';
-  import { focusTrap } from '../lib/focusTrap';
-
-  interface Props {
-    open: boolean;
-    jobId?: string | null;
-    groupId?: string | null;
-    onclose: () => void;
-    onsuccess: () => void;
-  }
-
-  let { open, jobId, groupId, onclose, onsuccess }: Props = $props();
-
+  import Dialog from './ui/Dialog.svelte';
+  import Button from './ui/Button.svelte';
+  let { open, jobId = null, groupId = null, onclose, onsuccess }: { open: boolean; jobId?: string | null; groupId?: string | null; onclose: () => void; onsuccess: () => void | Promise<void> } = $props();
   let until = $state('');
   let busy = $state(false);
-
-  function formatLocalDateTime(d: Date): string {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const YYYY = d.getFullYear();
-    const MM = pad(d.getMonth() + 1);
-    const DD = pad(d.getDate());
-    const hh = pad(d.getHours());
-    const mm = pad(d.getMinutes());
-    return `${YYYY}-${MM}-${DD}T${hh}:${mm}`;
+  let error = $state('');
+  function setQuickOffset(hours: number): void {
+    const date = new Date(Date.now() + hours * 3600000);
+    const pad = (value: number) => String(value).padStart(2, '0');
+    until = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
-
-  function setQuickOffset(hours: number) {
-    const d = new Date(Date.now() + hours * 3600 * 1000);
-    until = formatLocalDateTime(d);
-  }
-
-  $effect(() => {
-    if (open) {
-      // Default to +1 hour
-      setQuickOffset(1);
-      busy = false;
-    }
-  });
-
-  async function handleSubmit(e: SubmitEvent) {
-    e.preventDefault();
-    if (!until) {
-      toast.error('Informe a data e hora para adiamento.');
-      return;
-    }
-
-    const targetDate = new Date(until);
-    if (isNaN(targetDate.getTime())) {
-      toast.error('Data e hora inválidas.');
-      return;
-    }
-
-    if (targetDate.getTime() <= Date.now()) {
-      toast.error('A data/hora de adiamento deve ser no futuro.');
-      return;
-    }
-
-    busy = true;
+  $effect(() => { if (open) { setQuickOffset(1); error = ''; } });
+  function close(): void { if (!busy) onclose(); }
+  async function handleSubmit(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (busy) return;
+    const date = new Date(until);
+    if (!Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) { error = 'A data/hora de adiamento deve ser no futuro.'; return; }
+    if (!groupId && !jobId) { error = 'Selecione um recado ou grupo.'; return; }
+    busy = true; error = '';
     try {
-      const payload = {
-        until: targetDate.toISOString()
-      };
-      if (groupId) {
-        const res = await api.snoozeGroup(groupId, payload);
-        toast.success(`Grupo ${groupId}: ${res.affected} recados adiados para ${targetDate.toLocaleString('pt-BR')}.`);
-      } else if (jobId) {
-        await api.snoozeJob(jobId, payload);
-        toast.success(`Recado ${jobId} adiado para ${targetDate.toLocaleString('pt-BR')}.`);
-      }
-      onclose();
-      onsuccess();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Falha ao adiar recado';
-      toast.error(msg);
-    } finally {
-      busy = false;
-    }
+      const payload = { until: date.toISOString() };
+      if (groupId) await api.snoozeGroup(groupId, payload);
+      else if (jobId) await api.snoozeJob(jobId, payload);
+    } catch (err) { error = err instanceof Error ? err.message : 'Falha ao adiar.'; busy = false; return; }
+    toast.success('Próxima execução adiada. A regra cron foi preservada.');
+    try { await onsuccess(); } catch { toast.error('Adiado. Falha ao atualizar a visualização.'); }
+    busy = false; onclose();
   }
 </script>
-
 {#if open}
-  <div class="modal-backdrop" id="modal-snooze">
-    <div
-      use:focusTrap
-      class="modal-surface max-w-md flex flex-col gap-space-md cursor-default"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="snooze-modal-title"
-      tabindex="-1"
-    >
-      <div class="flex items-center justify-between pb-space-xs">
-        <div class="flex items-center gap-space-xs">
-          <span class="material-symbols-outlined text-primary text-[20px]">snooze</span>
-          <h3 id="snooze-modal-title" class="font-headline-sm text-headline-sm text-label">
-            {groupId ? 'Adiar Grupo' : 'Adiar Recado (Snooze)'}
-          </h3>
-        </div>
-        <button class="modal-action modal-close text-secondary-label hover:text-label" onclick={onclose} type="button" aria-label="Fechar">
-          <span class="material-symbols-outlined text-[18px]">close</span>
-        </button>
-      </div>
-
-      <p class="font-body-sm text-body-sm text-secondary-label">
-        Postergue a próxima execução sem alterar a regra cron do agendamento
-        {#if groupId}
-          para o grupo <span class="font-label-code text-primary font-semibold font-mono">{groupId}</span>.
-        {:else if jobId}
-          para <span class="font-label-code text-primary font-semibold font-mono">{jobId}</span>.
-        {/if}
-      </p>
-
-      <!-- Botões rápidos de atalho -->
-      <div class="flex flex-wrap gap-1.5">
-        <button
-          type="button"
-          class="modal-action px-2.5 py-1 rounded bg-tertiary-system-background hover:bg-surface-bright text-label font-label-code-sm text-xs font-mono cursor-pointer"
-          onclick={() => setQuickOffset(1)}
-        >
-          +1 hora
-        </button>
-        <button
-          type="button"
-          class="modal-action px-2.5 py-1 rounded bg-tertiary-system-background hover:bg-surface-bright text-label font-label-code-sm text-xs font-mono cursor-pointer"
-          onclick={() => setQuickOffset(3)}
-        >
-          +3 horas
-        </button>
-        <button
-          type="button"
-          class="modal-action px-2.5 py-1 rounded bg-tertiary-system-background hover:bg-surface-bright text-label font-label-code-sm text-xs font-mono cursor-pointer"
-          onclick={() => setQuickOffset(24)}
-        >
-          +1 dia
-        </button>
-        <button
-          type="button"
-          class="modal-action px-2.5 py-1 rounded bg-tertiary-system-background hover:bg-surface-bright text-label font-label-code-sm text-xs font-mono cursor-pointer"
-          onclick={() => setQuickOffset(168)}
-        >
-          +1 semana
-        </button>
-      </div>
-
-      <form class="flex flex-col gap-space-md" onsubmit={handleSubmit}>
-        <div class="flex flex-col gap-1">
-          <label class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label" for="modal-snooze-until">
-            Adiar Até (Próxima Execução)
-          </label>
-          <input
-            id="modal-snooze-until"
-            class="bg-system-background text-label rounded px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-primary font-mono"
-            type="datetime-local"
-            bind:value={until}
-            required
-          />
-        </div>
-
-        <div class="flex items-center justify-end gap-space-sm pt-space-xs border-t border-separator/10">
-          <button
-            class="modal-action px-space-md py-space-sm rounded text-secondary-label hover:text-label font-label-ui text-label-ui uppercase tracking-wider cursor-pointer"
-            onclick={onclose}
-            type="button"
-          >
-            Cancelar
-          </button>
-          <button
-            class="modal-action px-space-md py-space-sm rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase tracking-wider font-semibold hover:brightness-110 active:brightness-95 flex items-center gap-1 shadow-sm cursor-pointer disabled:opacity-50"
-            disabled={busy || !until}
-            type="submit"
-          >
-            <span class="material-symbols-outlined text-[16px]">schedule</span>
-            <span>{busy ? 'Adiano...' : 'Confirmar Adiamento'}</span>
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+  <Dialog id="modal-snooze" title={groupId ? 'Adiar grupo' : 'Adiar recado'} description="Postergue apenas a próxima execução, sem alterar a regra cron." onclose={close}>
+    <form class="grid gap-4" onsubmit={handleSubmit} data-state={busy ? 'busy' : error ? 'error' : 'ready'}>
+      <fieldset disabled={busy} class="grid gap-4">
+        <div class="flex flex-wrap gap-2">{#each [[1, '+1 hora'], [3, '+3 horas'], [24, '+1 dia'], [168, '+1 semana']] as [hours, label]}<Button onclick={() => setQuickOffset(Number(hours))}>{label}</Button>{/each}</div>
+        <div class="grid gap-1"><label for="modal-snooze-until">Adiar até (horário local)</label><input class="ui-input" id="modal-snooze-until" type="datetime-local" bind:value={until} required /></div>
+      </fieldset>
+      {#if error}<p role="alert" class="text-error">{error}</p>{/if}
+      <div class="flex flex-wrap justify-end gap-2"><Button disabled={busy} onclick={close}>Cancelar</Button><Button variant="primary" type="submit" disabled={busy}>{busy ? 'Adiando…' : 'Confirmar adiamento'}</Button></div>
+    </form>
+  </Dialog>
 {/if}

@@ -16,7 +16,10 @@ def test_jobs_page_and_snooze_modal_implement_lifecycle_contract() -> None:
     assert "setQuickOffset" in snooze_content
 
     # 2. Verify JobsPage bindings and handlers
-    page_content = JOBS_PAGE.read_text(encoding="utf-8")
+    components = REPO_ROOT / "web/src/components/jobs"
+    page_content = JOBS_PAGE.read_text() + "\n".join(
+        path.read_text() for path in components.glob("*.svelte")
+    )
     assert "import SnoozeModal" in page_content
     composer = (REPO_ROOT / "web/src/components/jobs/JobAdvancedFields.svelte").read_text()
     assert "<JobComposer" in page_content
@@ -32,10 +35,9 @@ def test_jobs_page_and_snooze_modal_implement_lifecycle_contract() -> None:
     assert 'id="create-max-runs"' in composer
     assert 'id="detail-until"' in page_content
     assert 'id="detail-runs"' in page_content
-    assert 'id="btn-detail-pause"' in page_content
-    assert 'id="btn-detail-resume"' in page_content
-    assert 'id="btn-detail-snooze"' in page_content
-    assert 'id="btn-group-pause-all"' in page_content
-    assert 'id="btn-group-resume-all"' in page_content
-    assert 'id="btn-group-snooze-all"' in page_content
+    for anchor in (
+        "btn-detail-pause", "btn-detail-resume", "btn-detail-snooze",
+        "btn-group-pause-all", "btn-group-resume-all", "btn-group-snooze-all",
+    ):
+        assert anchor in page_content
     assert "<SnoozeModal" in page_content

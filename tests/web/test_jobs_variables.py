@@ -20,6 +20,7 @@ def test_jobs_page_implements_custom_variables_contract() -> None:
     for anchor in ("section-custom-variables", "btn-add-var", "input-var-key", "input-var-value"):
         assert f'id="{anchor}"' in editor
 
+    inspector = (REPO_ROOT / "web/src/components/jobs/JobInspector.svelte").read_text()
     # Listing indicator and detail drawer inspector
     assert "badge-variable-count" in content
-    assert "detail-variables-card" in content
+    assert "detail-variables-card" in inspector

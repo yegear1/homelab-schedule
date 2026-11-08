@@ -1,130 +1,41 @@
 <script lang="ts">
   import { api } from '../lib/api';
   import { toast } from '../lib/toast.svelte';
-  import { focusTrap } from '../lib/focusTrap';
-
-  interface Props {
-    open: boolean;
-    jobId: string;
-    onclose: () => void;
-    onsuccess: () => void;
-  }
-
-  let { open, jobId, onclose, onsuccess }: Props = $props();
-
+  import Dialog from './ui/Dialog.svelte';
+  import Button from './ui/Button.svelte';
+  let { open, jobId, onclose, onsuccess }: { open: boolean; jobId: string; onclose: () => void; onsuccess: () => void | Promise<void> } = $props();
   let runAt = $state('');
   let cronExpr = $state('');
   let busy = $state(false);
-
-  $effect(() => {
-    if (open) {
-      runAt = '';
-      cronExpr = '';
-      busy = false;
-    }
-  });
-
-  async function handleSubmit(e: SubmitEvent) {
-    e.preventDefault();
-    if (!runAt && !cronExpr) {
-      toast.error('Informe nova data/hora ou expressão cron de 5 campos.');
-      return;
-    }
-
-    if (cronExpr && cronExpr.trim().split(/\s+/).length !== 5) {
-      toast.error('Expressão cron precisa de exatamente 5 campos (minuto hora dia mês dia_semana).');
-      return;
-    }
-
+  let error = $state('');
+  $effect(() => { if (open) { runAt = ''; cronExpr = ''; error = ''; } });
+  function close(): void { if (!busy) onclose(); }
+  async function handleSubmit(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (busy) return;
+    const cron = cronExpr.trim();
+    const timestamp = new Date(runAt).getTime();
+    error = !runAt && !cron ? 'Informe uma data/hora ou expressão cron.'
+      : cron && cron.split(/\s+/).length !== 5 ? 'A expressão cron precisa de exatamente 5 campos.'
+      : runAt && (!Number.isFinite(timestamp) || timestamp <= Date.now()) ? 'Escolha uma data/hora futura.' : '';
+    if (error) return;
     busy = true;
-    try {
-      const payload = {
-        run_at: runAt ? new Date(runAt).toISOString() : null,
-        cron_expr: cronExpr.trim() || null
-      };
-      await api.rescheduleJob(jobId, payload);
-      toast.success(`Recado ${jobId} reagendado com sucesso.`);
-      onclose();
-      onsuccess();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Falha ao reagendar';
-      toast.error(msg);
-    } finally {
-      busy = false;
-    }
+    try { await api.rescheduleJob(jobId, { run_at: runAt ? new Date(runAt).toISOString() : null, cron_expr: cron || null }); }
+    catch (err) { error = err instanceof Error ? err.message : 'Falha ao reagendar.'; busy = false; return; }
+    toast.success('Agendamento atualizado.');
+    try { await onsuccess(); } catch { toast.error('Reagendado. Falha ao atualizar a visualização.'); }
+    busy = false; onclose();
   }
 </script>
-
 {#if open}
-  <div class="modal-backdrop" id="modal-reschedule">
-    <div
-      use:focusTrap
-      class="modal-surface max-w-md flex flex-col gap-space-md cursor-default"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="reschedule-modal-title"
-      tabindex="-1"
-    >
-      <div class="flex items-center justify-between pb-space-xs">
-        <div class="flex items-center gap-space-xs">
-          <span class="material-symbols-outlined text-primary text-[20px]">edit_calendar</span>
-          <h3 id="reschedule-modal-title" class="font-headline-sm text-headline-sm text-label">Reagendar Recado</h3>
-        </div>
-        <button class="modal-action modal-close text-secondary-label hover:text-label" onclick={onclose} type="button" aria-label="Fechar">
-          <span class="material-symbols-outlined text-[18px]">close</span>
-        </button>
-      </div>
-
-      <p class="font-body-sm text-body-sm text-secondary-label">
-        Atualize os parâmetros de disparo para <span class="font-label-code text-primary font-semibold font-mono">{jobId}</span>.
-      </p>
-
-      <form class="flex flex-col gap-space-md" onsubmit={handleSubmit}>
-        <div class="flex flex-col gap-1">
-          <label class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label" for="modal-reschedule-run-at">
-            Nova Data/Hora Fixa (run_at)
-          </label>
-          <input
-            id="modal-reschedule-run-at"
-            class="bg-system-background text-label rounded px-space-md py-space-sm font-label-code text-label-code focus:outline-none focus:ring-1 focus:ring-primary"
-            type="datetime-local"
-            bind:value={runAt}
-          />
-        </div>
-
-        <div class="flex items-center justify-center text-secondary-label font-label-code-sm text-label-code-sm">OU</div>
-
-        <div class="flex flex-col gap-1">
-          <label class="font-label-ui text-label-ui uppercase tracking-wider text-secondary-label" for="modal-reschedule-cron">
-            Expressão Cron (5 campos)
-          </label>
-          <input
-            id="modal-reschedule-cron"
-            class="bg-system-background text-label rounded px-space-md py-space-sm font-label-code text-label-code font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-            placeholder="*/15 * * * *"
-            type="text"
-            bind:value={cronExpr}
-          />
-        </div>
-
-        <div class="flex items-center justify-end gap-space-sm pt-space-xs">
-          <button
-            class="modal-action px-space-md py-space-sm rounded bg-tertiary-system-background text-secondary-label font-label-ui text-label-ui uppercase"
-            onclick={onclose}
-            type="button"
-            disabled={busy}
-          >
-            Cancelar
-          </button>
-          <button
-            class="modal-action px-space-md py-space-sm rounded bg-primary text-on-primary font-label-ui text-label-ui uppercase font-semibold hover:opacity-90"
-            type="submit"
-            disabled={busy}
-          >
-            {busy ? 'Salvando...' : 'Confirmar'}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+  <Dialog id="modal-reschedule" title="Reagendar recado" description="Altere a data fixa ou a regra recorrente. O servidor valida a combinação informada." onclose={close}>
+    <form class="grid gap-4" onsubmit={handleSubmit} data-state={busy ? 'busy' : error ? 'error' : 'ready'}>
+      <fieldset disabled={busy} class="grid gap-4">
+        <div class="grid gap-1"><label for="modal-reschedule-run-at">Nova data/hora fixa</label><input class="ui-input" id="modal-reschedule-run-at" type="datetime-local" bind:value={runAt} /></div>
+        <div class="grid gap-1"><label for="modal-reschedule-cron">Expressão cron (5 campos)</label><input class="ui-input" id="modal-reschedule-cron" placeholder="0 9 * * *" bind:value={cronExpr} /></div>
+      </fieldset>
+      {#if error}<p role="alert" class="text-error">{error}</p>{/if}
+      <div class="flex flex-wrap justify-end gap-2"><Button disabled={busy} onclick={close}>Cancelar</Button><Button variant="primary" type="submit" disabled={busy}>{busy ? 'Salvando…' : 'Confirmar'}</Button></div>
+    </form>
+  </Dialog>
 {/if}

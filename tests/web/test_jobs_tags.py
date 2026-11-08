@@ -30,6 +30,7 @@ def test_jobs_page_implements_tags_contract() -> None:
     for anchor in ("filter-tag", "tags-datalist"):
         assert f'id="{anchor}"' in content
 
+    inspector = (REPO_ROOT / "web/src/components/jobs/JobInspector.svelte").read_text()
     # Listing indicator and detail drawer inspector
     assert "badge-tag" in content
-    assert 'id="detail-tags-card"' in content
+    assert 'id="detail-tags-card"' in inspector
