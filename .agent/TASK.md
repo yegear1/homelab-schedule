@@ -7,13 +7,15 @@
 
 ## Active Task
 
-- **Task:** None — approved Web UI rebuild queue completed through [02.25].
+- **Task:** None — minimalist theme control integrated into sidebar completed in [02.26].
 - **Status:** `IDLE`
 - **Next Step:** Await the next operator-defined scope. Release/tag, push, deployment and additional dependencies require explicit authorization.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.26] Integrated minimalist theme control into sidebar footer, added theme icons, refined segmented styling and cleaned header chrome | [`7f1d1fe`] | 2026-11-08 | 151 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, 320/390/768/1440 responsiveness review, 200% zoom and diff check: exit 0
 
 - [02.25] Extracted History/Data workspaces, guarded import/replace, authenticated downloads and integrity details; verified C01–C19 replacement | [`19cc709`] | 2026-11-08 | 151 browser tests including disposable real-app/fake-gateway smoke, 247 Python tests, mypy, Ruff, Svelte/config checks, build, 320/390/768/1440 light/dark/reduced-motion screenshot review, 200% zoom and diff check: exit 0
 
