@@ -27,10 +27,12 @@ def test_jobs_page_implements_tags_contract() -> None:
     assert "bind:tags={draft.tags}" in advanced
     for anchor in ("section-tags", "input-tag", "btn-add-tag"):
         assert f'id="{anchor}"' in editor
+    filters = (REPO_ROOT / "web/src/components/jobs/JobFilters.svelte").read_text()
+    summary = (REPO_ROOT / "web/src/components/jobs/JobSummary.svelte").read_text()
     for anchor in ("filter-tag", "tags-datalist"):
-        assert f'id="{anchor}"' in content
+        assert f'id="{anchor}"' in filters
 
     inspector = (REPO_ROOT / "web/src/components/jobs/JobInspector.svelte").read_text()
     # Listing indicator and detail drawer inspector
-    assert "badge-tag" in content
+    assert "badge-tag" in summary
     assert 'id="detail-tags-card"' in inspector

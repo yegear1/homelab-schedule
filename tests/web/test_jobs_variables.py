@@ -22,5 +22,6 @@ def test_jobs_page_implements_custom_variables_contract() -> None:
 
     inspector = (REPO_ROOT / "web/src/components/jobs/JobInspector.svelte").read_text()
     # Listing indicator and detail drawer inspector
-    assert "badge-variable-count" in content
+    summary = (REPO_ROOT / "web/src/components/jobs/JobSummary.svelte").read_text()
+    assert "badge-variable-count" in summary
     assert "detail-variables-card" in inspector

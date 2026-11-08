@@ -6,12 +6,13 @@
   import RescheduleModal from '../RescheduleModal.svelte';
   import SnoozeModal from '../SnoozeModal.svelte';
   type Action = 'run' | 'retry' | 'pause' | 'resume' | 'cancel';
-  let { job, groupId = null, onchange }: { job: Job | JobListItem; groupId?: string | null; onchange: () => Promise<void> } = $props();
+  let { job, groupId = null, anchors = true, compact = false, onchange }: { job: Job | JobListItem; groupId?: string | null; anchors?: boolean; compact?: boolean; onchange: () => Promise<void> } = $props();
   let busy = $state(false);
   let error = $state('');
   let reschedule = $state(false);
   let snooze = $state(false);
   const mutable = $derived(job.source !== 'yaml');
+  function _id(value: string): string | undefined { return anchors ? value : undefined; }
   async function _act(action: Action): Promise<void> {
     if (busy || reschedule || snooze || (action !== 'run' && !mutable)) return;
     if (action === 'cancel' && !confirm(groupId ? 'Cancelar os recados elegíveis de todo o grupo?' : 'Cancelar este recado?')) return;
@@ -48,18 +49,18 @@
   }
 </script>
 <div class="grid gap-2" data-state={busy ? 'busy' : error ? 'error' : 'ready'}>
-  <p class="ui-hint">Disparar agora mantém o agendamento futuro. Re-enfileirar limpa o erro e agenda uma nova tentativa.</p>
+  {#if !compact}<p class="ui-hint">Disparar agora mantém o agendamento futuro. Re-enfileirar limpa o erro e agenda uma nova tentativa.</p>{/if}
   <div class="flex flex-wrap gap-2">
-    <Button id={groupId ? 'btn-group-run-all' : job.status === 'error' ? 'btn-dead-letter-run-now' : 'btn-detail-run'} disabled={busy || reschedule || snooze} onclick={() => _act('run')}>Disparar agora{groupId ? ' · grupo' : ''}</Button>
+    <Button id={_id(groupId ? 'btn-group-run-all' : job.status === 'error' ? 'btn-dead-letter-run-now' : 'btn-detail-run')} disabled={busy || reschedule || snooze} onclick={() => _act('run')}>Disparar agora{groupId ? ' · grupo' : ''}</Button>
     {#if mutable}
       {#if groupId || job.status === 'error'}
-        <span id={groupId ? undefined : 'btn-detail-retry'}><Button id={groupId ? 'btn-group-retry-all' : 'btn-dead-letter-retry'} disabled={busy || reschedule || snooze} onclick={() => _act('retry')}>Re-enfileirar{groupId ? ' erros do grupo' : ''}</Button></span>
+        <span id={groupId || !anchors ? undefined : 'btn-detail-retry'}><Button id={_id(groupId ? 'btn-group-retry-all' : 'btn-dead-letter-retry')} disabled={busy || reschedule || snooze} onclick={() => _act('retry')}>Re-enfileirar{groupId ? ' erros do grupo' : ''}</Button></span>
       {/if}
-      {#if groupId || job.status === 'scheduled'}<Button id={groupId ? 'btn-group-pause-all' : 'btn-detail-pause'} disabled={busy || reschedule || snooze} onclick={() => _act('pause')}>Pausar{groupId ? ' grupo' : ''}</Button>{/if}
-      {#if groupId || job.status === 'paused'}<Button id={groupId ? 'btn-group-resume-all' : 'btn-detail-resume'} disabled={busy || reschedule || snooze} onclick={() => _act('resume')}>Retomar{groupId ? ' grupo' : ''}</Button>{/if}
-      {#if groupId || job.status !== 'done'}<Button id={groupId ? 'btn-group-snooze-all' : 'btn-detail-snooze'} disabled={busy || reschedule || snooze} onclick={() => (snooze = true)}>Adiar{groupId ? ' grupo' : ''}</Button>{/if}
-      {#if !groupId}<span id="detail-btn-reschedule"><Button id="btn-detail-reschedule" disabled={busy || reschedule || snooze} onclick={() => (reschedule = true)}>Reagendar</Button></span>{/if}
-      <span id={groupId ? undefined : 'detail-btn-cancel'}><Button id={groupId ? 'btn-group-cancel-all' : 'btn-detail-cancel'} variant="danger" disabled={busy || reschedule || snooze} onclick={() => _act('cancel')}>Cancelar{groupId ? ' grupo' : ' recado'}</Button></span>
+      {#if groupId || job.status === 'scheduled'}<Button id={_id(groupId ? 'btn-group-pause-all' : 'btn-detail-pause')} disabled={busy || reschedule || snooze} onclick={() => _act('pause')}>Pausar{groupId ? ' grupo' : ''}</Button>{/if}
+      {#if groupId || job.status === 'paused'}<Button id={_id(groupId ? 'btn-group-resume-all' : 'btn-detail-resume')} disabled={busy || reschedule || snooze} onclick={() => _act('resume')}>Retomar{groupId ? ' grupo' : ''}</Button>{/if}
+      {#if groupId || job.status !== 'done'}<Button id={_id(groupId ? 'btn-group-snooze-all' : 'btn-detail-snooze')} disabled={busy || reschedule || snooze} onclick={() => (snooze = true)}>Adiar{groupId ? ' grupo' : ''}</Button>{/if}
+      {#if !groupId}<span id={_id('detail-btn-reschedule')}><Button id={_id('btn-detail-reschedule')} disabled={busy || reschedule || snooze} onclick={() => (reschedule = true)}>Reagendar</Button></span>{/if}
+      <span id={groupId || !anchors ? undefined : 'detail-btn-cancel'}><Button id={_id(groupId ? 'btn-group-cancel-all' : 'btn-detail-cancel')} variant="danger" disabled={busy || reschedule || snooze} onclick={() => _act('cancel')}>Cancelar{groupId ? ' grupo' : ' recado'}</Button></span>
     {/if}
   </div>
   {#if error}<p role="alert" class="text-error">{error}</p>{/if}

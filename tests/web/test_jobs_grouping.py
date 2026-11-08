@@ -1,27 +1,24 @@
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-JOBS_PAGE = REPO_ROOT / "web" / "src" / "pages" / "JobsPage.svelte"
 
 
 def test_jobs_page_implements_group_clustering_contract() -> None:
-    content = JOBS_PAGE.read_text(encoding="utf-8")
-    # Verify TypeScript interfaces for grouping
-    assert "interface GroupedJobRow" in content
-    assert "type JobTableRow = GroupedJobRow | SingleJobRow" in content
-    assert "let jobTableRows = $derived.by<JobTableRow[]>" in content
+    page = (REPO_ROOT / "web/src/pages/JobsPage.svelte").read_text()
+    table = (REPO_ROOT / "web/src/components/jobs/JobTable.svelte").read_text()
+    grouping = (REPO_ROOT / "web/src/lib/jobs/agenda.ts").read_text()
+    actions = (REPO_ROOT / "web/src/components/jobs/JobActions.svelte").read_text()
 
-    # Verify reactive collapse / expand controls (collapsed by default)
-    assert "let expandedGroups = $state<Set<string>>" in content
-    assert "function toggleGroupCollapse" in content
-    assert "function toggleAllGroups" in content
-    assert "isAllExpanded ? 'Recolher todos' : 'Expandir todos'" in content
-    assert "expandedGroups.has(row.groupId)" in content
-
-    # Verify template selectors for group master row and member rows
-    assert "data-group-id={row.groupId}" in content
-    assert "handleRunGroup(row.groupId)" in content
-    assert "handleCancelGroup(row.groupId)" in content
-    assert "subdirectory_arrow_right" in content
-    assert "<colgroup>" in content
-    assert "whitespace-nowrap" in content
+    assert "<JobTable" in page
+    assert "groupJobs(jobs)" in table
+    assert "groupId: string; items: JobListItem[]" in grouping
+    assert "expandedGroups = $state(new Set<string>())" in table
+    assert "aria-expanded={expandedGroups.has(row.groupId)}" in table
+    assert "isAllExpanded ? 'Recolher todos' : 'Expandir todos'" in table
+    assert "data-group-id={row.groupId}" in table
+    assert "<colgroup>" in table
+    assert "membros carregados" in table
+    assert "groupId={row.groupId}" in table
+    assert "anchors={false}" in table
+    assert "api.runGroup(id)" in actions
+    assert "api.cancelGroup(id)" in actions

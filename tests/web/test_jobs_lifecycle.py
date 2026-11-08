@@ -23,12 +23,12 @@ def test_jobs_page_and_snooze_modal_implement_lifecycle_contract() -> None:
     assert "import SnoozeModal" in page_content
     composer = (REPO_ROOT / "web/src/components/jobs/JobAdvancedFields.svelte").read_text()
     assert "<JobComposer" in page_content
-    assert "handlePause" in page_content
-    assert "handleResume" in page_content
-    assert "handlePauseGroup" in page_content
-    assert "handleResumeGroup" in page_content
-    assert "openSnoozeJob" in page_content
-    assert "openSnoozeGroup" in page_content
+    assert "api.pauseJob(id)" in page_content
+    assert "api.resumeJob(id)" in page_content
+    assert "api.pauseGroup(id)" in page_content
+    assert "api.resumeGroup(id)" in page_content
+    assert "snooze = true" in page_content
+    assert "groupId ? null : job.id" in page_content
 
     # 3. Verify UI elements and widgets
     assert 'id="create-until"' in composer

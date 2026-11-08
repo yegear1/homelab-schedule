@@ -24,12 +24,12 @@ def test_jobs_page_implements_dead_letter_and_retry_contract() -> None:
 
     # Verify metric card 3 interactive quick filter
     assert 'id="card-metric-errors"' in page_content
-    assert "filterStatus = 'error'" in page_content
+    assert "draft.status = 'error'" in page_content
 
     # Verify single job row Dead-Letter badge and Retry action
-    assert "Dead-Letter" in page_content
-    assert "handleRetry" in page_content
-    assert "handleRetryGroup" in page_content
+    assert "Falha na execução" in page_content
+    assert "api.retryJob(id)" in page_content
+    assert "api.retryGroup(id)" in page_content
 
     # Verify detail panel Dead-Letter box and actions
     assert 'id="detail-dead-letter-box"' in page_content
