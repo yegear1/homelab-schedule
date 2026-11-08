@@ -7,17 +7,19 @@
 
 ## Active Task
 
-- **Task:** [02.19] Add browser behavior harness and Tailwind 4 foundation.
-- **Status:** `RUNNING`
+- **Task:** [02.20] Replace shell and shared presentation primitives.
+- **Status:** `APPROVED`
 - **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md), surface/locale and named dependencies on 2026-11-08.
-- **Scope:** Approved Tailwind 4 Vite integration, development-only Playwright harness, local API proxy and semantic-token compatibility; keep current screens functional.
-- **Paths:** `web/package.json`, `web/package-lock.json`, `web/vite.config.ts`, `web/postcss.config.js`, `web/tailwind.config.js`, `web/src/app.css`, `web/playwright.config.ts`, `web/tests/`, `tests/web/test_theme_tokens.py`.
-- **Acceptance:** Peer-compatible pinned lockfile; `test:e2e` script; synthetic/local API only; every API prefix including backup reaches local dev target; existing screens build/render; alpha tokens resolve in both themes; credential/media browser scenarios pass.
-- **Next Step:** Verify package peer metadata and execute the approved migration. Extra toolchain dependencies remain gated; release/tag remains gated.
+- **Scope:** Replace shell/shared visual primitives using semantic tokens; preserve original navigation, access settings, branding and theme persistence.
+- **Paths:** `web/src/layout/AppShell.svelte`, `web/src/components/ui/`, `web/src/components/ApiKeyModal.svelte`, `web/src/components/Toast.svelte`, `web/src/lib/focusTrap.ts`, `web/src/lib/theme.svelte.ts`, `web/src/app.css`, `web/index.html`, `web/tests/shell.spec.ts`.
+- **Acceptance:** 320/390/768/1440 px and 200% zoom keep controls reachable; persisted light/system/dark without flash; text/focus contrast passes; topmost Escape and focus restoration work; status announcements and reduced motion verified.
+- **Next Step:** Execute the approved shell/primitives replacement with behavior coverage. Extra dependencies remain gated; release/tag remains gated.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.19] Tailwind 4 CSS theme/Vite migration, loopback API proxy and typed Playwright foundation | [`913589e`] | 2026-11-08 | 10 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, clean npm ci and diff check: exit 0
 
 - [02.18] Remove embedded browser credential fallback, unify authenticated transport errors and refresh shell credential status | [`c752aca`] | 2026-11-08 | 247 tests, mypy, Ruff, Svelte check/build, source/build credential scan and diff check: exit 0
 
@@ -58,7 +60,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 Approved sequential queue; scope and acceptance criteria: [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md#8-sequential-implementation-tasks-draft). Approved by operator on 2026-11-08.
 
-- [02.20] Replace shell and shared presentation primitives.
 - [02.21] Rebuild shared composer and contact/template pickers.
 - [02.22] Rebuild inspector, lifecycle and group actions.
 - [02.23] Rebuild agenda table, timeline and calendar.
