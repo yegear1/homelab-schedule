@@ -7,24 +7,18 @@
 
 ## Active Task
 
-- **Task:** [02.17] Plan the full Web UI rebuild while preserving existing capabilities ([GitHub issue](https://github.com/yegear1/homelab-schedule/issues/1)).
-- **Status:** `APPROVED`
-- **Scope:** Reorganize or add screens freely while preserving every existing UI capability, API meaning, authentication behavior, and backend boundary.
-- **Plan:**
-  1. Inventory current UI flows using frontend code, API client, tests, `.agent/NOTES.md`, `.agent/ENDPOINTS.md`, and `.agent/INTERFACE.md`.
-  2. Reconcile the current UI contract and identify stale or missing screen/action coverage.
-  3. Propose the new screen map, navigation, component boundaries, responsive behavior, accessibility, themes, and reduced-motion behavior.
-  4. Define the Tailwind 4 stable migration, Vite integration, test strategy, and dependency approvals.
-  5. Split implementation into sequential tasks with file scopes and falsifiable acceptance criteria.
-  6. After all implementation tasks are planned, clear the old presentation implementation and begin the approved tasks; preserve or replace API/type/auth integration boundaries deliberately.
-- **Reset Gate:** Keep the existing UI intact until steps 1–5 are complete. Do not clear `web/` wholesale or remove the existing API client before its replacement boundary is specified.
-- **Planning Artifact:** [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md) — C01–C19 inventory, reconciled contract, screen/component proposal, Tailwind migration and scoped acceptance criteria.
-- **Approval:** Operator approved the complete plan, surface, fixed pt-BR and proposed dependencies on 2026-11-08 (`proceed`).
-- **Next Step:** Complete planning commit and start [02.18]; execute one task at a time. Release/tag remains gated.
+- **Task:** [02.18] Remove credential fallback and preserve transport behavior.
+- **Status:** `RUNNING`
+- **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md) and named dependencies on 2026-11-08.
+- **Scope:** Browser client/auth configuration, shell credential indicator and regression tests; retain presentation and public API methods/types.
+- **Acceptance:** Blank key has no fallback/header; saved key/base URL survive reload; JSON/CSV/SQLite use only supplied auth; 204 succeeds; media/network/401/404/409/422/502 failures are explicit.
+- **Next Step:** Implement and validate transport/auth regression coverage, then promote [02.19].
 
 ---
 
 ## Completed Tasks Log
+
+- [02.17] Approved Web UI capability inventory, contract, surface and sequential implementation plan | [`208a632`] | 2026-11-08 | 234 tests, mypy, Ruff, Svelte check/build and diff check: exit 0
 
 Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
@@ -61,7 +55,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 Approved sequential queue; scope and acceptance criteria: [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md#8-sequential-implementation-tasks-draft). Approved by operator on 2026-11-08.
 
-- [02.18] Remove credential fallback and preserve transport behavior.
 - [02.19] Add browser behavior harness and Tailwind 4 foundation (dependency approval required).
 - [02.20] Replace shell and shared presentation primitives.
 - [02.21] Rebuild shared composer and contact/template pickers.

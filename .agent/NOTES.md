@@ -36,6 +36,13 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 - **Pre-Approved Tasks (`APPROVED`), Parallel Waves (`[PARALLEL: Wx]`) & `task-queue` Skill:** Tasks finalized during interactive planning use `Status: APPROVED` in `.agent/TASK.md` (with independent disjoint-file tasks tagged `[PARALLEL: Wx]` + `Paths:`), allowing fresh sessions (`proceed`) or isolated worker subagents and multi-account quota failover (`task-queue` skill on `proceed queue`) to transition directly to `RUNNING` without a redundant `PLANNING` pause, halting only when ambiguities, unapproved dependencies, or blockers require human intervention.
 
 
+### [2026-11-08] Operator Credentials and Browser Transport (Task [02.18])
+
+- Removed browser credential fallback. Absent storage/server-side access returns an empty key; JSON, CSV and SQLite requests attach `x-api-key` only when the operator supplied a key. Existing key/base URL storage names and public client methods remain unchanged.
+- All transports share no-store fetch, structured network/HTTP errors and guarded unknown error-body parsing. Successful downloads validate CSV or the backend's `application/x-sqlite3` media type. HTML fallback never becomes a successful data download.
+- Shell credential status refreshes when the access dialog closes, including saving/clearing credentials. No failed mutation is replayed.
+- `tests/web/test_api_auth.py` runs the actual transport under Node 22 native TypeScript stripping through canonical pytest; no bundler or package installation. Synthetic fetch/storage isolate tests from production. Frontend runtime interaction coverage follows in [02.19].
+
 ### [2026-11-08] Web UI Rebuild Planning (Task [02.17])
 
 - Capability inventory C01–C19 and draft sequential tasks live in [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md). `INTERFACE.md` reconciles the observed baseline and labels proposed History/Data routes separately; operator approved the plan, surface/locale and named dependencies on 2026-11-08.

@@ -16,7 +16,12 @@
 
   let showApiKeyModal = $state(false);
   let showBackupModal = $state(false);
-  let hasApiKey = $derived(Boolean(api.getApiKey()));
+  let hasApiKey = $state(Boolean(api.getApiKey()));
+
+  function closeApiKeyModal(): void {
+    hasApiKey = Boolean(api.getApiKey());
+    showApiKeyModal = false;
+  }
 
   const themeOptions: { mode: ThemeMode; label: string; icon: string }[] = [
     { mode: 'light', label: 'Claro', icon: 'light_mode' },
@@ -114,5 +119,5 @@
 </div>
 
 <Toast />
-<ApiKeyModal open={showApiKeyModal} onclose={() => (showApiKeyModal = false)} />
+<ApiKeyModal open={showApiKeyModal} onclose={closeApiKeyModal} />
 <BackupModal open={showBackupModal} onclose={() => (showBackupModal = false)} />

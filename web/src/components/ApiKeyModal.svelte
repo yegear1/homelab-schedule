@@ -26,7 +26,7 @@
     }
   });
 
-  function handleSave(e: SubmitEvent) {
+  function handleSave(e: SubmitEvent): void {
     e.preventDefault();
     api.setApiKey(keyInput.trim());
     api.setBaseUrl(urlInput.trim());

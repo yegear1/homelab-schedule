@@ -37,35 +37,44 @@ export class ApiClientError extends Error {
   }
 }
 
-function localizeDetail(detail: unknown): string {
-  if (typeof detail === 'string') {
-    return detail;
+function _isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function _localizeDetail(detail: unknown): string {
+  if (typeof detail === 'string') return detail;
+  if (!Array.isArray(detail)) return '';
+  return detail.map((item: unknown) => {
+    if (!_isRecord(item) || typeof item.msg !== 'string') return '';
+    let msg = item.msg;
+    if (msg.includes('Field required')) msg = 'Campo obrigatório';
+    else if (msg.includes('String should have at least')) {
+      msg = msg.replace('String should have at least', 'Deve ter ao menos')
+        .replace('characters', 'caracteres').replace('character', 'caractere');
+    } else if (msg.includes('String should have at most')) {
+      msg = msg.replace('String should have at most', 'Deve ter no máximo')
+        .replace('characters', 'caracteres').replace('character', 'caractere');
+    } else if (msg.includes('Input should be a valid string')) msg = 'Formato inválido';
+    const location: unknown[] = Array.isArray(item.loc) ? item.loc : [];
+    const field = location.length > 1 ? location[location.length - 1] : undefined;
+    return typeof field === 'string' || typeof field === 'number' ? `${field}: ${msg}` : msg;
+  }).filter(Boolean).join('; ');
+}
+
+async function _responseError(response: Response): Promise<ApiClientError> {
+  const defaults: Record<number, string> = {
+    401: 'Chave x-api-key ausente ou inválida',
+    404: 'Recurso não encontrado',
+    409: 'Conflito de estado (HTTP 409)',
+  };
+  let detail = defaults[response.status] || `Erro na requisição (HTTP ${response.status})`;
+  try {
+    const data: unknown = await response.json();
+    if (_isRecord(data)) detail = _localizeDetail(data.detail) || detail;
+  } catch {
+    // Preserve the HTTP error when the server returns a non-JSON error body.
   }
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item: { msg?: string; loc?: (string | number)[] }) => {
-        let msg = item.msg || '';
-        if (msg.includes('Field required')) msg = 'Campo obrigatório';
-        else if (msg.includes('String should have at least')) {
-          msg = msg
-            .replace('String should have at least', 'Deve ter ao menos')
-            .replace('characters', 'caracteres')
-            .replace('character', 'caractere');
-        } else if (msg.includes('String should have at most')) {
-          msg = msg
-            .replace('String should have at most', 'Deve ter no máximo')
-            .replace('characters', 'caracteres')
-            .replace('character', 'caractere');
-        } else if (msg.includes('Input should be a valid string')) {
-          msg = 'Formato inválido';
-        }
-        const field = item.loc && item.loc.length > 1 ? String(item.loc[item.loc.length - 1]) : '';
-        return field ? `${field}: ${msg}` : msg;
-      })
-      .filter(Boolean)
-      .join('; ');
-  }
-  return '';
+  return new ApiClientError(response.status, detail);
 }
 
 class ApiService {
@@ -78,90 +87,51 @@ class ApiService {
   }
 
   getApiKey(): string {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('SCHEDULE_API_KEY');
-      if (stored) return stored;
-      return 'hl_prod_1a0bd02e18703c25d6fb5694ccbb520698741f574e3ba4de';
-    }
-    return 'hl_prod_1a0bd02e18703c25d6fb5694ccbb520698741f574e3ba4de';
+    return typeof window === 'undefined' ? '' : localStorage.getItem('SCHEDULE_API_KEY') || '';
   }
 
-  setApiKey(key: string) {
+  setApiKey(key: string): void {
     if (typeof window !== 'undefined') {
       localStorage.setItem('SCHEDULE_API_KEY', key);
     }
   }
 
-  setBaseUrl(url: string) {
+  setBaseUrl(url: string): void {
     if (typeof window !== 'undefined') {
       localStorage.setItem('homelab_api_base_url', url);
     }
   }
 
-  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const baseUrl = this.getBaseUrl();
-    const url = `${baseUrl}${path}`;
-    const apiKey = this.getApiKey();
-
-    const headers: Record<string, string> = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string> || {}),
-    };
-
-    if (apiKey) {
-      headers['x-api-key'] = apiKey;
-    }
-
+  private async _fetch(path: string, options: RequestInit = {}): Promise<Response> {
+    const headers = new Headers(options.headers);
+    const key = this.getApiKey();
+    if (key) headers.set('x-api-key', key);
+    else headers.delete('x-api-key');
     let response: Response;
     try {
-      response = await fetch(url, {
-        cache: 'no-store',
-        ...options,
-        headers,
+      response = await fetch(`${this.getBaseUrl()}${path}`, {
+        ...options, headers, cache: 'no-store',
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Falha na conexão de rede';
-      throw new ApiClientError(0, `Falha de rede: ${msg}`);
+      const message = err instanceof Error ? err.message : 'Falha na conexão de rede';
+      throw new ApiClientError(0, `Falha de rede: ${message}`);
     }
+    if (!response.ok) throw await _responseError(response);
+    return response;
+  }
 
-    if (!response.ok) {
-      let detail = `Erro na requisição (HTTP ${response.status})`;
-      try {
-        const errorData = await response.json();
-        if (errorData && errorData.detail) {
-          const localized = localizeDetail(errorData.detail);
-          if (localized) detail = localized;
-        }
-      } catch {
-        // Response wasn't JSON
-      }
-
-      if (response.status === 401) {
-        detail = detail || 'Chave x-api-key ausente ou inválida';
-      } else if (response.status === 404) {
-        detail = detail || 'Recurso não encontrado';
-      } else if (response.status === 409) {
-        detail = detail || 'Conflito de estado (HTTP 409)';
-      }
-      throw new ApiClientError(response.status, detail);
+  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const headers = new Headers(options.headers);
+    headers.set('Accept', 'application/json');
+    headers.set('Content-Type', 'application/json');
+    const response = await this._fetch(path, { ...options, headers });
+    if (response.status === 204) return undefined as T;
+    if (!response.headers.get('content-type')?.includes('application/json')) {
+      throw new ApiClientError(response.status, `Resposta JSON inválida (HTTP ${response.status})`);
     }
-
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      const text = await response.text();
-      throw new ApiClientError(
-        response.status,
-        `Resposta inesperada do servidor (HTTP ${response.status}): ${text.slice(0, 100)}`
-      );
-    }
-
     try {
-      return (await response.json()) as T;
+      const data: unknown = await response.json();
+      return data as T;
     } catch {
       throw new ApiClientError(response.status, `Falha ao interpretar resposta JSON (HTTP ${response.status})`);
     }
@@ -380,41 +350,17 @@ class ApiService {
   }
 
   async downloadDatabase(): Promise<Blob> {
-    const baseUrl = this.getBaseUrl();
-    const apiKey = this.getApiKey();
-    const headers: Record<string, string> = {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-    };
-    if (apiKey) {
-      headers['x-api-key'] = apiKey;
-    }
-    const response = await fetch(`${baseUrl}/backup/database`, {
-      method: 'GET',
-      headers,
-      cache: 'no-store',
+    const response = await this._fetch('/backup/database', {
+      headers: { Accept: 'application/x-sqlite3' },
     });
-    if (!response.ok) {
-      const text = await response.text();
-      let detail = `Download falhou (${response.status})`;
-      try {
-        const json = JSON.parse(text);
-        if (json.detail) detail = localizeDetail(json.detail);
-      } catch {
-        // use default detail
-      }
-      throw new ApiClientError(response.status, detail);
+    if (!response.headers.get('content-type')?.includes('application/x-sqlite3')) {
+      throw new ApiClientError(response.status, 'Resposta SQLite inválida');
     }
     return response.blob();
   }
 
   async downloadCsv(path: '/jobs/export.csv' | '/jobs/runs/export.csv', params: URLSearchParams): Promise<Blob> {
-    const response = await fetch(`${this.getBaseUrl()}${path}?${params}`, {
-      headers: { 'x-api-key': this.getApiKey(), Accept: 'text/csv' },
-      cache: 'no-store',
-    });
-    if (!response.ok) {
-      throw new ApiClientError(response.status, `Exportação falhou (${response.status})`);
-    }
+    const response = await this._fetch(`${path}?${params}`, { headers: { Accept: 'text/csv' } });
     if (!response.headers.get('content-type')?.includes('text/csv')) {
       throw new ApiClientError(response.status, 'Resposta CSV inválida');
     }
