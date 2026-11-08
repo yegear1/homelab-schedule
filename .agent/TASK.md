@@ -7,17 +7,15 @@
 
 ## Active Task
 
-- **Task:** [02.25] Extract History/Data pages and verify full replacement.
-- **Status:** `APPROVED`
-- **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md), surface/locale and named dependencies on 2026-11-08.
-- **Scope:** Dedicated History/Data routes for existing attempts, downloads, backup/import and integrity capabilities. Reconcile contracts and verify the complete C01–C19 rebuild.
-- **Paths:** `web/src/pages/HistoryPage.svelte`, `web/src/pages/DataPage.svelte`, `web/src/components/BackupModal.svelte`, `web/src/App.svelte`, `web/src/lib/router.svelte.ts`, `web/src/layout/AppShell.svelte`, `web/src/components/data/`, `tests/web/test_backup_ui.py`, `web/tests/history-data.spec.ts`, `.agent/INTERFACE.md`, `.agent/WEB_UI_REBUILD.md`.
-- **Acceptance:** C02/C16/C18/C19; direct entry/back/forward; backup entry points reach Data; history status/limit use documented queries; merge/replace, counts preview, replacement cancellation, warnings/integrity/downloads work; all C01–C19 browser scenarios pass; previous source requirements have traceable behavior coverage; no old presentation remains; review light/dark/reduced-motion screenshots at required widths; preserve proto and integration entry points; no production requests or direct /send.
-- **Next Step:** Execute the approved History/Data extraction and replacement verification on proceed. Extra dependencies and release/tag remain gated.
+- **Task:** None — approved Web UI rebuild queue completed through [02.25].
+- **Status:** `IDLE`
+- **Next Step:** Await the next operator-defined scope. Release/tag, push, deployment and additional dependencies require explicit authorization.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.25] Extracted History/Data workspaces, guarded import/replace, authenticated downloads and integrity details; verified C01–C19 replacement | [`19cc709`] | 2026-11-08 | 151 browser tests including disposable real-app/fake-gateway smoke, 247 Python tests, mypy, Ruff, Svelte/config checks, build, 320/390/768/1440 light/dark/reduced-motion screenshot review, 200% zoom and diff check: exit 0
 
 - [02.24] Rebuilt contact directory/detail and template workspaces, guarded CRUD, shared contact job flows and illustrative placeholder editor | [`3862467`] | 2026-11-08 | 123 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, mobile/desktop/dark screenshot review, 200% zoom and diff check: exit 0
 
