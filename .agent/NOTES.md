@@ -36,6 +36,14 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 - **Pre-Approved Tasks (`APPROVED`), Parallel Waves (`[PARALLEL: Wx]`) & `task-queue` Skill:** Tasks finalized during interactive planning use `Status: APPROVED` in `.agent/TASK.md` (with independent disjoint-file tasks tagged `[PARALLEL: Wx]` + `Paths:`), allowing fresh sessions (`proceed`) or isolated worker subagents and multi-account quota failover (`task-queue` skill on `proceed queue`) to transition directly to `RUNNING` without a redundant `PLANNING` pause, halting only when ambiguities, unapproved dependencies, or blockers require human intervention.
 
 
+### [2026-11-08] Web UI Rebuild Planning (Task [02.17])
+
+- Capability inventory C01–C19 and draft sequential tasks live in [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md). `INTERFACE.md` reconciles the observed baseline and labels proposed History/Data routes separately; operator approved the plan, surface/locale and named dependencies on 2026-11-08.
+- Keep existing presentation intact during planning. Preserve transport/types/auth storage, same-origin serving, original paths and `proto/`; replace presentation in scoped steps after approval. No new backend routes or dispatch logic.
+- The tracked browser client contains a credential fallback; issue #1 explicitly requires its removal. Do not reproduce the literal in documentation, fixtures or generated assets. Operator key storage remains; absence must yield an empty key. Credential rotation is outside this planning task.
+- Existing web tests mostly inspect source strings. Replace structural assertions with traceable behavior coverage during each migration; preserve loaded-list/count/calendar bounds rather than implying global aggregates or full cron expansion.
+- Tailwind 4 Vite integration and development-only Playwright were approved on 2026-11-08. Preserve fixed pt-BR and light/system/dark preferences.
+
 ### [2026-10-31] Open Source Readiness and Community Governance (Task [00.12])
 
 - Aligned project with canonical open source readiness standards (`oss-readiness`): MIT License scaffolded with SPDX manifest declarations across Python (`pyproject.toml`) and Web UI (`web/package.json`).

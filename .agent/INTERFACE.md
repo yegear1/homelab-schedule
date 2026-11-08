@@ -1,264 +1,309 @@
 # INTERFACE.md — UI Surface Contract
 
-> Single source of truth for frontend implementation agents. If a screen or action is not declared here, it does not exist in the UI.
-> Derived following the `ui-contract` skill. Technical stack definitions belong in ADRs, not in this specification file.
-> Section 8 (Chrome) is mandatory even without a dedicated settings route.
-> Dual backend and frontend copies MUST maintain identical contents across iterations.
+**Contract Status:** `Approved` — operator approved rebuild on 2026-11-08;
+observed baseline and planned destinations remain distinguished. Prior approval: 2026-09-12.
+**Sources:** `src/homelab_schedule/*router.py`, `main.py`, `src/schemas/`,
+`web/src/`, `tests/web/`, `.agent/ENDPOINTS.md`, `.agent/NOTES.md`.
+**Plan and capability traceability:** [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md).
 
-**Contract Status:** `Approved` (2026-09-12 — 4-screen layout; user accounts/OTP omitted in current version)
-**Backend:** `yegear1/homelab-schedule`  
-**Base URL (dev):** `http://localhost:8003` (`APP_PORT` / env)  
-**Last Derivation:** `2026-09-12` · Sources: `src/homelab_schedule/*_router.py`, `src/schemas/`, `.agent/ENDPOINTS.md`, `README.md`
+## 1. Context and invariants
 
----
+Single homelab operator; contacts do not log in. Product API requests require
+`x-api-key` with the operator-supplied key; `/health` is public. Static SPA HTML
+and assets are not protected product API resources. Do not use Bearer auth or
+introduce accounts/OTP. Keep browser storage keys `SCHEDULE_API_KEY`,
+`homelab_api_base_url`, `homelab_theme`; blank base URL means same origin.
+The embedded key fallback is a defect explicitly scheduled for removal, not an
+authentication compatibility requirement. Never include credentials in fixtures.
 
-## 1. Context
+Server tick/services own scheduling, cron, rendering, dispatch and persistence.
+Browser never calls gateway `/send`. Run `202` means accepted/queued, not delivered.
+Manual run does not replace a future scheduled execution. Successful recovery of
+an error job follows existing backend lifecycle rules.
 
-- **Actors:** Homelab operator (single user). External contacts do NOT authenticate against the UI.
-- **Authentication:** Header — exact key name: `x-api-key: {SCHEDULE_API_KEY}`. Prohibit `Authorization: Bearer`. Only `GET /health` bypasses key verification.
-- **Domain Invariants:** Single OS process / single SQLite database; scheduled dispatch is driven by server background tick (the UI never invokes `POST /send` directly). HTTP `202 Accepted` on run actions indicates gateway enqueued the message, not confirmed delivery. Jobs with `source: yaml` cannot be cancelled or rescheduled via HTTP API (must edit `routines.yaml`). Query parameter `to` on `GET /jobs` represents date range upper bound (`datetime`), NOT recipient phone number (recipient filtering uses `GET /jobs?phone=`).
+YAML records are declarative: cancellation, rescheduling, pause/resume/snooze/retry
+are unavailable through UI mutation; explain editing `routines.yaml`. Run-now
+remains a separate backend-authorized action. Query `GET /jobs?to=` is the upper
+DATE bound; `phone` filters destination OR creator. Create-body `to` is recipient.
 
----
+## 2. Screen map
 
-## 2. Screen Map
+| ID | UI path | Observed baseline | Proposed destination |
+|---|---|---|---|
+| `scr-contacts` | `/contacts` | Directory/search/create | Rebuilt directory; same URL |
+| `scr-contact` | `/contacts/{contactId}` | Identity/edit/scoped jobs/create/inspect | Shared composer/inspector in contact workspace |
+| `scr-templates` | `/templates` | Catalog/search/editor/preview | Rebuilt catalog/editor; same URL |
+| `scr-jobs` | `/jobs` | Agenda table/timeline/calendar, composer/inspector | Agenda with shared job components |
+| `scr-history` | `/history` | No dedicated route; global attempts in agenda | Proposed extraction; global attempts/filter/export |
+| `scr-data` | `/data` | No dedicated route; shell BackupModal | Proposed extraction; snapshot/export/import/integrity |
 
-| ID | UI Route | Purpose | Parent / Navigation |
-| :--- | :--- | :--- | :--- |
-| `scr-contacts` | `/contacts` | Contact directory (name + phone) | Navigation root |
-| `scr-contact` | `/contacts/{contactId}` | Contact detail: edit info + filter jobs to/from phone | `scr-contacts` |
-| `scr-templates` | `/templates` | Reusable message template catalog | Navigation |
-| `scr-jobs` | `/jobs` | Global schedule overview (table/timeline/calendar + create + inspect) | Navigation |
+Keep `/` opening Contacts, browser history and direct links. Access dialog, theme
+selector and notifications remain global. Existing backup entry points lead to
+Data after approval. No health/dashboard/settings-only screen is proposed.
 
----
+## 3. Screen specifications and actions
 
-## 3. Screen Specifications
+### Contacts (`scr-contacts`, C04)
 
-### Screen `scr-contacts` — Contacts
+List `id/name/phone` from `GET /contacts`; local case-insensitive name/phone/ID
+search, count, refresh and open detail. Create `POST /contacts` with required
+`name` (1–80) and `phone` (1–64). `201` refreshes list; duplicate is `409`, invalid
+fields `422`. Show loading, empty directory, no search match, error and ready.
 
-- **UI Route:** `/contacts`
-- **Purpose:** List and register contacts (name + phone). Clicking a row opens contact detail.
-- **Widgets / Regions:**
+### Contact (`scr-contact`, C05–C06)
 
-| Region | Binding | Visible Fields | Mandatory in UI? |
-| :--- | :--- | :--- | :---: |
-| `wdg-contact-list` | `GET /contacts` → `{ contacts: Contact[] }` | `id`, `name`, `phone` | — (Read-only) |
-| `wdg-contact-create` | Local form | `name`, `phone` | `name`: yes; `phone`: yes |
+Load `GET /contacts/{id}`; edit changed fields using PATCH (both fields optional,
+same lengths as creation); unchanged submission makes no request. Confirm DELETE;
+`204` returns to directory; `409` scheduled-job conflict keeps the contact.
+`404` shows missing resource. Query jobs with `phone=contact.phone` and status
+filter (initial upcoming). Phone change reloads jobs. Creator defaults to contact
+phone; creation recipient is contact phone. Preserve template selection/clear,
+create/inspect/cancel/reschedule/run with shared components. Proposed reuse may
+expose the remaining existing agenda actions here without new API behavior.
 
-- **Actions:**
+### Templates (`scr-templates`, C07–C08)
 
-| Action | Binding | Precondition | Success | Error Mapping |
-| :--- | :--- | :--- | :--- | :--- |
-| Create contact | `POST /contacts` body `{ name, phone }` | `name` length 1–80; `phone` length 1–64 | `201 Created` Contact; refresh list | `401` → invalid/missing key; `422` → validation error; `409` → name/phone duplicate |
-| Open detail | UI navigation | Click list item | Navigate to `scr-contact` | — |
+Load/refresh `GET /templates`; local name/ID/body search and count. Required
+create fields: `name` (1–80), `body` (min 1). PATCH fields optional; editor loads
+selected template, resets/cancels edit, and displays name/body counters. Confirm
+delete; referenced active-job `409` retains template with conflict alert. Success
+is `201` create, `200` edit, `204` delete; missing item `404`; invalid input `422`.
 
-- **States:**
-  - `loading`: Awaiting list response
-  - `empty`: `contacts` array is empty
-  - `error`: Network or 5xx failure (`401` treated as auth failure)
-  - `domain`: None beyond empty list
-- **Hidden Fields:** SQLite storage path; literal value of `SCHEDULE_API_KEY`
+Keep cursor insertion controls, unknown-placeholder warning and illustrative
+live preview. Built-ins: `name`, `greeting`, `greeting_lower`, `saudacao`,
+`saudacao_lower`, `period`, `date`, `date_iso`, `time`, `weekday`, `day_name`,
+`month_name`, `year`, `day`, `month`, `hour`, `minute` inside `{{...}}`.
+Unknown/custom tags remain literal in the sample. Backend renders at dispatch;
+browser sample is not a guarantee of recipient/time-specific output. No Jinja.
 
----
+### Agenda (`scr-jobs`, C09–C18)
 
-### Screen `scr-contact` — Contact Details
+- Filters: `status` (upcoming/done/paused/error/all), date `from/to`, `phone`,
+  `limit` (1–100 when supplied; current UI 50), `tag`; reset, refresh and
+  error-summary shortcut. Tag autocomplete uses `GET /jobs/tags`.
+  Text `query` control is proposed; existing client/API support it already.
+- List omits full content. Show title, recipient/contact alias, timing, kind,
+  source/status, group, tags/variable count and errors. Counts derive from loaded
+  records; do not label them as global aggregate metrics.
+- Table groups `group_id` rows with member status summary; collapsed initially,
+  expand individual/all groups, inspect member, and group actions. A filtered or
+  limited member list must not be labelled the complete group.
+- Timeline retains future/history/all modes, chronological ordering, refresh,
+  attempt code/duration/status and inspect/actions. Current global history read
+  requests 100; retention/list bounds apply.
+- Calendar retains month previous/next/today, seven weekdays, selected-day detail,
+  scheduled/attempt counts and error indicators. It displays loaded next runtimes
+  and attempts, not all theoretical cron occurrences.
+- Shared composer, inspector, lifecycle dialogs and downloads follow below.
+  Changing view retains filters. Failures must not masquerade as empty results.
 
-- **UI Route:** `/contacts/{contactId}`
-- **Purpose:** Inspect/edit contact details and display union of jobs whose destination or creator matches the contact's phone number.
-- **Widgets / Regions:**
+### Shared composer (`wdg-job-create`, C06/C10–C11)
 
-| Region | Binding | Visible Fields | Mandatory in UI? |
-| :--- | :--- | :--- | :---: |
-| `wdg-contact-header` | `GET /contacts/{id}` | `id`, `name`, `phone` | — |
-| `wdg-contact-edit` | Form | `name`, `phone` (PATCH schema: both optional) | No (send changed fields only) |
-| `wdg-job-list` | `GET /jobs?status=all&phone={phone}` | `JobListItem`: `id`, `title`, `to`, `target_number`, `kind`, `run_at`, `cron_expr`, `enabled`, `source`, `status`, `next_run_at`, `last_run_at`, `last_status`, `created_by`, `template_id` (omits `content`) | `phone` query parameter bound to contact |
-| `wdg-job-detail` | `GET /jobs/{id}` | Complete job record including `content`, `last_error`, `retry_count` | On item selection |
-| `wdg-job-create` | Form | `title`, `kind`, `run_at` (if once), `cron_expr` (if cron), `content` xor `template_id`, `to` (pre-filled), `created_by` (optional) | `title`, `kind`, timing parameter, `content` xor `template_id` |
-| `wdg-template-pick` | `GET /templates` | `id`, `name` (picker dropdown) | No |
+| Field | Required | Constraint / binding |
+|---|---|---|
+| `title` | true | 1–120 characters |
+| `kind` | true | once or cron |
+| `run_at` | conditional | Required for once; ISO timestamp; UI converts selected browser-local instant to UTC |
+| `cron_expr` | conditional | Required for cron; five fields; server validates meaning in configured TZ |
+| `content` | conditional | Nonempty direct message XOR `template_id` |
+| `template_id` | conditional | Selected catalog ID XOR `content`; missing template 404 |
+| `to` / `recipients` | UI requires at least one | Single endpoint defaults `to=eu`; batch requires nonempty recipients array |
+| `created_by` | false | Alias/contact/phone; contact page initializes contact phone |
+| `variables` | false | String key/value map; add/replace/remove |
+| `tags` | false | String list; trim/dedup/add/remove, autocomplete |
+| `until` | false | ISO end date; once run cannot be later than until |
+| `max_runs` | false | Positive integer when supplied |
 
-- **Actions:**
+Manual recipient chips accept aliases/numbers and comma/semicolon/space-separated
+entries, dedup/removal and pending typed entry on submit. Contact picker supports
+search and can target recipient or creator. One recipient → `POST /jobs`, many →
+`POST /jobs/batch` returning group/count/jobs. `201` closes successful form and
+refreshes affected lists. Invalid form sends no request; 401/404/422/network errors
+retain inputs; disable duplicate submit. Preserve direct/template picker modes.
 
-| Action | Binding | Precondition | Success | Error Mapping |
-| :--- | :--- | :--- | :--- | :--- |
-| Save contact | `PATCH /contacts/{id}` `{ name?, phone? }` | Contact loaded | `200 OK` Contact; reload jobs if phone changed | `401`; `404` → not found; `409` → duplicate; `422` |
-| Delete contact | `DELETE /contacts/{id}` | Contact loaded | `204 No Content` → navigate to `scr-contacts` | `401`; `404`; `409` → scheduled jobs exist for this contact |
-| Schedule job | `POST /jobs` | Valid form | `201 Created` Job; refresh `wdg-job-list` | `401`; `404` → missing template; `422` |
-| View details | `GET /jobs/{id}` | Click job row | Populate `wdg-job-detail` | `401`; `404` → job not found |
-| Cancel job | `POST /jobs/{id}/cancel` | `source='sqlite'` | `204 No Content`; refresh list | `401`; `404`; `409` → YAML jobs cannot be cancelled via HTTP |
-| Reschedule | `POST /jobs/{id}/reschedule` `{ run_at }` or `{ cron_expr }` | `source='sqlite'` | `200 OK` Job | `401`; `404`; `409` YAML job; `422` invalid cron expression |
-| Run now | `POST /jobs/{id}/run` | Explicit operator click | `202 Accepted` `{ status: 'queued', job_id }` | `401`; `404`; `502` → gateway rejected dispatch |
+### Shared inspector and actions (C12–C15/C18)
 
-- **States:**
-  - `loading`: Header and/or job list loading
-  - `empty`: Zero jobs associated with this phone number
-  - `error`: Network or server error
-  - `domain`: Job status `scheduled` \| `done` \| `paused` \| `error`; source `yaml` vs `sqlite`
-- **Hidden Fields:** Stack trace in `last_error`; raw `target_number` when contact name exists; internal `/send` payloads
+`GET /jobs/{id}` supplies complete message, recipient/creator/template, source,
+status, schedule timestamps, group, variables/tags, lifecycle limits/run count,
+last error and retry count. Show group members from `GET /jobs?status=all&group_id=`
+with bounded-result disclosure. Missing item is distinct from network failure.
 
----
+| Action | Binding | Preconditions and success |
+|---|---|---|
+| Cancel | POST `/jobs/{id}/cancel` | SQLite; 204; refresh/clear missing selection |
+| Reschedule | POST `/jobs/{id}/reschedule` | SQLite; `run_at` and/or `cron_expr` supplied, five-field cron; 200 Job |
+| Run now | POST `/jobs/{id}/run` | Explicit user action; 202 queued; 502 gateway failure |
+| Retry | POST `/jobs/{id}/retry` | SQLite error job; 200 Job; requeue differs from immediate run |
+| Pause | POST `/jobs/{id}/pause` | SQLite scheduled; 200 Job; invalid state 409 |
+| Resume | POST `/jobs/{id}/resume` | SQLite paused; 200 Job with recomputed next run |
+| Snooze | POST `/jobs/{id}/snooze` | SQLite; UI submits future ISO `until`; preserves cron; 200 Job |
+| Group actions | POST `/jobs/group/{group_id}/{action}` | action=cancel/run/retry/pause/resume/snooze; response group_id/affected/status; run 202, others 200 |
 
-### Screen `scr-templates` — Templates
+No group-reschedule endpoint exists. Use backend errors as authority for stale
+state, invalid transitions and group eligibility. Common errors: 401 auth,
+404 missing, 409 state/source conflict, 422 validation, run 502 gateway failure.
+Snooze retains quick offsets and custom future date; API also accepts duration or
+when but those are not existing UI controls.
 
-- **UI Route:** `/templates`
-- **Purpose:** CRUD management of reusable text templates. Runtime placeholders: `{{date}}`, `{{date_iso}}`, `{{time}}`, `{{weekday}}`, `{{day_name}}`, `{{month_name}}`, `{{year}}`, `{{name}}` (destination contact name). Unrecognized tags remain literal.
-- **Widgets / Regions:**
+Job history: `GET /jobs/{id}/runs?limit=20` currently, manual refresh, timestamp,
+manual/scheduled trigger, status, code, duration and error; API limit 1–100.
+Upcoming: `GET /jobs/{id}/upcoming?limit=5`, refresh, numbered local timestamps;
+API limit 1–50, bounded by lifecycle and snooze. Empty projection is valid. Both
+regions need independent loading/error/empty states. Switching selection must not
+allow a stale response to overwrite the active job.
 
-| Region | Binding | Visible Fields | Mandatory in UI? |
-| :--- | :--- | :--- | :---: |
-| `wdg-template-list` | `GET /templates` → `{ templates }` | `id`, `name`, `body` | — |
-| `wdg-template-form` | `GET /templates/{id}` on edit | `name`, `body` | Create: `name` yes, `body` yes; PATCH: optional |
+### History (`scr-history`, proposed, C16/C18)
 
-- **Actions:**
+Extract existing global attempt browsing while retaining Agenda timeline history.
+Bind `GET /jobs/runs` (limit 1–100, default 50; UI may request 100), sorted latest
+first. Proposed status selector uses existing success/error query. Display
+retention/limit scope; selecting attempt opens associated job inspector. Manual
+refresh and complete retained-run CSV export remain available.
 
-| Action | Binding | Precondition | Success | Error Mapping |
-| :--- | :--- | :--- | :--- | :--- |
-| Create template | `POST /templates` `{ name, body }` | `name` length 1–80; `body` min length 1 | `201 Created`; refresh list | `401`; `422`; `409` → template name exists |
-| Update template | `PATCH /templates/{id}` `{ name?, body? }` | Item selected | `200 OK`; update row | `401`; `404`; `409`; `422` |
-| Delete template | `DELETE /templates/{id}` | Item selected | `204 No Content` | `401`; `404`; `409` → active jobs reference this template |
+### Data (`scr-data`, proposed extraction, C19)
 
-- **States:** `loading`, `empty`, `error`
-- **Hidden Fields:** Jinja template directives (prohibited)
+Four existing operations: SQLite snapshot (`GET /backup/database`), JSON export
+(`GET /backup/export?include_runs=true|false`), JSON import
+(`POST /backup/import`) and integrity (`GET /backup/integrity`).
 
----
+Export defaults to include runs; data bundle contains metadata, contacts,
+templates, SQLite jobs and runs; YAML excluded. Import reads selected file,
+validates shape before sending, previews counts, chooses merge/replace, and
+requires explicit replacement confirmation. Cancelling confirmation makes no
+request. `mode` required; contacts/templates/jobs/job_runs arrays optional per
+schema. Preserve returned created/updated/skipped summaries and warnings;
+success invalidates affected views. Invalid JSON/schema/network/server errors
+retain actionable feedback. Integrity shows both database and foreign-key checks,
+details/violations. Downloads need authenticated requests and Blob cleanup.
 
-### Screen `scr-jobs` — Agenda Overview
+## 4. Non-functional requirements
 
-- **UI Route:** `/jobs`
-- **Purpose:** Global agenda view across all contacts; quick creation; detail inspection, cancel, reschedule, and manual trigger.
-- **Widgets / Regions:**
+No UI polling, SSE, WebSocket, direct dispatch or invented retry. Reads refresh on
+navigation, explicit refresh, saved access settings or successful mutation.
+Never auto-replay failed mutations. Expose 401 access configuration, 404 missing,
+409 domain conflict and 422 field validation separately from network errors.
+Successful JSON must have JSON content type; 204 is bodyless. CSV validates
+media type. HTML fallback must never be parsed as a successful API response.
+Keep existing static HTML no-cache behavior and production same-origin serving.
 
-| Region | Binding | Visible Fields | Mandatory in UI? |
-| :--- | :--- | :--- | :---: |
-| `wdg-job-filters` | `GET /jobs` query params | `status` (default `upcoming` \| `done` \| `paused` \| `error` \| `all`), `from`, `to`, `phone`, `limit` (1–100) | `status` optional (API default applied) |
-| `wdg-job-list` | `GET /jobs` | `JobListItem` (omits `content`) | — |
-| `wdg-job-detail` | `GET /jobs/{id}` | Complete job record | On selection |
-| `wdg-job-create` | Form | Same fields as contact job form; default `to="eu"`; contact/template pickers | Mandatory fields matching job schema |
-| `wdg-contact-pick` | `GET /contacts` | `id`, `name`, `phone` for `to` / `created_by` | No |
+All screens: loading/empty/error/ready; mutation busy and validation feedback;
+list-filter no-match distinct from failed loading. Notifications announce status;
+errors remain visible and retryable. No raw stack traces or fictitious telemetry.
 
-- **Actions:** Identical job actions as in `scr-contact` (`POST /jobs`, `GET /jobs/{id}`, cancel, reschedule, run).
-- **States:** `loading`, `empty`, `error`, domain status badges.
-- **Hidden Fields:** Full message `content` in list view; interpreting query `to` as recipient.
+## 5. Complete product API route classification
 
----
+Paths use `{id}` as the normalized job/contact/template identifier. Each backend
+product operation is classified once; consumers may reuse it across screens.
 
-## 4. Non-Functional Requirements (NFRs)
+| Method | Path | Category | Consumer |
+|---|---|---|---|
+| GET | `/health` | ops-only | Public liveness; no screen |
+| GET | `/health/metrics` | ops-only | HTTP/MCP aggregates; no browser caller |
+| GET | `/jobs` | screen | Agenda/contact/group-members |
+| POST | `/jobs` | action | Shared single composer |
+| POST | `/jobs/batch` | action | Shared multi-recipient composer |
+| POST | `/jobs/preview` | deferred | API/MCP dry run; no browser caller |
+| GET | `/jobs/digest` | deferred | API/MCP digest; no browser caller |
+| GET | `/jobs/tags` | widget | Filter/composer autocomplete |
+| GET | `/jobs/export.csv` | widget | Agenda filtered download |
+| GET | `/jobs/runs` | widget | Timeline/history |
+| GET | `/jobs/runs/export.csv` | widget | Global/per-job history download |
+| GET | `/jobs/{id}` | widget | Shared inspector |
+| GET | `/jobs/{id}/runs` | widget | Inspector audit history |
+| GET | `/jobs/{id}/upcoming` | widget | Inspector projection |
+| POST | `/jobs/{id}/cancel` | action | Single cancellation |
+| POST | `/jobs/{id}/reschedule` | action | Single reschedule |
+| POST | `/jobs/{id}/run` | action | Single manual run |
+| POST | `/jobs/{id}/retry` | action | Single requeue |
+| POST | `/jobs/{id}/pause` | action | Single pause |
+| POST | `/jobs/{id}/resume` | action | Single resume |
+| POST | `/jobs/{id}/snooze` | action | Single snooze |
+| POST | `/jobs/group/{group_id}/cancel` | action | Group cancellation |
+| POST | `/jobs/group/{group_id}/run` | action | Group manual run |
+| POST | `/jobs/group/{group_id}/retry` | action | Group requeue |
+| POST | `/jobs/group/{group_id}/pause` | action | Group pause |
+| POST | `/jobs/group/{group_id}/resume` | action | Group resume |
+| POST | `/jobs/group/{group_id}/snooze` | action | Group snooze |
+| GET | `/contacts` | screen | Directory/pickers |
+| POST | `/contacts` | action | Directory creation |
+| GET | `/contacts/{id}` | widget | Contact header |
+| PATCH | `/contacts/{id}` | action | Contact edit |
+| DELETE | `/contacts/{id}` | action | Contact deletion |
+| GET | `/templates` | screen | Catalog/composer |
+| POST | `/templates` | action | Template creation |
+| GET | `/templates/{id}` | widget | Template resource; current editor also reuses list item |
+| PATCH | `/templates/{id}` | action | Template edit |
+| DELETE | `/templates/{id}` | action | Template deletion |
+| GET | `/backup/database` | widget | Data snapshot download |
+| GET | `/backup/export` | widget | Data JSON export |
+| POST | `/backup/import` | action | Data merge/replace |
+| GET | `/backup/integrity` | widget | Data integrity report |
+| POST | `/routines/reload` | deferred | Operator maintenance outside UI |
+| POST | `/housekeeping/purge` | deferred | Retention maintenance outside UI |
 
-| ID | Requirement | Verification Anchor |
-| :--- | :--- | :--- |
-| `nfr-auth` | All product endpoints require `x-api-key: {SCHEDULE_API_KEY}`; mismatch returns `401 Unauthorized` | `auth.py`, `ENDPOINTS.md` |
-| `nfr-quota` | No rate-limiting headers (`429` / `Retry-After`) in this service | Source code audit |
-| `nfr-offline` | Handled as standard network failure; no domain "device offline" states | Background tick operates on server |
-| `nfr-poll` | No SSE/WebSocket polling; UI refreshes on user action or mutation | `api.ts` |
-| `nfr-run` | `POST /jobs/{id}/run` returns `202 Accepted` on dispatch or `502 Bad Gateway` if outbound gateway fails | `jobs_router.py`, `ENDPOINTS.md`, ADR-004 |
+Infrastructure: `GET /`, `/favicon.ico`, mounted `/assets`, SPA fallback and
+FastAPI documentation/OpenAPI are transport resources, not domain screens/actions.
 
----
+## 6. Out of scope
 
-## 5. Route Inventory
+Health dashboard/monitoring, direct `/send`, MCP stdio, YAML editing, new backend
+routes, database schema changes, accounts/OTP/roles and new i18n locales.
+No use of metrics endpoint to silently change loaded-list count semantics.
 
-Every backend API endpoint is mapped exactly once:
+## 7. Deferred items
 
-| Method | Path | Category | Target (Screen ID / Action / —) |
-| :---: | :--- | :--- | :--- |
-| `GET` | `/health` | `ops-only` | Liveness probe (no UI screen) |
-| `GET` | `/health/metrics` | `ops-only` | Authenticated operational aggregates for HTTP/MCP; no UI screen |
-| `GET` | `/jobs` | `screen` | `scr-jobs` (`wdg-job-list`); also `wdg-job-list` in `scr-contact` |
-| `POST` | `/jobs` | `action` | Create job in `scr-jobs` and `scr-contact` |
-| `GET` | `/jobs/{id}` | `widget` | `wdg-job-detail` in `scr-jobs` and `scr-contact` |
-| `POST` | `/jobs/{id}/cancel` | `action` | Cancel job in `scr-jobs` and `scr-contact` |
-| `POST` | `/jobs/{id}/reschedule` | `action` | Reschedule job in `scr-jobs` and `scr-contact` |
-| `POST` | `/jobs/{id}/run` | `action` | Manual dispatch trigger |
-| `GET` | `/contacts` | `screen` | `scr-contacts`; contact picker in `scr-jobs` |
-| `POST` | `/contacts` | `action` | Create contact in `scr-contacts` |
-| `GET` | `/contacts/{id}` | `widget` | `wdg-contact-header` in `scr-contact` |
-| `PATCH` | `/contacts/{id}` | `action` | Update contact in `scr-contact` |
-| `DELETE` | `/contacts/{id}` | `action` | Delete contact in `scr-contact` |
-| `GET` | `/templates` | `screen` | `scr-templates`; template picker in job forms |
-| `POST` | `/templates` | `action` | Create template in `scr-templates` |
-| `GET` | `/templates/{id}` | `widget` | `wdg-template-form` in `scr-templates` |
-| `PATCH` | `/templates/{id}` | `action` | Update template in `scr-templates` |
-| `DELETE` | `/templates/{id}` | `action` | Delete template in `scr-templates` |
-| `POST` | `/routines/reload` | `deferred` | Admin maintenance endpoint |
-| `POST` | `/housekeeping/purge` | `deferred` | Scheduled retention purge |
+Preview/digest remain HTTP/MCP-only; reload/purge remain maintenance operations.
+Browser adoption would need an explicit task, screen binding and acceptance tests.
 
----
+## 8. Chrome configuration and proposed surface
 
-## 6. Out of Scope
+Preserve fixed `pt-BR`; no `Accept-Language` header. Themes light/system/dark,
+default system, persisted locally with early first-paint application. Do not change
+existing storage keys. Global access, notifications and theme controls remain.
 
-- `GET /health` probe monitoring in UI.
-- Direct outbound `POST /send` messaging calls (managed by scheduler tick).
-- MCP agent stdio tools (consumed by Cursor/AI agents, not Web UI).
-- In-browser editing of `routines.yaml`.
-- Dedicated settings page solely for theme/locale toggles.
-- User registration, OTP login, passwords, and multi-tenant authorization roles.
+Approved surface: Apple HIG archetype; opaque layered work surfaces,
+restrained translucent shell; single-operator audience; compact/readable density;
+plain pt-BR copy; responsive application; feedback-only motion. Token roles,
+spacing/type/radii and responsive breakpoints are specified in plan §5. Preserve
+RGB channel/alpha semantics and shared branding SVG. Text contrast ≥4.5:1,
+focus/boundary contrast ≥3:1, ≥44 px targets, visible focus, 200% zoom, safe areas,
+16 px input text. Reduced motion disables decorative movement. No hover-only
+actions; topmost dialog traps/restores focus and handles Escape.
 
----
+## 9. DOM anchors and states
 
-## 7. Deferred Items
+Keep `<html data-theme="light|system|dark">`. Existing IDs below are compatibility
+anchors and may move into shared components; never duplicate an ID in a rendered
+screen. Preserve existing field names while moving forms. Full observed anchor
+source is `web/src/` and the associated `tests/web/` before replacement.
 
-- `POST /routines/reload`: Invoked via git hooks or CLI; no UI flow required.
-- `POST /housekeeping/purge`: Automated by background tick loop.
-- User accounts and authentication sessions (system uses operator `x-api-key`).
+| Surface | Required existing anchors / fields |
+|---|---|
+| Screens | `scr-contacts`, `scr-contact`, `scr-templates`, `scr-jobs` |
+| Contacts | `wdg-contact-list`, `wdg-contact-create`, `wdg-contact-header`, `wdg-contact-edit`; fields name/phone |
+| Templates | `wdg-template-list`, `wdg-template-form`, `wdg-template-pick`, `live-preview-box`, `unknown-tags-warning`; fields name/body/template_id |
+| Jobs | `wdg-job-filters`, `wdg-job-list`, `wdg-job-detail`, `wdg-job-create`, `wdg-contact-pick`; status/from/to/phone/limit, title/content/kind/run_at/cron_expr/created_by/template_id |
+| View selection | `view-mode-switcher`, `tab-view-table`, `tab-view-timeline`, `tab-view-calendar` |
+| Timeline | `job-timeline-view`, `timeline-filter-all`, `timeline-filter-future`, `timeline-filter-history`, `timeline-future-section`, `timeline-history-section`, `btn-timeline-refresh-runs` |
+| Calendar | `job-calendar-view`, `calendar-current-month`, `btn-calendar-today`, `btn-calendar-prev`, `btn-calendar-next`, `calendar-grid`, `calendar-day-detail` |
+| Lifecycle | `modal-reschedule`, `modal-reschedule-run-at`, `modal-reschedule-cron`, `modal-snooze`, `modal-snooze-until`, `create-until`, `create-max-runs`, `detail-until`, `detail-runs`, `btn-detail-pause`, `btn-detail-resume`, `btn-detail-snooze` |
+| Recovery/group | `detail-dead-letter-box`, `detail-dead-letter-error`, `detail-dead-letter-retries`, `btn-dead-letter-retry`, `btn-dead-letter-run-now`, `btn-detail-retry`, `btn-group-pause-all`, `btn-group-resume-all`, `btn-group-snooze-all`; preserve `data-group-id` |
+| Variables/tags | `section-custom-variables`, `input-var-key`, `input-var-value`, `btn-add-var`, `detail-variables-card`, `section-tags`, `input-tag`, `btn-add-tag`, `filter-tag`, `tags-datalist`, `detail-tags-card` |
+| Detail history/projection | `detail-runs-section`, `btn-refresh-runs`, `runs-loading`, `runs-empty`, `runs-list`, `detail-upcoming-card`, `btn-refresh-upcoming`, `upcoming-loading`, `upcoming-empty`, `upcoming-list` |
+| Downloads/data | `btn-export-jobs-csv`, `btn-export-runs-csv`, `btn-export-job-runs-csv`, `btn-open-backup-modal-sidebar`, `btn-open-backup-modal-header`, `btn-download-sqlite`, `btn-export-json`, `input-import-file`, `btn-execute-import`, `btn-check-integrity` |
+| Access/theme | `input-api-key`, `input-base-url`, `theme-btn-light`, `theme-btn-system`, `theme-btn-dark` |
 
----
+New proposed screen roots: `scr-history`, `scr-data`. Interactive regions expose
+`data-state=loading|empty|error|ready`; forms expose busy/error/ready as appropriate.
+Use accessible names/roles to test behavior; source handler names/file layout are
+not user-facing contracts. Additional test-supported anchors must be migrated
+with the feature, not dropped silently.
 
-## 8. Chrome Configuration
+## 10. CSV export actions
 
-Surface preferences applied across application shell:
-
-### Theme (Mandatory)
-
-| Field | Value |
-| :--- | :--- |
-| Options | `light` \| `system` \| `dark` (three modes) |
-| Default | `system` (`prefers-color-scheme` with manual override) |
-| Persistence | `localStorage` (client-side only) |
-| Location | Global shell (header segmented control) |
-
-### Locale (Mandatory)
-
-| Field | Value |
-| :--- | :--- |
-| Policy | `fixed` |
-| Active Locale | `pt-BR` (operator UI language agreed in task [00.4]) |
-| Persistence | `local` |
-| Request Header | Do NOT send `Accept-Language` (backend does not vary responses by language) |
-
----
-
-## 9. DOM Anchors (Stack-Agnostic)
-
-Implementations MUST preserve exact DOM IDs and `data-state` markers:
-
-- Root Document: `<html data-theme="system">` (values: `light` \| `system` \| `dark`).
-
-| Screen | Region / Widget | DOM `id` | Field `name` attributes | `data-state` values |
-| :--- | :--- | :--- | :--- | :--- |
-| `scr-contacts` | Page container | `scr-contacts` | — | `loading` \| `empty` \| `error` |
-| `scr-contacts` | Contact list | `wdg-contact-list` | — | `loading` \| `empty` \| `error` |
-| `scr-contacts` | Contact create form | `wdg-contact-create` | `name`, `phone` | `error` |
-| `scr-contact` | Page container | `scr-contact` | — | `loading` \| `empty` \| `error` |
-| `scr-contact` | Header widget | `wdg-contact-header` | — | `loading` \| `error` |
-| `scr-contact` | Edit form | `wdg-contact-edit` | `name`, `phone` | `error` |
-| `scr-contact` | Job list | `wdg-job-list` | `status`, `phone` (query) | `loading` \| `empty` \| `error` |
-| `scr-contact` | Job detail drawer | `wdg-job-detail` | — | `loading` \| `empty` \| `error` |
-| `scr-contact` | Create job form | `wdg-job-create` | `title`, `content`, `to`, `kind`, `run_at`, `cron_expr`, `created_by`, `template_id` | `error` |
-| `scr-contact` | Template picker | `wdg-template-pick` | `template_id` | `loading` \| `empty` \| `error` |
-| `scr-templates` | Page container | `scr-templates` | — | `loading` \| `empty` \| `error` |
-| `scr-templates` | Template list | `wdg-template-list` | — | `loading` \| `empty` \| `error` |
-| `scr-templates` | Template form | `wdg-template-form` | `name`, `body` | `error` |
-| `scr-jobs` | Page container | `scr-jobs` | — | `loading` \| `empty` \| `error` |
-| `scr-jobs` | Filter widget | `wdg-job-filters` | `status`, `from`, `to`, `phone`, `limit` | — |
-| `scr-jobs` | Job list table | `wdg-job-list` | — | `loading` \| `empty` \| `error` |
-| `scr-jobs` | Job detail drawer | `wdg-job-detail` | — | `loading` \| `empty` \| `error` |
-| `scr-jobs` | Create job form | `wdg-job-create` | `title`, `content`, `to`, `kind`, `run_at`, `cron_expr`, `created_by`, `template_id` | `error` |
-| `scr-jobs` | Contact picker | `wdg-contact-pick` | `to`, `created_by` | `loading` \| `empty` \| `error` |
-
-## 10. CSV Export Actions
-
-The agenda provides `btn-export-jobs-csv` (current status/date/phone/tag filters,
-all matching jobs independent of list limit) and `btn-export-runs-csv` (all retained
-execution history). The inspection drawer provides `btn-export-job-runs-csv` for
-the selected job's complete history. These bind to `GET /jobs/export.csv` and
-`GET /jobs/runs/export.csv` with optional `job_id`, respectively. Downloads use
-`x-api-key`, validated CSV content type, Blob URLs with cleanup, disabled buttons
-while busy, a status announcement, and visible alert messages on failure. Existing
-DOM IDs, list/detail JSON endpoints, and scheduling actions remain unchanged.
+Agenda export uses current status/from/to/phone/tag and any proposed query/group
+filters; omit limit to download every match. Global history exports all retained
+attempts, with status when selected; inspector export adds `job_id`. Requests use
+`x-api-key`, validate CSV media type, create/revoke Blob URLs, disable busy actions,
+announce completion and retain visible errors. Keep UTF-8 BOM, safe cells and
+existing backend data meaning; JSON export remains the portability format.
