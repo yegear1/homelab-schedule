@@ -10,7 +10,7 @@ for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.emulateMedia({ colorScheme: 'light' });
     await page.goto('/contacts');
-    const controls = page.locator('.shell-navigation a, .shell-header button');
+    const controls = page.locator('.shell-navigation a, .shell-header button, .shell-sidebar .ui-segments button');
     for (const control of await controls.all()) {
       await expect(control).toBeVisible();
       const box = await control.boundingBox();
@@ -37,7 +37,7 @@ for (const width of [640, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/contacts');
     await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
-    for (const control of await page.locator('.shell-navigation a, .shell-header button').all()) {
+    for (const control of await page.locator('.shell-navigation a, .shell-header button, .shell-sidebar .ui-segments button').all()) {
       const box = await control.boundingBox();
       expect(box!.x).toBeGreaterThanOrEqual(0);
       expect(box!.x + box!.width).toBeLessThanOrEqual(width);

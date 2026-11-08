@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -148,8 +148,10 @@ def test_daily_digest_with_jobs_and_conflict_detection(
 def test_preview_preventive_conflict_detection(
     client: TestClient, api_key: str
 ) -> None:
-    today = datetime.now(APP_TZ).date()
-    dt_existing = datetime(today.year, today.month, today.day, 14, 0, 0, tzinfo=APP_TZ)
+    target_date = (datetime.now(APP_TZ) + timedelta(days=1)).date()
+    dt_existing = datetime(
+        target_date.year, target_date.month, target_date.day, 14, 0, 0, tzinfo=APP_TZ
+    )
 
     # Create an existing job for 'eu'
     client.post(
@@ -165,7 +167,9 @@ def test_preview_preventive_conflict_detection(
     )
 
     # Preview a new job for 'eu' at 14:02 (2 minutes difference -> overlap!)
-    dt_new = datetime(today.year, today.month, today.day, 14, 2, 0, tzinfo=APP_TZ)
+    dt_new = datetime(
+        target_date.year, target_date.month, target_date.day, 14, 2, 0, tzinfo=APP_TZ
+    )
     res_preview = client.post(
         "/jobs/preview",
         headers=_auth(api_key),

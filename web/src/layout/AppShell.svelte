@@ -15,10 +15,10 @@
   let { children }: Props = $props();
   let showApiKeyModal = $state(false);
   let hasApiKey = $state(Boolean(api.getApiKey()));
-  const themeOptions: { value: ThemeMode; label: string; id: string }[] = [
-    { value: 'light', label: 'Claro', id: 'theme-btn-light' },
-    { value: 'system', label: 'Sistema', id: 'theme-btn-system' },
-    { value: 'dark', label: 'Escuro', id: 'theme-btn-dark' },
+  const themeOptions: { value: ThemeMode; label: string; id: string; icon: 'sun' | 'system' | 'moon' }[] = [
+    { value: 'light', label: 'Claro', id: 'theme-btn-light', icon: 'sun' },
+    { value: 'system', label: 'Sistema', id: 'theme-btn-system', icon: 'system' },
+    { value: 'dark', label: 'Escuro', id: 'theme-btn-dark', icon: 'moon' },
   ];
   const navItems = [
     { name: 'Agenda', icon: 'agenda', path: '/jobs', id: 'scr-jobs', route: 'jobs' },
@@ -51,9 +51,15 @@
       {/each}
     </nav>
     <div class="shell-sidebar-footer">
-      <span class="shell-section-label">Ferramentas</span>
-      <Button id="btn-open-backup-modal-sidebar" variant="quiet" onclick={() => router.navigate('/data')}><Icon name="data" />Backup e dados</Button>
-      <Button variant="quiet" title="Configurar chave da API" onclick={() => (showApiKeyModal = true)}><Icon name="key" />Configurar acesso</Button>
+      <div class="shell-sidebar-theme">
+        <span class="shell-section-label">Aparência</span>
+        <SegmentedControl label="Controle de tema" options={themeOptions} value={theme.mode} onchange={(value) => theme.setMode(value)} />
+      </div>
+      <div class="shell-sidebar-tools">
+        <span class="shell-section-label">Ferramentas</span>
+        <Button id="btn-open-backup-modal-sidebar" variant="quiet" onclick={() => router.navigate('/data')}><Icon name="data" />Backup e dados</Button>
+        <Button variant="quiet" title="Configurar chave da API" onclick={() => (showApiKeyModal = true)}><Icon name="key" />Configurar acesso</Button>
+      </div>
     </div>
   </aside>
   <div class="shell-workspace">
@@ -61,13 +67,10 @@
       <div class="shell-toolbar">
         <div class="shell-location"><span class="shell-section-label">Biblioteca</span><strong>{currentPage}</strong></div>
         <div class="shell-tools">
+          <StatusBadge tone={hasApiKey ? 'neutral' : 'error'}>{hasApiKey ? 'Configurada neste navegador' : 'Configuração pendente'}</StatusBadge>
           <Button id="btn-open-backup-modal-header" title="Backup e dados" onclick={() => router.navigate('/data')}><Icon name="data" /><span>Dados</span></Button>
           <Button title="Configurações da API" onclick={() => (showApiKeyModal = true)}><Icon name="key" /><span>Acesso</span></Button>
         </div>
-      </div>
-      <div class="shell-preferences">
-        <StatusBadge tone={hasApiKey ? 'neutral' : 'error'}>{hasApiKey ? 'Configurada neste navegador' : 'Configuração pendente'}</StatusBadge>
-        <SegmentedControl label="Controle de tema" options={themeOptions} value={theme.mode} onchange={(value) => theme.setMode(value)} />
       </div>
     </header>
     <main class="shell-main" id="main-content" tabindex="-1">{@render children()}</main>
