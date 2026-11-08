@@ -7,17 +7,19 @@
 
 ## Active Task
 
-- **Task:** [02.24] Rebuild contacts and templates workspaces.
+- **Task:** [02.25] Extract History/Data pages and verify full replacement.
 - **Status:** `APPROVED`
 - **Approval:** Operator approved [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md), surface/locale and named dependencies on 2026-11-08.
-- **Scope:** Contact directory/detail and template catalog/editor presentation. Preserve CRUD semantics, scoped job flows, placeholder insertion and illustrative previews.
-- **Paths:** `web/src/pages/ContactsPage.svelte`, `web/src/pages/ContactDetailPage.svelte`, `web/src/pages/TemplatesPage.svelte`, `web/src/components/contacts/`, `web/src/components/templates/`, `tests/web/test_templates_placeholders.py`, `web/tests/catalogs.spec.ts`.
-- **Acceptance:** C04–C08; search/CRUD/reset/counters/confirmation and 409 conflicts; contact edits refresh phone-bound jobs; shared job flows work; all placeholder buttons insert at cursor; preview remains illustrative and unknown tags persist; no fabricated telemetry/status; original route links work after reload/history.
-- **Next Step:** Execute the approved contact/template rebuild on proceed. Extra dependencies and release/tag remain gated.
+- **Scope:** Dedicated History/Data routes for existing attempts, downloads, backup/import and integrity capabilities. Reconcile contracts and verify the complete C01–C19 rebuild.
+- **Paths:** `web/src/pages/HistoryPage.svelte`, `web/src/pages/DataPage.svelte`, `web/src/components/BackupModal.svelte`, `web/src/App.svelte`, `web/src/lib/router.svelte.ts`, `web/src/layout/AppShell.svelte`, `web/src/components/data/`, `tests/web/test_backup_ui.py`, `web/tests/history-data.spec.ts`, `.agent/INTERFACE.md`, `.agent/WEB_UI_REBUILD.md`.
+- **Acceptance:** C02/C16/C18/C19; direct entry/back/forward; backup entry points reach Data; history status/limit use documented queries; merge/replace, counts preview, replacement cancellation, warnings/integrity/downloads work; all C01–C19 browser scenarios pass; previous source requirements have traceable behavior coverage; no old presentation remains; review light/dark/reduced-motion screenshots at required widths; preserve proto and integration entry points; no production requests or direct /send.
+- **Next Step:** Execute the approved History/Data extraction and replacement verification on proceed. Extra dependencies and release/tag remain gated.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.24] Rebuilt contact directory/detail and template workspaces, guarded CRUD, shared contact job flows and illustrative placeholder editor | [`3862467`] | 2026-11-08 | 123 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, mobile/desktop/dark screenshot review, 200% zoom and diff check: exit 0
 
 - [02.23] Rebuilt filtered agenda, grouped table, timeline and keyboard calendar with bounded counts, shared actions and synchronized CSV filters | [`1f4361f`] | 2026-11-08 | 95 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, mobile/desktop/dark screenshot review and diff check: exit 0
 
@@ -68,7 +70,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 Approved sequential queue; scope and acceptance criteria: [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md#8-sequential-implementation-tasks-draft). Approved by operator on 2026-11-08.
 
-- [02.25] Extract History/Data pages and verify full replacement.
 
 ---
 
