@@ -7,13 +7,15 @@
 
 ## Active Task
 
-- **Task:** None — minimalist theme control integrated into sidebar completed in [02.26].
-- **Status:** `IDLE`
-- **Next Step:** Await the next operator-defined scope. Release/tag, push, deployment and additional dependencies require explicit authorization.
+- **Task:** [02.28] Shell Global, Navegação e Modal de Acesso (`AppShell`, `cmdk`, `AccessDialog`, tema e conexão real com `/health`)
+- **Status:** `READY FOR PLANNING`
+- **Next Step:** Present implementation plan to wire `AppShell`, `CommandPalette`, `AccessDialog`, and routing to real backend `/health` endpoint.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.27] Migrated build pipeline, React 19 dependencies, Radix/Zustand tooling, and sanitized auth store | [`c8b6933`] | 2026-11-09 | tsc check, Vite build, 22 python auth/spa tests, mypy, Ruff and diff check: exit 0
 
 - [02.26] Integrated minimalist theme control into sidebar footer, added theme icons, refined segmented styling and cleaned header chrome | [`7f1d1fe`] | 2026-11-08 | 151 browser tests, 247 Python tests, mypy, Ruff, Svelte/config checks, build, 320/390/768/1440 responsiveness review, 200% zoom and diff check: exit 0
 
@@ -64,11 +66,11 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 ---
 
 ## Backlog (Upcoming, in priority order)
-
-> Tag pre-approved tasks having strictly disjoint file scopes with `[APPROVED]` `[PARALLEL: W1]` and `Paths: ...` for concurrent `task-queue` execution.
-
-
-Approved sequential queue; scope and acceptance criteria: [WEB_UI_REBUILD.md](WEB_UI_REBUILD.md#8-sequential-implementation-tasks-draft). Approved by operator on 2026-11-08.
+- [ ] **[02.28]** Shell Global, Navegação e Modal de Acesso (`AppShell`, `cmdk`, `AccessDialog`, tema e conexão real com `/health`)
+- [ ] **[02.29]** Workspaces de Contatos e Templates (`/contacts`, `/templates`, CRUD real, modal de conflito 409)
+- [ ] **[02.30]** Agenda Operacional, Composer e Inspetor de Jobs (`/jobs`, filtros, criação single/batch, lifecycle 202, imutabilidade YAML, CSV)
+- [ ] **[02.31]** Histórico de Execuções e Data Vault (`/history`, `/data`, logs de tentativa, snapshot SQLite, JSON export/import com replace seguro, integridade)
+- [ ] **[02.32]** Limpeza do Código Legado, Testes e Validação de Build (exclusão de `*.svelte`, testes Python/Playwright, mypy/ruff, Docker build)
 
 
 ---
