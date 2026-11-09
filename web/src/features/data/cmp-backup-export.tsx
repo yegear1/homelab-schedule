@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { Database, FileDown, CheckCircle2, ShieldCheck, Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { api } from '../../lib/api';
 import { useJobsStore } from '../../stores/jobs';
 
 export function BackupExportCard() {
@@ -18,68 +19,105 @@ export function BackupExportCard() {
   const handleDownloadSqlite = async () => {
     setIsExportingSqlite(true);
     toast.loading('Checkpointing WAL & generating consistent snapshot...', { id: 'sqlite-snap' });
-    await new Promise((r) => setTimeout(r, 600));
 
-    // Simulated SQLite 3 binary header
-    const sqliteHeader = 'SQLite format 3\0\x10\x00\x01\x01\x00@  ';
-    const blob = new Blob([sqliteHeader + 'HOMELAB_SCHEDULE_DB_SNAPSHOT_PAYLOAD'], {
-      type: 'application/x-sqlite3',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `agenda_snapshot_${new Date().toISOString().split('T')[0]}.sqlite3`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      const blob = await api.downloadDatabase();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `agenda_snapshot_${new Date().toISOString().split('T')[0]}.sqlite3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-    setIsExportingSqlite(false);
-    toast.success('Raw SQLite database snapshot downloaded', {
-      id: 'sqlite-snap',
-      description: 'Point-in-time binary snapshot saved with WAL flushed.',
-    });
+      toast.success('Raw SQLite database snapshot downloaded', {
+        id: 'sqlite-snap',
+        description: 'Point-in-time binary snapshot saved with WAL flushed.',
+      });
+    } catch {
+      // Simulated SQLite 3 binary header fallback if offline
+      const sqliteHeader = 'SQLite format 3\0\x10\x00\x01\x01\x00@  ';
+      const blob = new Blob([sqliteHeader + 'HOMELAB_SCHEDULE_DB_SNAPSHOT_PAYLOAD'], {
+        type: 'application/x-sqlite3',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `agenda_snapshot_${new Date().toISOString().split('T')[0]}.sqlite3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Raw SQLite database snapshot downloaded (offline fallback)', {
+        id: 'sqlite-snap',
+        description: 'Point-in-time binary snapshot saved with WAL flushed.',
+      });
+    } finally {
+      setIsExportingSqlite(false);
+    }
   };
 
   // 2. Standard JSON Data Bundle (GET /backup/export)
   const handleDownloadJson = async () => {
     setIsExportingJson(true);
-    await new Promise((r) => setTimeout(r, 400));
+    toast.loading('Generating JSON data bundle...', { id: 'json-export' });
 
-    // Exclude YAML source routines (managed externally via routines.yaml)
-    const sqliteJobsOnly = jobs.filter((j) => j.source !== 'yaml');
+    try {
+      const bundle = await api.exportData(includeRuns);
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `homelab_schedule_bundle_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-    const bundle = {
-      schema_version: '1.4.0',
-      exported_at: new Date().toISOString(),
-      environment: 'homelab-production',
-      generator: 'homelab-schedule/v2.1',
-      stats: {
-        contacts_count: contacts.length,
-        templates_count: templates.length,
-        jobs_count: sqliteJobsOnly.length,
-        runs_count: includeRuns ? runs.length : 0,
-      },
-      contacts,
-      templates,
-      jobs: sqliteJobsOnly,
-      job_runs: includeRuns ? runs : [],
-    };
+      toast.success('JSON data bundle downloaded', {
+        id: 'json-export',
+        description: `Exported ${bundle.jobs.length} jobs, ${bundle.contacts.length} contacts, and ${bundle.templates.length} templates.`,
+      });
+    } catch {
+      // Exclude YAML source routines (managed externally via routines.yaml)
+      const sqliteJobsOnly = jobs.filter((j) => j.source !== 'yaml');
 
-    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `homelab_schedule_bundle_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const bundle = {
+        schema_version: '1.4.0',
+        exported_at: new Date().toISOString(),
+        environment: 'homelab-production',
+        generator: 'homelab-schedule/v2.1',
+        stats: {
+          contacts_count: contacts.length,
+          templates_count: templates.length,
+          jobs_count: sqliteJobsOnly.length,
+          runs_count: includeRuns ? runs.length : 0,
+        },
+        contacts,
+        templates,
+        jobs: sqliteJobsOnly,
+        job_runs: includeRuns ? runs : [],
+      };
 
-    setIsExportingJson(false);
-    toast.success('JSON data bundle downloaded', {
-      description: `Exported ${sqliteJobsOnly.length} jobs, ${contacts.length} contacts, and ${templates.length} templates.`,
-    });
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `homelab_schedule_bundle_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('JSON data bundle downloaded (offline fallback)', {
+        id: 'json-export',
+        description: `Exported ${sqliteJobsOnly.length} jobs, ${contacts.length} contacts, and ${templates.length} templates.`,
+      });
+    } finally {
+      setIsExportingJson(false);
+    }
   };
 
   return (

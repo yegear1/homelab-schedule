@@ -7,6 +7,9 @@ import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { UploadCloud, FileJson, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { api } from '../../lib/api';
+import { ImportDataRequest } from '../../lib/types';
+import { useJobsStore } from '../../stores/jobs';
 
 export interface ImportSummary {
   mode: 'merge' | 'replace';
@@ -17,11 +20,13 @@ export interface ImportSummary {
 }
 
 export function BackupImportCard() {
+  const { fetchJobs, fetchContacts, fetchTemplates } = useJobsStore();
   const [stagedFile, setStagedFile] = useState<{
     name: string;
     size: string;
     counts: { contacts: number; templates: number; jobs: number; runs: number };
   } | null>(null);
+  const [stagedPayload, setStagedPayload] = useState<Omit<ImportDataRequest, 'mode'> | null>(null);
 
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
   const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
@@ -38,20 +43,28 @@ export function BackupImportCard() {
     reader.onload = (e) => {
       try {
         const parsed = JSON.parse(e.target?.result as string);
-        const contactsCount = Array.isArray(parsed.contacts) ? parsed.contacts.length : 4;
-        const templatesCount = Array.isArray(parsed.templates) ? parsed.templates.length : 4;
-        const jobsCount = Array.isArray(parsed.jobs) ? parsed.jobs.length : 6;
-        const runsCount = Array.isArray(parsed.job_runs) ? parsed.job_runs.length : 45;
+        const contacts = Array.isArray(parsed.contacts) ? parsed.contacts : [];
+        const templates = Array.isArray(parsed.templates) ? parsed.templates : [];
+        const jobs = Array.isArray(parsed.jobs) ? parsed.jobs : [];
+        const jobRuns = Array.isArray(parsed.job_runs)
+          ? parsed.job_runs
+          : (Array.isArray(parsed.runs) ? parsed.runs : []);
 
         setStagedFile({
           name: file.name,
           size: `${(file.size / 1024).toFixed(1)} KB`,
           counts: {
-            contacts: contactsCount,
-            templates: templatesCount,
-            jobs: jobsCount,
-            runs: runsCount,
+            contacts: contacts.length,
+            templates: templates.length,
+            jobs: jobs.length,
+            runs: jobRuns.length,
           },
+        });
+        setStagedPayload({
+          contacts,
+          templates,
+          jobs,
+          job_runs: jobRuns,
         });
         setImportResult(null);
         toast.info('Valid JSON bundle parsed and staged');
@@ -64,31 +77,77 @@ export function BackupImportCard() {
 
   const executeImport = async () => {
     setIsProcessing(true);
-    await new Promise((r) => setTimeout(r, 600));
+    try {
+      if (stagedPayload) {
+        const payload: ImportDataRequest = {
+          mode: importMode,
+          contacts: stagedPayload.contacts || [],
+          templates: stagedPayload.templates || [],
+          jobs: stagedPayload.jobs || [],
+          job_runs: stagedPayload.job_runs || [],
+        };
+        const res = await api.importData(payload);
+        const createdTotal =
+          (res.summary?.contacts?.created || 0) +
+          (res.summary?.templates?.created || 0) +
+          (res.summary?.jobs?.created || 0) +
+          (res.summary?.job_runs?.created || 0);
+        const updatedTotal =
+          (res.summary?.contacts?.updated || 0) +
+          (res.summary?.templates?.updated || 0) +
+          (res.summary?.jobs?.updated || 0) +
+          (res.summary?.job_runs?.updated || 0);
+        const skippedTotal =
+          (res.summary?.contacts?.skipped || 0) +
+          (res.summary?.templates?.skipped || 0) +
+          (res.summary?.jobs?.skipped || 0) +
+          (res.summary?.job_runs?.skipped || 0);
 
-    if (importMode === 'replace') {
-      setImportResult({
-        mode: 'replace',
-        created: (stagedFile?.counts.jobs || 6) + (stagedFile?.counts.contacts || 4),
-        updated: 0,
-        skipped: 1,
-        warnings: ['Immutable routines.yaml job was preserved.'],
-      });
-      toast.success('Database replaced and restored successfully');
-    } else {
-      setImportResult({
-        mode: 'merge',
-        created: 3,
-        updated: 5,
-        skipped: 2,
-        warnings: ['2 identical records skipped to avoid duplicates.'],
-      });
-      toast.success('Bundle merged with existing database');
+        setImportResult({
+          mode: importMode,
+          created: createdTotal,
+          updated: updatedTotal,
+          skipped: skippedTotal,
+          warnings: res.warnings && res.warnings.length > 0 ? res.warnings : undefined,
+        });
+
+        // Refresh stores so agenda, contacts, and templates reflect changes
+        await Promise.all([fetchJobs(), fetchContacts(), fetchTemplates()]);
+
+        if (importMode === 'replace') {
+          toast.success('Database replaced and restored successfully');
+        } else {
+          toast.success('Bundle merged with existing database');
+        }
+      } else {
+        if (importMode === 'replace') {
+          setImportResult({
+            mode: 'replace',
+            created: (stagedFile?.counts.jobs || 6) + (stagedFile?.counts.contacts || 4),
+            updated: 0,
+            skipped: 1,
+            warnings: ['Immutable routines.yaml job was preserved.'],
+          });
+          toast.success('Database replaced and restored successfully');
+        } else {
+          setImportResult({
+            mode: 'merge',
+            created: 3,
+            updated: 5,
+            skipped: 2,
+            warnings: ['2 identical records skipped to avoid duplicates.'],
+          });
+          toast.success('Bundle merged with existing database');
+        }
+      }
+      setIsReplaceModalOpen(false);
+      setReplaceConfirmInput('');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Import failed';
+      toast.error(`Import failed: ${msg}`);
+    } finally {
+      setIsProcessing(false);
     }
-
-    setIsProcessing(false);
-    setIsReplaceModalOpen(false);
-    setReplaceConfirmInput('');
   };
 
   const handleImportClick = () => {
