@@ -7,13 +7,15 @@
 
 ## Active Task
 
-- **Task:** [02.32] Limpeza do Código Legado, Testes e Validação de Build (exclusão de `*.svelte`, testes Python/Playwright, mypy/ruff, Docker build)
-- **Status:** `READY FOR PLANNING`
-- **Next Step:** Present implementation plan to clean legacy Svelte code, update build/test scripts, and validate Docker build.
+- **Task:** None — React 19 migration, component rebuild, and legacy code purge complete in [02.32].
+- **Status:** `IDLE`
+- **Next Step:** Await the next operator-defined scope. Release/tag, push, deployment and additional dependencies require explicit authorization.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.32] Purged legacy Svelte files, harmonized web tests for React 19 architecture, verified Docker build | [`cf39c50`] | 2026-11-09 | tsc check, Vite build, 247 python tests, mypy, Ruff and docker build check: exit 0
 
 - [02.31] Wired execution history audit ledger and data vault to live API endpoints | [`579f23b`] | 2026-11-09 | tsc check, Vite build, 247 python tests, mypy, Ruff and diff check: exit 0
 
@@ -74,11 +76,11 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 ---
 
 ## Backlog (Upcoming, in priority order)
-- [ ] **[02.28]** Shell Global, Navegação e Modal de Acesso (`AppShell`, `cmdk`, `AccessDialog`, tema e conexão real com `/health`)
-- [ ] **[02.29]** Workspaces de Contatos e Templates (`/contacts`, `/templates`, CRUD real, modal de conflito 409)
-- [ ] **[02.30]** Agenda Operacional, Composer e Inspetor de Jobs (`/jobs`, filtros, criação single/batch, lifecycle 202, imutabilidade YAML, CSV)
-- [ ] **[02.31]** Histórico de Execuções e Data Vault (`/history`, `/data`, logs de tentativa, snapshot SQLite, JSON export/import com replace seguro, integridade)
-- [ ] **[02.32]** Limpeza do Código Legado, Testes e Validação de Build (exclusão de `*.svelte`, testes Python/Playwright, mypy/ruff, Docker build)
+- [x] **[02.28]** Shell Global, Navegação e Modal de Acesso (`AppShell`, `cmdk`, `AccessDialog`, tema e conexão real com `/health`)
+- [x] **[02.29]** Workspaces de Contatos e Templates (`/contacts`, `/templates`, CRUD real, modal de conflito 409)
+- [x] **[02.30]** Agenda Operacional, Composer e Inspetor de Jobs (`/jobs`, filtros, criação single/batch, lifecycle 202, imutabilidade YAML, CSV)
+- [x] **[02.31]** Histórico de Execuções e Data Vault (`/history`, `/data`, logs de tentativa, snapshot SQLite, JSON export/import com replace seguro, integridade)
+- [x] **[02.32]** Limpeza do Código Legado, Testes e Validação de Build (exclusão de `*.svelte`, testes Python/Playwright, mypy/ruff, Docker build)
 
 
 ---
