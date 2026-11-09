@@ -7,11 +7,13 @@
 
 ## Active Task
 
-- **Task:** [02.34] Remove fabricated operational state and correct domain mappings.
+- **Task:** [02.35] Bind authenticated reads, filters and exports.
 - **Status:** `RUNNING`
 - **Next Step:** Implement the approved scope in [WEB_UI_REAL_DATA_PLAN.md](WEB_UI_REAL_DATA_PLAN.md).
 
 ## Completed Tasks Log
+
+- [02.34] Replaced fixture-backed initial state and fabricated read metrics with explicit resource states | [`638038a`] | 2026-11-09 | 5 targeted browser tests, 247 Python tests, mypy, Ruff, frontend checks/build and diff check pass; remaining mutation and history fallbacks belong to later tasks
 
 - [02.33] Inventoried React UI and established browser-test baseline | [`397eeed`] | 2026-11-09 | 247 Python tests, mypy, Ruff, frontend check/build and diff check pass; browser suite interrupted after four failures on missing `#scr-jobs`
 
@@ -77,7 +79,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 ## Backlog (Upcoming, in priority order)
 
-- [ ] **[02.35]** Bind authenticated reads, filters and exports
 - [ ] **[02.36]** Make job and group mutations authoritative
 - [ ] **[02.37]** Correct contact and template workflows
 - [ ] **[02.38]** Restore real agenda views and controls
