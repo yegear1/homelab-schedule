@@ -7,13 +7,15 @@
 
 ## Active Task
 
-- **Task:** [02.29] Workspaces de Contatos e Templates (`/contacts`, `/templates`, CRUD real, modal de conflito 409)
+- **Task:** [02.30] Agenda Operacional, Composer e Inspetor de Jobs (`/jobs`, filtros, criação single/batch, lifecycle 202, imutabilidade YAML, CSV)
 - **Status:** `READY FOR PLANNING`
-- **Next Step:** Present implementation plan to wire Contacts and Templates features directly to real `api.ts` CRUD endpoints.
+- **Next Step:** Present implementation plan to wire Agenda views, composer, inspector, lifecycle actions and CSV export to live API.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.29] Wired contacts and templates workspaces to live API with 409 conflict handling | [`3d2be3d`] | 2026-11-09 | tsc check, Vite build, 22 python auth/spa tests, mypy, Ruff and diff check: exit 0
 
 - [02.28] Wired AppShell, browser history routing, and live AccessDialog connection ping | [`2527b74`] | 2026-11-09 | tsc check, Vite build, 22 python auth/spa tests, mypy, Ruff and diff check: exit 0
 
