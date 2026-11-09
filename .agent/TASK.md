@@ -7,13 +7,15 @@
 
 ## Active Task
 
-- **Task:** [02.31] Histórico de Execuções e Data Vault (`/history`, `/data`, logs de tentativa, snapshot SQLite, JSON export/import com replace seguro, integridade)
+- **Task:** [02.32] Limpeza do Código Legado, Testes e Validação de Build (exclusão de `*.svelte`, testes Python/Playwright, mypy/ruff, Docker build)
 - **Status:** `READY FOR PLANNING`
-- **Next Step:** Present implementation plan to wire History runs and Data Vault snapshot, export/import, and integrity check to live API.
+- **Next Step:** Present implementation plan to clean legacy Svelte code, update build/test scripts, and validate Docker build.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.31] Wired execution history audit ledger and data vault to live API endpoints | [`579f23b`] | 2026-11-09 | tsc check, Vite build, 247 python tests, mypy, Ruff and diff check: exit 0
 
 - [02.30] Wired operational agenda, composer, inspector, and lifecycle actions to live API | [`d0eebd8`] | 2026-11-09 | tsc check, Vite build, 247 python tests, mypy, Ruff and diff check: exit 0
 
