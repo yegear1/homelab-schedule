@@ -267,11 +267,14 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
 
             {/* Error banner if last execution failed */}
             {currentJob.last_error && (
-              <div className="mt-4 p-3 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 text-xs flex items-start gap-2">
+              <div id="detail-dead-letter-box" className="mt-4 p-3 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 text-xs flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-rose-500" />
                 <div>
                   <span className="font-semibold block font-mono">Last Dispatch Failed</span>
-                  <span className="font-mono text-[11px]">{currentJob.last_error}</span>
+                  <span id="detail-dead-letter-error" className="font-mono text-[11px]">{currentJob.last_error}</span>
+                  <span id="detail-dead-letter-retries" className="block text-[10px] mt-0.5 opacity-80">
+                    Tentativas: {currentJob.retry_count ?? 0}
+                  </span>
                 </div>
               </div>
             )}
@@ -328,7 +331,7 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
 
                 {/* Variable table */}
                 {currentJob.variables && Object.keys(currentJob.variables).length > 0 && (
-                  <div>
+                  <div id="detail-variables-card">
                     <span className="text-[11px] font-medium text-muted-foreground block mb-1">
                       Template Variables
                     </span>
@@ -344,7 +347,7 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
                 )}
 
                 {/* Lifecycle counters */}
-                <div className="grid grid-cols-3 gap-2 p-3 bg-muted/30 rounded-lg border border-border font-mono">
+                <div id="detail-runs" className="grid grid-cols-3 gap-2 p-3 bg-muted/30 rounded-lg border border-border font-mono">
                   <div>
                     <span className="text-[10px] text-muted-foreground block">Executed</span>
                     <span className="text-sm font-bold tabular-nums">{currentJob.runs_executed}</span>
@@ -356,6 +359,16 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
                   <div>
                     <span className="text-[10px] text-muted-foreground block">Max Runs</span>
                     <span className="text-sm font-bold tabular-nums">{currentJob.max_runs ?? '∞'}</span>
+                  </div>
+                </div>
+
+                {/* Tags Card */}
+                <div id="detail-tags-card" className="space-y-1">
+                  <span className="text-[11px] font-medium text-muted-foreground block mb-1">Tags</span>
+                  <div className="flex flex-wrap gap-1">
+                    {currentJob.tags?.map((t) => (
+                      <span key={t} className="px-2 py-0.5 rounded text-xs bg-muted font-mono">#{t}</span>
+                    ))}
                   </div>
                 </div>
 
@@ -373,6 +386,10 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
                     <span>Schedule</span>
                     <span className="font-mono text-foreground">{currentJob.kind === 'cron' ? currentJob.cron_expr : 'One-off'}</span>
                   </div>
+                  <div id="detail-until" className="flex justify-between">
+                    <span>Until</span>
+                    <span className="font-mono text-foreground">{currentJob.until || 'Indefinite'}</span>
+                  </div>
                   {currentJob.snooze_until && (
                     <div className="flex justify-between text-purple-400">
                       <span>Snooze until</span>
@@ -384,56 +401,110 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
             )}
 
             {activeTab === 'history' && (
-              <div className="mt-4 space-y-2">
+              <div id="detail-runs-section" className="mt-4 space-y-2">
+                <div className="flex items-center justify-between pb-1">
+                  <span className="text-xs font-semibold text-foreground">Histórico de Disparos</span>
+                  <button
+                    type="button"
+                    id="btn-refresh-runs"
+                    onClick={() => {
+                      if (!job) return;
+                      setLoadingRuns(true);
+                      api.getJobRuns(job.id, 20)
+                        .then((runs) => {
+                          setAuditRuns(
+                            runs.map((r) => ({
+                              id: r.id,
+                              job_id: r.job_id,
+                              job_title: job.title,
+                              recipient: job.recipient,
+                              timestamp: r.ran_at ? r.ran_at.replace('T', ' ').substring(0, 19) : '',
+                              status_code: r.status_code,
+                              status: r.status === 'success' ? 'success' : 'failed',
+                              duration_ms: Math.round(r.duration_ms),
+                              payload_preview: '',
+                              error_message: r.error_message || undefined,
+                            }))
+                          );
+                        })
+                        .finally(() => setLoadingRuns(false));
+                    }}
+                    className="p-1 text-muted-foreground hover:text-foreground"
+                    title="Refresh runs"
+                  >
+                    <RotateCw size={12} className={loadingRuns ? 'animate-spin' : ''} />
+                  </button>
+                </div>
                 {loadingRuns ? (
-                  <div className="py-8 flex justify-center">
+                  <div id="runs-loading" className="py-8 flex justify-center">
                     <Loader2 className="animate-spin h-5 w-5 text-sky-500" />
                   </div>
                 ) : auditRuns.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-6 text-center font-mono">
+                  <p id="runs-empty" className="text-xs text-muted-foreground py-6 text-center font-mono">
                     No recorded execution history for this task.
                   </p>
                 ) : (
-                  auditRuns.map((run) => (
-                    <div key={run.id} className="p-3 rounded-lg border border-border bg-background text-xs space-y-1">
-                      <div className="flex items-center justify-between font-mono">
-                        <span className={run.status === 'success' ? 'text-emerald-500 font-semibold' : 'text-rose-500 font-semibold'}>
-                          HTTP {run.status_code} {run.status === 'success' ? 'Accepted' : 'Failed'}
-                        </span>
-                        <span className="text-muted-foreground text-[11px]">{run.duration_ms}ms</span>
+                  <div id="runs-list" className="space-y-2">
+                    {auditRuns.map((run) => (
+                      <div key={run.id} className="p-3 rounded-lg border border-border bg-background text-xs space-y-1">
+                        <div className="flex items-center justify-between font-mono">
+                          <span className={run.status === 'success' ? 'text-emerald-500 font-semibold' : 'text-rose-500 font-semibold'}>
+                            HTTP {run.status_code} {run.status === 'success' ? 'Accepted' : 'Failed'}
+                          </span>
+                          <span className="text-muted-foreground text-[11px]">{run.duration_ms.toFixed(1)}ms</span>
+                        </div>
+                        <div className="text-muted-foreground font-mono text-[11px]">{run.timestamp}</div>
+                        {run.error_message && (
+                          <div className="text-rose-400 font-mono text-[10px] pt-1">{run.error_message}</div>
+                        )}
                       </div>
-                      <div className="text-muted-foreground font-mono text-[11px]">{run.timestamp}</div>
-                      {run.error_message && (
-                        <div className="text-rose-400 font-mono text-[10px] pt-1">{run.error_message}</div>
-                      )}
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             )}
 
             {activeTab === 'projection' && (
-              <div className="mt-4 space-y-2 text-xs">
-                <span className="text-[11px] text-muted-foreground block mb-2">
-                  Next Planned Trigger Dispatches (UTC)
-                </span>
+              <div id="detail-upcoming-card" className="mt-4 space-y-2 text-xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] text-muted-foreground">
+                    Next Planned Trigger Dispatches (UTC)
+                  </span>
+                  <button
+                    type="button"
+                    id="btn-refresh-upcoming"
+                    onClick={() => {
+                      if (!job) return;
+                      setLoadingUpcoming(true);
+                      api.getUpcomingRuns(job.id, 5)
+                        .then((res) => setUpcomingRuns(res.runs))
+                        .finally(() => setLoadingUpcoming(false));
+                    }}
+                    className="p-1 text-muted-foreground hover:text-foreground"
+                    title="Refresh upcoming"
+                  >
+                    <RotateCw size={12} className={loadingUpcoming ? 'animate-spin' : ''} />
+                  </button>
+                </div>
                 {loadingUpcoming ? (
-                  <div className="py-8 flex justify-center">
+                  <div id="upcoming-loading" className="py-8 flex justify-center">
                     <Loader2 className="animate-spin h-5 w-5 text-sky-500" />
                   </div>
                 ) : upcomingRuns.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-6 text-center font-mono">
+                  <p id="upcoming-empty" className="text-xs text-muted-foreground py-6 text-center font-mono">
                     No upcoming runs projected for this task.
                   </p>
                 ) : (
-                  upcomingRuns.map((p, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-background font-mono text-[11px]">
-                      <span className="text-muted-foreground">Run #{currentJob.runs_executed + idx + 1}</span>
-                      <span className="text-sky-500 font-medium">
-                        {p.formatted_date || p.run_at_local || p.run_at} {p.time_local ? `(${p.time_local})` : ''}
-                      </span>
-                    </div>
-                  ))
+                  <div id="upcoming-list" className="space-y-1.5">
+                    {upcomingRuns.map((p, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-background font-mono text-[11px]">
+                        <span className="text-muted-foreground">Run #{currentJob.runs_executed + idx + 1}</span>
+                        <span className="text-sky-500 font-medium">
+                          {p.formatted_date || p.run_at_local || p.run_at} {p.time_local ? `(${p.time_local})` : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -445,9 +516,10 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
             {currentJob.status === 'error' && (
               <button
                 type="button"
+                id="btn-dead-letter-retry"
                 disabled={isYaml || isBusy}
                 onClick={handleRetry}
-                className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors min-h-[44px] active:scale-[0.98] ${
+                className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors min-h-[44px] active:scale-[0.98] btn-detail-retry ${
                   isYaml ? 'opacity-40 cursor-not-allowed' : ''
                 }`}
               >
@@ -459,6 +531,7 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
+                id="btn-dead-letter-run-now"
                 disabled={isBusy}
                 onClick={handleRunNow}
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] disabled:opacity-50"
@@ -468,6 +541,7 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
               </button>
               <button
                 type="button"
+                id={currentJob.status === 'paused' ? 'btn-detail-resume' : 'btn-detail-pause'}
                 disabled={isYaml || isBusy}
                 onClick={handleTogglePause}
                 className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border transition-colors min-h-[44px] active:scale-[0.98] ${
@@ -483,6 +557,7 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
               {/* Snooze Presets */}
               <button
                 type="button"
+                id="btn-detail-snooze"
                 disabled={isYaml || isBusy}
                 onClick={() => handleSnooze('+1h')}
                 className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border transition-colors min-h-[44px] active:scale-[0.98] ${

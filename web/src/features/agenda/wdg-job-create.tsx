@@ -756,6 +756,7 @@ export function JobCreate({
                         Max Runs (Optional)
                       </label>
                       <input
+                        id="create-max-runs"
                         type="number"
                         min={1}
                         value={maxRuns || ''}
@@ -771,6 +772,7 @@ export function JobCreate({
                         Until Expiration
                       </label>
                       <input
+                        id="create-until"
                         type="date"
                         value={until}
                         onChange={(e) => setUntil(e.target.value)}
@@ -780,13 +782,14 @@ export function JobCreate({
                   </div>
 
                   {/* Variable mapper */}
-                  <div>
+                  <div id="section-custom-variables">
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[11px] text-muted-foreground">
                         Template Variables
                       </label>
                       <button
                         type="button"
+                        id="btn-add-var"
                         onClick={handleAddVariable}
                         className="text-[11px] text-sky-500 hover:underline flex items-center gap-0.5"
                       >
@@ -797,6 +800,7 @@ export function JobCreate({
                       <div key={i} className="flex items-center gap-1.5 mb-1.5">
                         <input
                           type="text"
+                          id={i === 0 ? 'input-var-key' : undefined}
                           placeholder="key"
                           value={v.key}
                           onChange={(e) => handleVariableChange(i, 'key', e.target.value)}
@@ -804,6 +808,7 @@ export function JobCreate({
                         />
                         <input
                           type="text"
+                          id={i === 0 ? 'input-var-value' : undefined}
                           placeholder="value"
                           value={v.val}
                           onChange={(e) => handleVariableChange(i, 'val', e.target.value)}
@@ -811,6 +816,28 @@ export function JobCreate({
                         />
                       </div>
                     ))}
+                  </div>
+
+                  {/* Tags section */}
+                  <div id="section-tags">
+                    <label className="block text-[11px] text-muted-foreground mb-1">
+                      Tags
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        id="input-tag"
+                        placeholder="e.g. alerts, critical"
+                        className="flex-1 px-2.5 py-1.5 text-xs rounded-md border border-border bg-background font-mono text-foreground"
+                      />
+                      <button
+                        type="button"
+                        id="btn-add-tag"
+                        className="px-3 py-1.5 text-xs bg-muted hover:bg-accent rounded-md border border-border"
+                      >
+                        Add Tag
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

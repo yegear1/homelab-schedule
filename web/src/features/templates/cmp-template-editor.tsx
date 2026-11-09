@@ -182,7 +182,7 @@ export function TemplateEditor({
 
         {/* Real-time Unknown Token Validation Warnings */}
         {unknownPlaceholders.length > 0 && (
-          <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs font-mono space-y-1">
+          <div id="unknown-tags-warning" className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs font-mono space-y-1">
             <div className="flex items-center gap-1.5 font-semibold">
               <AlertTriangle size={14} className="shrink-0" />
               <span>Custom Dictionary Variable Detected</span>

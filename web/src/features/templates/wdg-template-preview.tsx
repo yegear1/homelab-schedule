@@ -29,7 +29,7 @@ export function TemplatePreview({ body, templateName }: TemplatePreviewProps) {
       <div className="p-3 bg-muted/30 border-b border-border flex items-center justify-between text-xs font-medium text-muted-foreground">
         <div className="flex items-center gap-2">
           <Smartphone size={14} className="text-sky-500" />
-          <span>Live WhatsApp Notification Simulation</span>
+          <span>Live WhatsApp Notification Simulation (Prévia ilustrativa)</span>
         </div>
         <span className="font-mono text-[11px] text-foreground">
           Recipient: Carlos (+5511988887777)
@@ -37,7 +37,7 @@ export function TemplatePreview({ body, templateName }: TemplatePreviewProps) {
       </div>
 
       {/* Simulated Mobile Chat Screen Viewport */}
-      <div className="p-4 md:p-6 bg-muted/20 flex flex-col justify-center min-h-[160px]">
+      <div id="live-preview-box" className="p-4 md:p-6 bg-muted/20 flex flex-col justify-center min-h-[160px]">
         {/* Chat bubble */}
         <div className="max-w-md w-full mx-auto bg-card border border-border p-4 rounded-2xl rounded-tl-xs shadow-xs space-y-2">
           {templateName && (

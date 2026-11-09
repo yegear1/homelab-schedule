@@ -94,6 +94,7 @@ export function KpiSummary({ onFilterErrors }: KpiSummaryProps) {
 
       {/* 3. Pending Errors / Retries */}
       <div
+        id="card-metric-errors"
         onClick={onFilterErrors}
         className={`p-4 rounded-xl border bg-card text-card-foreground shadow-xs flex flex-col justify-between transition-colors ${
           errorCount > 0

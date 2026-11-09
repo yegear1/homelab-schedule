@@ -85,6 +85,7 @@ export function AgendaFilters({ onOpenCreate }: AgendaFiltersProps) {
           {/* Tag Dropdown Filter */}
           <div className="relative min-w-[130px]">
             <select
+              id="filter-tag"
               value={selectedTag || ''}
               onChange={(e) => setSelectedTag(e.target.value || null)}
               className="w-full appearance-none px-3 py-2 text-xs rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500 min-h-[44px] cursor-pointer"
@@ -103,9 +104,10 @@ export function AgendaFilters({ onOpenCreate }: AgendaFiltersProps) {
         {/* Right: View Toggles & Actions */}
         <div className="flex items-center gap-2 self-end lg:self-auto shrink-0">
           {/* View Mode Switcher */}
-          <div className="flex items-center p-1 bg-muted border border-border rounded-lg">
+          <div id="view-mode-switcher" className="flex items-center p-1 bg-muted border border-border rounded-lg">
             <button
               type="button"
+              id="tab-view-table"
               onClick={() => setViewMode('table')}
               className={`p-2 rounded-md text-xs font-medium transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${
                 viewMode === 'table'
@@ -118,6 +120,7 @@ export function AgendaFilters({ onOpenCreate }: AgendaFiltersProps) {
             </button>
             <button
               type="button"
+              id="tab-view-timeline"
               onClick={() => setViewMode('timeline')}
               className={`p-2 rounded-md text-xs font-medium transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${
                 viewMode === 'timeline'
@@ -130,6 +133,7 @@ export function AgendaFilters({ onOpenCreate }: AgendaFiltersProps) {
             </button>
             <button
               type="button"
+              id="tab-view-calendar"
               onClick={() => setViewMode('calendar')}
               className={`p-2 rounded-md text-xs font-medium transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${
                 viewMode === 'calendar'

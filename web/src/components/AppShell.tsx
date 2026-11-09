@@ -152,6 +152,7 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
               <button
                 key={item.path}
                 type="button"
+                id={item.path === '/data' ? 'btn-open-backup-modal-sidebar' : undefined}
                 onClick={() => onNavigate(item.path)}
                 title={isSidebarCollapsed ? item.label : undefined}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px] active:scale-[0.98] ${
@@ -315,6 +316,7 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
             <button
               key={item.path}
               type="button"
+              id={item.path === '/data' ? 'btn-open-backup-modal-header' : undefined}
               onClick={() => onNavigate(item.path)}
               className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-lg min-h-[48px] min-w-[48px] transition-colors active:scale-[0.98] ${
                 isActive ? 'text-sky-500 font-medium' : 'text-muted-foreground'

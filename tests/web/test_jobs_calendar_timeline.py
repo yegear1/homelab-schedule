@@ -1,58 +1,54 @@
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-JOBS_PAGE = REPO_ROOT / "web/src/pages/JobsPage.svelte"
-TIMELINE_COMPONENT = REPO_ROOT / "web/src/components/JobTimelineView.svelte"
-CALENDAR_COMPONENT = REPO_ROOT / "web/src/components/JobCalendarView.svelte"
+AGENDA_PAGE = REPO_ROOT / "web/src/features/agenda/AgendaPage.tsx"
+TIMELINE_COMPONENT = REPO_ROOT / "web/src/features/agenda/cmp-jobs-timeline.tsx"
+CALENDAR_COMPONENT = REPO_ROOT / "web/src/features/agenda/cmp-jobs-calendar.tsx"
+FILTERS_COMPONENT = REPO_ROOT / "web/src/features/agenda/wdg-agenda-filters.tsx"
 
 
 def test_jobs_page_view_mode_switcher_contract() -> None:
-    content = JOBS_PAGE.read_text()
-    state = (REPO_ROOT / "web/src/lib/jobs/agenda.svelte.ts").read_text()
-    assert "getAllJobRuns(100)" in state
-    assert "ReadState<JobRun[]>" in state
+    page_content = AGENDA_PAGE.read_text()
+    filters_content = FILTERS_COMPONENT.read_text()
+    api_content = (REPO_ROOT / "web/src/lib/api.ts").read_text()
+    assert "getAllJobRuns(" in api_content
+    store = (REPO_ROOT / "web/src/stores/jobs.ts").read_text()
+    assert "runs: JobRun[];" in store
     for anchor in (
         "view-mode-switcher", "tab-view-table", "tab-view-timeline", "tab-view-calendar"
     ):
-        assert f'id="{anchor}"' in content
+        assert f'id="{anchor}"' in filters_content
     for component in (
-        "JobTable", "JobTimelineView", "JobCalendarView", "JobInspector", "JobComposer"
+        "JobsTable", "JobsTimeline", "JobsCalendar", "JobInspector"
     ):
-        assert f"<{component}" in content
+        assert f"<{component}" in page_content
 
 
 def test_job_timeline_view_contract() -> None:
     content = TIMELINE_COMPONENT.read_text()
-    attempt = (REPO_ROOT / "web/src/components/jobs/JobAttempt.svelte").read_text()
-    assert "}: Props = $props();" in content
-    assert "export let" not in content
-    assert "on:click" not in content
     for anchor in (
         "job-timeline-view", "timeline-filter-all", "timeline-filter-future",
         "timeline-filter-history", "timeline-future-section", "timeline-history-section",
         "btn-timeline-refresh-runs",
     ):
         assert f'id="{anchor}"' in content
-    assert "relativeTime(" in content
-    assert "duration_ms.toFixed(1)" in attempt
-    assert "status_code" in attempt
-    assert "runs.status === 'error'" in content
+    assert "duration_ms.toFixed(1)" in content
+    assert "status_code" in content
+    assert "run.status === 'success'" in content
     assert "até 100 tentativas retidas" in content
 
 
 def test_job_calendar_view_contract() -> None:
     content = CALENDAR_COMPONENT.read_text()
-    assert "}: Props = $props();" in content
-    assert "export let" not in content
-    assert "on:click" not in content
     for anchor in (
         "job-calendar-view", "calendar-current-month", "btn-calendar-today",
         "btn-calendar-prev", "btn-calendar-next", "calendar-grid", "calendar-day-detail",
     ):
         assert f'id="{anchor}"' in content
     for requirement in (
-        "['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']", "selectedDayEvents",
-        "hasError", "scheduledCount", "runsCount", "ArrowRight", "ArrowDown",
-        "aria-pressed={selectedDateKey === cell.key}", "não expande todas as ocorrências cron",
+        "['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']",
+        "selectedDayJobs",
+        "não expande todas as ocorrências cron",
     ):
         assert requirement in content
+

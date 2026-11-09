@@ -27,7 +27,7 @@ export interface JobsTableProps {
 }
 
 export function JobsTable({ jobs, onInspect }: JobsTableProps) {
-  const { runJobNow, togglePauseResume, snoozeJob } = useJobsStore();
+  const { runJobNow, togglePauseResume, snoozeJob, togglePauseResumeGroup, snoozeGroup } = useJobsStore();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   // Group batch jobs by group_id if present
@@ -110,11 +110,16 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
             {job.tags.map((t) => (
               <span key={t} className="font-mono">#{t}</span>
             ))}
+            {job.variables && Object.keys(job.variables).length > 0 && (
+              <span id="badge-variable-count" className="font-mono text-sky-500">
+                · {Object.keys(job.variables).length} vars
+              </span>
+            )}
             {job.last_error && (
               <>
                 <span>·</span>
                 <span className="text-rose-500 truncate font-mono max-w-[200px]" title={job.last_error}>
-                  {job.last_error}
+                  Falha na execução: {job.last_error}
                 </span>
               </>
             )}
@@ -226,6 +231,8 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
             return (
               <Fragment key={groupId}>
                 <tr
+                  data-group-id={groupId}
+                  aria-expanded={isExpanded}
                   onClick={() => toggleGroup(groupId)}
                   className="bg-muted/30 hover:bg-muted/50 cursor-pointer border-b border-border"
                 >
@@ -241,9 +248,35 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
                           ({batchJobs.length} recipients · {primaryJob.title})
                         </span>
                       </div>
-                      <span className="text-[11px] font-mono text-muted-foreground">
-                        Click to {isExpanded ? 'collapse' : 'expand'}
-                      </span>
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          id="btn-group-pause-all"
+                          onClick={() => togglePauseResumeGroup(groupId, true)}
+                          className="px-2 py-1 text-[11px] font-medium rounded border border-border bg-card hover:bg-muted"
+                        >
+                          Pause All
+                        </button>
+                        <button
+                          type="button"
+                          id="btn-group-resume-all"
+                          onClick={() => togglePauseResumeGroup(groupId, false)}
+                          className="px-2 py-1 text-[11px] font-medium rounded border border-border bg-card hover:bg-muted"
+                        >
+                          Resume All
+                        </button>
+                        <button
+                          type="button"
+                          id="btn-group-snooze-all"
+                          onClick={() => snoozeGroup(groupId, '1h')}
+                          className="px-2 py-1 text-[11px] font-medium rounded border border-border bg-card hover:bg-muted"
+                        >
+                          Snooze All
+                        </button>
+                        <span className="text-[11px] font-mono text-muted-foreground ml-2">
+                          Click to {isExpanded ? 'collapse' : 'expand'}
+                        </span>
+                      </div>
                     </div>
                   </td>
                 </tr>

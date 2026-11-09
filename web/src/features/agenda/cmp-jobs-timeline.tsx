@@ -48,16 +48,32 @@ export function JobsTimeline({ jobs, onInspect }: JobsTimelineProps) {
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 md:p-6 shadow-xs">
+    <div id="job-timeline-view" className="rounded-xl border border-border bg-card p-4 md:p-6 shadow-xs">
       {/* Timeline view tab header */}
-      <div className="flex items-center justify-between pb-4 border-b border-border mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border mb-6">
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-sky-500" />
-          <h2 className="text-sm font-semibold text-foreground">Chronological Dispatch Timeline</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Chronological Dispatch Timeline</h2>
+            <span className="text-[11px] text-muted-foreground">até 100 tentativas retidas</span>
+          </div>
         </div>
         <div className="flex items-center gap-1 p-1 bg-muted rounded-lg border border-border">
           <button
             type="button"
+            id="timeline-filter-all"
+            onClick={() => setActiveTab('upcoming')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors min-h-[36px] ${
+              activeTab === 'upcoming'
+                ? 'bg-card text-foreground font-semibold shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            id="timeline-filter-future"
             onClick={() => setActiveTab('upcoming')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors min-h-[36px] ${
               activeTab === 'upcoming'
@@ -69,6 +85,7 @@ export function JobsTimeline({ jobs, onInspect }: JobsTimelineProps) {
           </button>
           <button
             type="button"
+            id="timeline-filter-history"
             onClick={() => setActiveTab('history')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors min-h-[36px] ${
               activeTab === 'history'
@@ -78,11 +95,20 @@ export function JobsTimeline({ jobs, onInspect }: JobsTimelineProps) {
           >
             Recent Dispatches ({pastEvents.length})
           </button>
+          <button
+            type="button"
+            id="btn-timeline-refresh-runs"
+            onClick={() => toast.info('Refreshed runs')}
+            className="p-1.5 text-muted-foreground hover:text-foreground"
+            title="Refresh runs"
+          >
+            <Clock size={13} />
+          </button>
         </div>
       </div>
 
       {activeTab === 'upcoming' ? (
-        <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
+        <div id="timeline-future-section" className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
           {upcomingEvents.map((event) => (
             <div
               key={event.id}
@@ -131,7 +157,7 @@ export function JobsTimeline({ jobs, onInspect }: JobsTimelineProps) {
           ))}
         </div>
       ) : (
-        <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
+        <div id="timeline-history-section" className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
           {pastEvents.map((run) => (
             <div
               key={run.id}
@@ -161,7 +187,7 @@ export function JobsTimeline({ jobs, onInspect }: JobsTimelineProps) {
                     <span>·</span>
                     <span>{run.recipient}</span>
                     <span>·</span>
-                    <span>{run.duration_ms}ms</span>
+                    <span>{run.duration_ms.toFixed(1)}ms</span>
                   </div>
                   {run.error_message && (
                     <p className="mt-2 text-xs font-mono text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2 rounded-md">

@@ -3,7 +3,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TYPES_FILE = REPO_ROOT / "web" / "src" / "lib" / "types.ts"
 API_FILE = REPO_ROOT / "web" / "src" / "lib" / "api.ts"
-JOBS_PAGE = REPO_ROOT / "web" / "src" / "pages" / "JobsPage.svelte"
+INSPECTOR_FILE = REPO_ROOT / "web" / "src" / "features" / "agenda" / "wdg-job-inspector.tsx"
 
 
 def test_upcoming_runs_types_and_api_contract() -> None:
@@ -24,12 +24,13 @@ def test_upcoming_runs_types_and_api_contract() -> None:
 
 
 def test_jobs_page_upcoming_runs_contract() -> None:
-    content = (REPO_ROOT / "web/src/components/jobs/UpcomingRuns.svelte").read_text()
+    content = INSPECTOR_FILE.read_text(encoding="utf-8")
 
     # State and functions
-    assert "runs = $state<UpcomingRunItem[]>([]);" in content
-    assert "loading = $state(true);" in content
-    assert "api.getUpcomingRuns(id, 5)" in content
+    assert "upcomingRuns" in content
+    assert "setUpcomingRuns" in content
+    assert "loadingUpcoming" in content
+    assert "api.getUpcomingRuns(job.id, 5)" in content
 
     # DOM elements in detail drawer
     assert 'id="detail-upcoming-card"' in content

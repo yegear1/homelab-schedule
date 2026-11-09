@@ -157,6 +157,7 @@ export function BackupExportCard() {
 
           <button
             type="button"
+            id="btn-download-sqlite"
             onClick={handleDownloadSqlite}
             disabled={isExportingSqlite}
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] shadow-xs"
@@ -166,7 +167,7 @@ export function BackupExportCard() {
             ) : (
               <Download size={15} />
             )}
-            <span>Download .sqlite3 Snapshot</span>
+            <span>Download .sqlite3 Snapshot (Snapshot físico)</span>
           </button>
         </div>
 
@@ -176,7 +177,7 @@ export function BackupExportCard() {
             <div className="flex items-center gap-2">
               <FileDown className="h-4 w-4 text-emerald-500" />
               <h3 className="text-sm font-semibold text-foreground">
-                Portable JSON Data Bundle
+                Portable JSON Data Bundle (Exportar JSON)
               </h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -199,6 +200,7 @@ export function BackupExportCard() {
 
           <button
             type="button"
+            id="btn-export-json"
             onClick={handleDownloadJson}
             disabled={isExportingJson}
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors min-h-[44px] active:scale-[0.98]"
@@ -208,7 +210,7 @@ export function BackupExportCard() {
             ) : (
               <Download size={15} />
             )}
-            <span>Download JSON Export</span>
+            <span>Download JSON Export (Exportar JSON)</span>
           </button>
         </div>
       </div>

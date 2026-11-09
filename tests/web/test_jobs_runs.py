@@ -1,13 +1,13 @@
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-JOBS_PAGE = REPO_ROOT / "web" / "src" / "pages" / "JobsPage.svelte"
 API_TS = REPO_ROOT / "web" / "src" / "lib" / "api.ts"
 TYPES_TS = REPO_ROOT / "web" / "src" / "lib" / "types.ts"
 
 
 def test_jobs_page_implements_job_runs_audit_contract() -> None:
-    page_content = (REPO_ROOT / "web/src/components/jobs/RunHistory.svelte").read_text()
+    inspector_file = REPO_ROOT / "web/src/features/agenda/wdg-job-inspector.tsx"
+    page_content = inspector_file.read_text(encoding="utf-8")
     api_content = API_TS.read_text(encoding="utf-8")
     types_content = TYPES_TS.read_text(encoding="utf-8")
 
@@ -24,9 +24,9 @@ def test_jobs_page_implements_job_runs_audit_contract() -> None:
     assert "getAllJobRuns(limit: number = 50, status?: string): Promise<JobRun[]>" in api_content
 
     # Verify JobsPage state and loading
-    assert "runs = $state<JobRun[]>([]);" in page_content
-    assert "loading = $state(true);" in page_content
-    assert "api.getJobRuns(id, 20)" in page_content
+    assert "setAuditRuns" in page_content
+    assert "setLoadingRuns" in page_content
+    assert "api.getJobRuns(job.id, 20)" in page_content
 
     # Verify JobsPage drawer section elements
     assert 'id="detail-runs-section"' in page_content
@@ -36,3 +36,4 @@ def test_jobs_page_implements_job_runs_audit_contract() -> None:
     assert 'id="runs-list"' in page_content
     assert "Histórico de Disparos" in page_content
     assert "run.duration_ms.toFixed(1)" in page_content
+

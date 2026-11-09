@@ -2,7 +2,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TYPES_FILE = REPO_ROOT / "web" / "src" / "lib" / "types.ts"
-JOBS_PAGE = REPO_ROOT / "web" / "src" / "pages" / "JobsPage.svelte"
+AGENDA_DIR = REPO_ROOT / "web" / "src" / "features" / "agenda"
 
 
 def test_types_implements_variables_contract() -> None:
@@ -11,17 +11,14 @@ def test_types_implements_variables_contract() -> None:
 
 
 def test_jobs_page_implements_custom_variables_contract() -> None:
-    content = JOBS_PAGE.read_text(encoding="utf-8")
+    composer = (AGENDA_DIR / "wdg-job-create.tsx").read_text(encoding="utf-8")
+    assert 'id="section-custom-variables"' in composer
+    assert 'id="btn-add-var"' in composer
+    assert 'input-var-key' in composer
+    assert 'input-var-value' in composer
 
-    editor = (REPO_ROOT / "web/src/components/jobs/VariableEditor.svelte").read_text()
-    advanced = (REPO_ROOT / "web/src/components/jobs/JobAdvancedFields.svelte").read_text()
-    assert "<JobComposer" in content
-    assert "bind:entries={draft.variables}" in advanced
-    for anchor in ("section-custom-variables", "btn-add-var", "input-var-key", "input-var-value"):
-        assert f'id="{anchor}"' in editor
+    inspector = (AGENDA_DIR / "wdg-job-inspector.tsx").read_text(encoding="utf-8")
+    assert 'id="detail-variables-card"' in inspector
 
-    inspector = (REPO_ROOT / "web/src/components/jobs/JobInspector.svelte").read_text()
-    # Listing indicator and detail drawer inspector
-    summary = (REPO_ROOT / "web/src/components/jobs/JobSummary.svelte").read_text()
-    assert "badge-variable-count" in summary
-    assert "detail-variables-card" in inspector
+    table = (AGENDA_DIR / "cmp-jobs-table.tsx").read_text(encoding="utf-8")
+    assert 'id="badge-variable-count"' in table

@@ -1,18 +1,17 @@
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-APP_SHELL = REPO_ROOT / "web" / "src" / "layout" / "AppShell.svelte"
-BACKUP_MODAL = REPO_ROOT / "web" / "src" / "components" / "BackupModal.svelte"
+APP_SHELL = REPO_ROOT / "web" / "src" / "components" / "AppShell.tsx"
+DATA_PAGE = REPO_ROOT / "web" / "src" / "features" / "data" / "DataPage.tsx"
 API_TS = REPO_ROOT / "web" / "src" / "lib" / "api.ts"
 TYPES_TS = REPO_ROOT / "web" / "src" / "lib" / "types.ts"
 
 
 def test_backup_ui_and_api_contract() -> None:
     shell_content = APP_SHELL.read_text(encoding="utf-8")
-    modal_content = BACKUP_MODAL.read_text(encoding="utf-8")
-    data_content = (REPO_ROOT / "web/src/pages/DataPage.svelte").read_text()
-    components = REPO_ROOT / "web/src/components/data"
-    data_content += "".join(p.read_text() for p in components.glob("*.svelte"))
+    data_content = DATA_PAGE.read_text(encoding="utf-8")
+    components = REPO_ROOT / "web" / "src" / "features" / "data"
+    data_content += "".join(p.read_text(encoding="utf-8") for p in components.glob("*.tsx"))
     api_content = API_TS.read_text(encoding="utf-8")
     types_content = TYPES_TS.read_text(encoding="utf-8")
 
@@ -31,10 +30,10 @@ def test_backup_ui_and_api_contract() -> None:
     assert "checkIntegrity(): Promise<IntegrityCheckResponse>" in api_content
 
     # Entry anchors now navigate to Data; browser scenarios verify their behavior.
-    assert 'id="btn-open-backup-modal-sidebar"' in shell_content
-    assert 'id="btn-open-backup-modal-header"' in shell_content
-    assert "router.navigate('/data')" in shell_content
-    assert "router.navigate('/data')" in modal_content
+    assert "btn-open-backup-modal-sidebar" in shell_content
+    assert "btn-open-backup-modal-header" in shell_content
+    assert "onNavigate(item.path)" in shell_content
+    assert "path: '/data'" in shell_content
     for anchor in (
         "btn-download-sqlite", "btn-export-json", "input-import-file",
         "btn-execute-import", "btn-check-integrity",
@@ -42,3 +41,4 @@ def test_backup_ui_and_api_contract() -> None:
         assert f'id="{anchor}"' in data_content
     for label in ("Snapshot físico", "Exportar JSON", "Importar JSON", "Integridade"):
         assert label in data_content
+

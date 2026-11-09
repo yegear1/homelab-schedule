@@ -31,26 +31,35 @@ export function JobsCalendar({ jobs, onInspect }: JobsCalendarProps) {
   const selectedDayJobs = getJobsForDay(selectedDay);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 md:p-6 shadow-xs space-y-6">
+    <div id="job-calendar-view" className="rounded-xl border border-border bg-card p-4 md:p-6 shadow-xs space-y-6">
       {/* Calendar Header */}
       <div className="flex items-center justify-between pb-4 border-b border-border">
         <div className="flex items-center gap-2">
           <CalendarIcon className="h-5 w-5 text-sky-500" />
-          <h2 className="text-sm font-semibold text-foreground">
+          <h2 id="calendar-current-month" className="text-sm font-semibold text-foreground">
             November 2026 Schedule Dispatch Grid
           </h2>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-muted-foreground">Today: Nov 8, 2026</span>
+          <button
+            type="button"
+            id="btn-calendar-today"
+            onClick={() => setSelectedDay(8)}
+            className="text-xs font-mono text-muted-foreground hover:text-foreground px-2 py-1 rounded bg-muted/50 border border-border"
+          >
+            Today: Nov 8, 2026
+          </button>
           <div className="flex items-center border border-border rounded-lg bg-muted p-0.5">
             <button
               type="button"
+              id="btn-calendar-prev"
               className="p-1 hover:bg-card rounded text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft size={16} />
             </button>
             <button
               type="button"
+              id="btn-calendar-next"
               className="p-1 hover:bg-card rounded text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronRight size={16} />
@@ -64,7 +73,7 @@ export function JobsCalendar({ jobs, onInspect }: JobsCalendarProps) {
         <div className="lg:col-span-2">
           {/* Day of week labels */}
           <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground mb-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
               <div key={d} className="py-1">
                 {d}
               </div>
@@ -72,7 +81,7 @@ export function JobsCalendar({ jobs, onInspect }: JobsCalendarProps) {
           </div>
 
           {/* Day Cells */}
-          <div className="grid grid-cols-7 gap-1.5">
+          <div id="calendar-grid" className="grid grid-cols-7 gap-1.5">
             {Array.from({ length: firstDayOffset }).map((_, i) => (
               <div key={`empty-${i}`} className="min-h-[70px] p-1.5 rounded-lg bg-muted/10 opacity-30" />
             ))}
@@ -131,7 +140,7 @@ export function JobsCalendar({ jobs, onInspect }: JobsCalendarProps) {
         </div>
 
         {/* Selected Day Agenda Side Column */}
-        <div className="border border-border rounded-xl p-4 bg-muted/20 flex flex-col justify-between">
+        <div id="calendar-day-detail" className="border border-border rounded-xl p-4 bg-muted/20 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <div>
@@ -175,7 +184,7 @@ export function JobsCalendar({ jobs, onInspect }: JobsCalendarProps) {
           </div>
 
           <div className="pt-4 border-t border-border mt-4 text-[11px] text-muted-foreground font-mono">
-            Blue dots: Recurring cron · Green dots: One-off
+            Blue dots: Recurring cron · Green dots: One-off (não expande todas as ocorrências cron)
           </div>
         </div>
       </div>

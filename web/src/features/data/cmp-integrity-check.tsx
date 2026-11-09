@@ -69,7 +69,7 @@ export function IntegrityCheckCard() {
           <ShieldCheck className="h-5 w-5 text-emerald-500" />
           <div>
             <h2 className="text-base font-semibold text-foreground">
-              Database Integrity & Diagnostics
+              Database Integrity & Diagnostics (Integridade)
             </h2>
             <span className="text-xs font-mono text-muted-foreground">
               Endpoint: GET /backup/integrity
@@ -79,12 +79,13 @@ export function IntegrityCheckCard() {
 
         <button
           type="button"
+          id="btn-check-integrity"
           onClick={handleRunDiagnostics}
           disabled={isVerifying}
           className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] shadow-xs shrink-0 self-start sm:self-auto"
         >
           <RefreshCw size={14} className={isVerifying ? 'animate-spin' : ''} />
-          <span>Run Diagnostics</span>
+          <span>Run Diagnostics (Integridade)</span>
         </button>
       </div>
 
