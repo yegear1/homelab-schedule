@@ -7,11 +7,13 @@
 
 ## Active Task
 
-- **Task:** [02.36] Make job and group mutations authoritative.
+- **Task:** [02.37] Correct contact and template workflows.
 - **Status:** `READY FOR PLANNING`
 - **Next Step:** Plan and implement the approved scope in [WEB_UI_REAL_DATA_PLAN.md](WEB_UI_REAL_DATA_PLAN.md).
 
 ## Completed Tasks Log
+
+- [02.36] Removed local success fallbacks from job and group mutations; server acceptance now drives state, 202 is queued, and writes are never replayed after failed refresh | [`85c3b15`] | 2026-11-09 | 20 mutation browser tests (fail against pre-change code), 247 Python tests, mypy, Ruff, frontend check/build and diff check pass; legacy Svelte-era specs (agenda, composer, inspector, catalogs) still fail on missing legacy selectors and are reconciled in 02.38/02.42
 
 - [02.35] Bound agenda reads, filters, scoped contact jobs and CSV to one applied server query; removed local CSV fallbacks | [`431b1ac`] | 2026-11-09 | 7 targeted browser tests, 247 Python tests, mypy, Ruff, frontend check/build and diff check pass; legacy Svelte-era specs (agenda, foundation, shell, catalogs, composer, inspector, history-data) still fail on `#scr-*` selectors and are reconciled in later tasks; history CSV fallback removed, other history fallbacks belong to 02.39
 
