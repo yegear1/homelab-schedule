@@ -7,13 +7,15 @@
 
 ## Active Task
 
-- **Task:** [02.30] Agenda Operacional, Composer e Inspetor de Jobs (`/jobs`, filtros, criação single/batch, lifecycle 202, imutabilidade YAML, CSV)
+- **Task:** [02.31] Histórico de Execuções e Data Vault (`/history`, `/data`, logs de tentativa, snapshot SQLite, JSON export/import com replace seguro, integridade)
 - **Status:** `READY FOR PLANNING`
-- **Next Step:** Present implementation plan to wire Agenda views, composer, inspector, lifecycle actions and CSV export to live API.
+- **Next Step:** Present implementation plan to wire History runs and Data Vault snapshot, export/import, and integrity check to live API.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.30] Wired operational agenda, composer, inspector, and lifecycle actions to live API | [`d0eebd8`] | 2026-11-09 | tsc check, Vite build, 247 python tests, mypy, Ruff and diff check: exit 0
 
 - [02.29] Wired contacts and templates workspaces to live API with 409 conflict handling | [`3d2be3d`] | 2026-11-09 | tsc check, Vite build, 22 python auth/spa tests, mypy, Ruff and diff check: exit 0
 
