@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { AgendaViewMode, Contact, Job, JobRun, JobStatus, Template } from '../types/domain';
+import { api } from '../lib/api';
 import {
   INITIAL_AVAILABLE_TAGS,
   INITIAL_CONTACTS,
@@ -26,7 +27,7 @@ interface JobsState {
   selectedJobId: string | null;
   isInspectorOpen: boolean;
   isCreateOpen: boolean;
-  
+
   // Actions
   setViewMode: (mode: AgendaViewMode) => void;
   setStatusFilter: (status: 'all' | JobStatus) => void;
@@ -35,7 +36,7 @@ interface JobsState {
   openInspector: (jobId: string) => void;
   closeInspector: () => void;
   setIsCreateOpen: (open: boolean) => void;
-  
+
   // Job Operations
   runJobNow: (id: string) => Promise<boolean>;
   togglePauseResume: (id: string) => void;
@@ -46,9 +47,16 @@ interface JobsState {
   exportCsv: () => void;
 
   // Contact Operations
-  createContact: (contactData: { name: string; phone: string; role?: string; tags?: string[] }) => Contact;
-  updateContact: (id: string, updates: Partial<Contact>) => void;
-  deleteContact: (id: string) => void;
+  fetchContacts: () => Promise<void>;
+  createContact: (contactData: { name: string; phone: string; role?: string; tags?: string[] }) => Promise<Contact>;
+  updateContact: (id: string, updates: Partial<Contact>) => Promise<void>;
+  deleteContact: (id: string) => Promise<void>;
+
+  // Template Operations
+  fetchTemplates: () => Promise<void>;
+  createTemplate: (templateData: { name: string; body: string }) => Promise<Template>;
+  updateTemplate: (id: string, updates: { name?: string; body?: string }) => Promise<void>;
+  deleteTemplate: (id: string) => Promise<void>;
 }
 
 export const useJobsStore = create<JobsState>((set, get) => ({
@@ -69,7 +77,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   setStatusFilter: (status) => set({ statusFilter: status }),
   setSelectedTag: (tag) => set({ selectedTag: tag }),
   setSearchQuery: (query) => set({ searchQuery: query }),
-  
+
   openInspector: (jobId) => set({ selectedJobId: jobId, isInspectorOpen: true }),
   closeInspector: () => set({ isInspectorOpen: false, selectedJobId: null }),
   setIsCreateOpen: (open) => set({ isCreateOpen: open }),
@@ -174,7 +182,6 @@ export const useJobsStore = create<JobsState>((set, get) => ({
 
     const newJobs: Job[] = recipients.map((rawRecipient, idx) => {
       const trimmed = rawRecipient.trim();
-      // Match contact by phone, alias, or name
       const matched = currentContacts.find(
         (c) =>
           c.phone === trimmed ||
@@ -217,27 +224,75 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     }));
   },
 
-  createContact: (data) => {
-    const newContact: Contact = {
-      id: `cnt-${Date.now().toString(36)}`,
-      name: data.name,
-      alias: data.name,
-      phone: data.phone,
-      role: data.role || 'Resident',
-      tags: data.tags || ['custom'],
-      active_jobs: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      last_dispatch: 'Never',
-      active: true,
-    };
-    set((state) => ({
-      contacts: [newContact, ...state.contacts],
-    }));
-    return newContact;
+  fetchContacts: async () => {
+    try {
+      const raw = await api.getContacts();
+      const contacts: Contact[] = raw.map((c) => ({
+        id: c.id,
+        name: c.name,
+        alias: c.name,
+        phone: c.phone,
+        role: 'Resident',
+        tags: ['contact'],
+        active: true,
+        active_jobs: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+      set({ contacts });
+    } catch {
+      // Keep existing contacts on error
+    }
   },
 
-  updateContact: (id, updates) => {
+  createContact: async (data) => {
+    try {
+      const created = await api.createContact({ name: data.name, phone: data.phone });
+      const newContact: Contact = {
+        id: created.id,
+        name: created.name,
+        alias: created.name,
+        phone: created.phone,
+        role: data.role || 'Resident',
+        tags: data.tags || ['custom'],
+        active_jobs: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        last_dispatch: 'Never',
+        active: true,
+      };
+      set((state) => ({
+        contacts: [newContact, ...state.contacts],
+      }));
+      return newContact;
+    } catch {
+      // Fallback local creation if offline
+      const fallback: Contact = {
+        id: `cnt-${Date.now().toString(36)}`,
+        name: data.name,
+        alias: data.name,
+        phone: data.phone,
+        role: data.role || 'Resident',
+        tags: data.tags || ['custom'],
+        active_jobs: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        last_dispatch: 'Never',
+        active: true,
+      };
+      set((state) => ({
+        contacts: [fallback, ...state.contacts],
+      }));
+      return fallback;
+    }
+  },
+
+  updateContact: async (id, updates) => {
+    try {
+      await api.patchContact(id, { name: updates.name, phone: updates.phone });
+    } catch {
+      // Fallback local update
+    }
     set((state) => ({
       contacts: state.contacts.map((c) =>
         c.id === id ? { ...c, ...updates, updated_at: new Date().toISOString() } : c
@@ -245,9 +300,106 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     }));
   },
 
-  deleteContact: (id) => {
+  deleteContact: async (id) => {
+    await api.deleteContact(id);
     set((state) => ({
       contacts: state.contacts.filter((c) => c.id !== id),
+    }));
+  },
+
+  fetchTemplates: async () => {
+    try {
+      const raw = await api.getTemplates();
+      const templates: Template[] = raw.map((t) => {
+        const placeholders = (t.body.match(/\{\{([^}]+)\}\}/g) || []).map((m) =>
+          m.replace(/[{}]/g, '').trim()
+        );
+        return {
+          id: t.id,
+          name: t.name,
+          content: t.body,
+          body: t.body,
+          variables: placeholders,
+          placeholders,
+          category: 'general',
+          updated_at: new Date().toISOString(),
+        };
+      });
+      set({ templates });
+    } catch {
+      // Keep existing templates on error
+    }
+  },
+
+  createTemplate: async (data) => {
+    try {
+      const created = await api.createTemplate({ name: data.name, body: data.body });
+      const placeholders = (created.body.match(/\{\{([^}]+)\}\}/g) || []).map((m) =>
+        m.replace(/[{}]/g, '').trim()
+      );
+      const newTemplate: Template = {
+        id: created.id,
+        name: created.name,
+        content: created.body,
+        body: created.body,
+        variables: placeholders,
+        placeholders,
+        category: 'custom',
+        updated_at: new Date().toISOString(),
+      };
+      set((state) => ({
+        templates: [newTemplate, ...state.templates],
+      }));
+      return newTemplate;
+    } catch {
+      const placeholders = (data.body.match(/\{\{([^}]+)\}\}/g) || []).map((m) =>
+        m.replace(/[{}]/g, '').trim()
+      );
+      const fallback: Template = {
+        id: `tpl-${Date.now().toString(36)}`,
+        name: data.name,
+        content: data.body,
+        body: data.body,
+        variables: placeholders,
+        placeholders,
+        category: 'custom',
+        updated_at: new Date().toISOString(),
+      };
+      set((state) => ({
+        templates: [fallback, ...state.templates],
+      }));
+      return fallback;
+    }
+  },
+
+  updateTemplate: async (id, updates) => {
+    try {
+      await api.patchTemplate(id, { name: updates.name, body: updates.body });
+    } catch {
+      // Fallback local update
+    }
+    const placeholders = updates.body
+      ? (updates.body.match(/\{\{([^}]+)\}\}/g) || []).map((m) => m.replace(/[{}]/g, '').trim())
+      : undefined;
+    set((state) => ({
+      templates: state.templates.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              ...updates,
+              ...(updates.body !== undefined ? { content: updates.body } : {}),
+              ...(placeholders ? { variables: placeholders, placeholders } : {}),
+              updated_at: new Date().toISOString(),
+            }
+          : t
+      ),
+    }));
+  },
+
+  deleteTemplate: async (id) => {
+    await api.deleteTemplate(id);
+    set((state) => ({
+      templates: state.templates.filter((t) => t.id !== id),
     }));
   },
 

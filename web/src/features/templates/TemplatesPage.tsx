@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Template } from '../../types/domain';
 import { INITIAL_STUDIO_TEMPLATES, extractPlaceholders } from './templates.fixtures';
@@ -12,12 +12,15 @@ import { TemplateEditor } from './cmp-template-editor';
 import { useJobsStore } from '../../stores/jobs';
 
 export function TemplatesPage() {
-  const { jobs } = useJobsStore();
-  const [templates, setTemplates] = useState<Template[]>(INITIAL_STUDIO_TEMPLATES);
+  const { jobs, templates, fetchTemplates, createTemplate, updateTemplate, deleteTemplate } = useJobsStore();
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    INITIAL_STUDIO_TEMPLATES[0]?.id || null
+    templates[0]?.id || null
   );
   const [isMobileEditorView, setIsMobileEditorView] = useState(false);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   // Dynamically calculate jobs_count for each template by scanning jobs store
   const templatesWithLiveCounts = useMemo(() => {
@@ -30,7 +33,7 @@ export function TemplatesPage() {
   }, [templates, jobs]);
 
   const selectedTemplate = useMemo(() => {
-    return templatesWithLiveCounts.find((t) => t.id === selectedTemplateId) || null;
+    return templatesWithLiveCounts.find((t) => t.id === selectedTemplateId) || templatesWithLiveCounts[0] || null;
   }, [templatesWithLiveCounts, selectedTemplateId]);
 
   const handleSelectTemplate = (id: string) => {
@@ -43,47 +46,18 @@ export function TemplatesPage() {
     setIsMobileEditorView(true);
   };
 
-  const handleSaveTemplate = (id: string | null, data: { name: string; body: string }) => {
-    const placeholders = extractPlaceholders(data.body);
-
+  const handleSaveTemplate = async (id: string | null, data: { name: string; body: string }) => {
     if (id) {
-      // Update existing
-      setTemplates((prev) =>
-        prev.map((t) =>
-          t.id === id
-            ? {
-                ...t,
-                name: data.name,
-                body: data.body,
-                content: data.body,
-                placeholders,
-                variables: placeholders,
-                updated_at: new Date().toISOString().replace('T', ' ').substring(0, 16),
-              }
-            : t
-        )
-      );
+      await updateTemplate(id, data);
     } else {
-      // Create new draft
-      const newTemplate: Template = {
-        id: `tpl-${Date.now().toString(36)}`,
-        name: data.name,
-        body: data.body,
-        content: data.body,
-        placeholders,
-        variables: placeholders,
-        category: 'custom',
-        updated_at: new Date().toISOString().replace('T', ' ').substring(0, 16),
-        jobs_count: 0,
-      };
-      setTemplates([newTemplate, ...templates]);
-      setSelectedTemplateId(newTemplate.id);
+      const created = await createTemplate(data);
+      setSelectedTemplateId(created.id);
     }
   };
 
-  const handleDeleteTemplate = (id: string) => {
+  const handleDeleteTemplate = async (id: string) => {
+    await deleteTemplate(id);
     const remaining = templates.filter((t) => t.id !== id);
-    setTemplates(remaining);
     setSelectedTemplateId(remaining[0]?.id || null);
     setIsMobileEditorView(false);
   };

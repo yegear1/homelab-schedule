@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 import { Contact } from '../../types/domain';
 import { INITIAL_CONTACT_DIRECTORY } from './contacts.fixtures';
 import { ContactsList } from './cmp-contacts-list';
@@ -20,10 +21,14 @@ export interface ContactsPageProps {
 }
 
 export function ContactsPage({ initialContactId }: ContactsPageProps) {
-  const { jobs, contacts, createContact, updateContact, deleteContact } = useJobsStore();
+  const { jobs, contacts, createContact, updateContact, deleteContact, fetchContacts } = useJobsStore();
   const [selectedContactId, setSelectedContactId] = useState<string | null>(
     initialContactId || contacts[0]?.id || null
   );
+
+  useEffect(() => {
+    fetchContacts();
+  }, [fetchContacts]);
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -60,20 +65,25 @@ export function ContactsPage({ initialContactId }: ContactsPageProps) {
     setIsMobileDetailView(true);
   };
 
-  const handleCreateContact = (data: { name: string; phone: string; role?: string }) => {
-    const created = createContact(data);
+  const handleCreateContact = async (data: { name: string; phone: string; role?: string }) => {
+    const created = await createContact(data);
     setSelectedContactId(created.id);
   };
 
-  const handleUpdateContact = (id: string, updates: Partial<Contact>) => {
-    updateContact(id, updates);
+  const handleUpdateContact = async (id: string, updates: Partial<Contact>) => {
+    await updateContact(id, updates);
   };
 
-  const handleDeleteContact = (id: string) => {
-    deleteContact(id);
-    const remaining = contacts.filter((c) => c.id !== id);
-    setSelectedContactId(remaining[0]?.id || null);
-    setIsMobileDetailView(false);
+  const handleDeleteContact = async (id: string) => {
+    try {
+      await deleteContact(id);
+      const remaining = contacts.filter((c) => c.id !== id);
+      setSelectedContactId(remaining[0]?.id || null);
+      setIsMobileDetailView(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao excluir contato';
+      toast.error(msg);
+    }
   };
 
   const handleScheduleForContact = (phone: string) => {

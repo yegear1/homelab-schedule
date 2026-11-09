@@ -24,8 +24,8 @@ import { ContactJobs } from './wdg-contact-jobs';
 
 export interface ContactWorkspaceProps {
   contact: Contact | null;
-  onUpdateContact: (id: string, updates: Partial<Contact>) => void;
-  onDeleteContact: (id: string) => void;
+  onUpdateContact: (id: string, updates: Partial<Contact>) => void | Promise<void>;
+  onDeleteContact: (id: string) => void | Promise<void>;
   onScheduleForContact: (phone: string) => void;
   onInspectJob: (jobId: string) => void;
 }
@@ -59,32 +59,42 @@ export function ContactWorkspace({
     setIsEditing(true);
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editName.trim() || !editPhone.trim()) {
       toast.error('Name and phone cannot be empty');
       return;
     }
-    onUpdateContact(contact.id, {
-      name: editName.trim(),
-      alias: editName.trim(),
-      phone: editPhone.trim(),
-      updated_at: new Date().toISOString(),
-    });
-    setIsEditing(false);
-    toast.success('Contact profile updated (PATCH /contacts/{id})');
+    try {
+      await onUpdateContact(contact.id, {
+        name: editName.trim(),
+        alias: editName.trim(),
+        phone: editPhone.trim(),
+        updated_at: new Date().toISOString(),
+      });
+      setIsEditing(false);
+      toast.success('Contact profile updated');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update contact';
+      toast.error(msg);
+    }
   };
 
-  const handleDeleteAttempt = () => {
+  const handleDeleteAttempt = async () => {
     setConflictError(null);
     const activeJobCount = contact.active_jobs ?? 0;
     if (activeJobCount > 0) {
       setConflictError(
         `409 Conflict: Cannot delete contact with ${activeJobCount} active scheduled jobs. Reassign or cancel jobs first.`
       );
-    } else {
-      onDeleteContact(contact.id);
+      return;
+    }
+    try {
+      await onDeleteContact(contact.id);
       setIsDeleteModalOpen(false);
       toast.success(`Contact ${contact.name || contact.alias} deleted`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '409 Conflict: Cannot delete contact with active jobs.';
+      setConflictError(msg);
     }
   };
 

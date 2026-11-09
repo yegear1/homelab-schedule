@@ -14,8 +14,8 @@ import { TemplatePreview } from './wdg-template-preview';
 
 export interface TemplateEditorProps {
   template: Template | null;
-  onSaveTemplate: (id: string | null, data: { name: string; body: string }) => void;
-  onDeleteTemplate: (id: string) => void;
+  onSaveTemplate: (id: string | null, data: { name: string; body: string }) => void | Promise<void>;
+  onDeleteTemplate: (id: string) => void | Promise<void>;
 }
 
 export function TemplateEditor({
@@ -64,32 +64,42 @@ export function TemplateEditor({
     return { allPlaceholders: tokens, unknownPlaceholders: unknowns };
   }, [body]);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       toast.error('Template name is required');
       return;
     }
-    onSaveTemplate(template ? template.id : null, {
-      name: name.trim(),
-      body: body.trim(),
-    });
-    toast.success('Template saved successfully', {
-      description: `Synchronized ${name.trim()} (${allPlaceholders.length} placeholders).`,
-    });
+    try {
+      await onSaveTemplate(template ? template.id : null, {
+        name: name.trim(),
+        body: body.trim(),
+      });
+      toast.success('Template saved successfully', {
+        description: `Synchronized ${name.trim()} (${allPlaceholders.length} placeholders).`,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save template';
+      toast.error(msg);
+    }
   };
 
-  const handleDeleteAttempt = () => {
+  const handleDeleteAttempt = async () => {
     if (!template) return;
     const jobsCount = template.jobs_count ?? 0;
     if (jobsCount > 0) {
       setConflictError(
         `409 Conflict: Template is currently referenced by ${jobsCount} active jobs. Reassign or cancel jobs first.`
       );
-    } else {
-      onDeleteTemplate(template.id);
+      return;
+    }
+    try {
+      await onDeleteTemplate(template.id);
       setIsDeleteModalOpen(false);
       toast.success(`Template ${template.name} deleted`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '409 Conflict: Template is referenced by active jobs.';
+      setConflictError(msg);
     }
   };
 
