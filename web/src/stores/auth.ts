@@ -20,7 +20,7 @@ interface AuthState {
   setApiKey: (key: string) => void;
   setTheme: (theme: AppTheme) => void;
   setIsAccessModalOpen: (open: boolean) => void;
-  testConnection: () => Promise<boolean>;
+  testConnection: (targetUrl?: string, targetKey?: string) => Promise<boolean>;
   resetDefaults: () => void;
 }
 
@@ -79,11 +79,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isAccessModalOpen: open });
   },
 
-  testConnection: async () => {
+  testConnection: async (targetUrl?: string, targetKey?: string) => {
     const start = performance.now();
     try {
-      const baseUrl = api.getBaseUrl() || get().baseUrl;
-      const res = await fetch(`${baseUrl}/health`);
+      const rawUrl = targetUrl !== undefined ? targetUrl : (api.getBaseUrl() || get().baseUrl);
+      const url = rawUrl.replace(/\/+$/, '');
+      const key = targetKey !== undefined ? targetKey : (api.getApiKey() || get().apiKey);
+      const headers: Record<string, string> = {};
+      if (key) headers['x-api-key'] = key;
+      const res = await fetch(`${url}/health`, { headers, cache: 'no-store' });
       const latency = Math.round(performance.now() - start);
       const ok = res.ok;
       set({

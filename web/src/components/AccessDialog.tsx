@@ -35,14 +35,22 @@ export function AccessDialog({ open, onOpenChange }: AccessDialogProps) {
     setIsTesting(true);
     setTestResult(null);
     try {
-      await testConnection();
-      setTestResult({
-        ok: true,
-        message: `HTTP 200 OK — Gateway responded in ${latencyMs}ms (${gatewayStatus})`,
-      });
-      toast.success('Gateway connection verified', {
-        description: `Endpoint ${localUrl} is active.`,
-      });
+      const ok = await testConnection(localUrl.trim(), localKey.trim());
+      if (ok) {
+        setTestResult({
+          ok: true,
+          message: `HTTP 200 OK — Gateway responded in ${latencyMs}ms (${gatewayStatus})`,
+        });
+        toast.success('Gateway connection verified', {
+          description: `Endpoint ${localUrl || 'same-origin'} is active.`,
+        });
+      } else {
+        setTestResult({
+          ok: false,
+          message: 'Connection failed. Check network route and host URL.',
+        });
+        toast.error('Gateway connection failed');
+      }
     } catch {
       setTestResult({
         ok: false,

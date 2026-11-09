@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AppShell } from './components/AppShell';
 import { AgendaPage } from './features/agenda/AgendaPage';
 import { ContactsPage } from './features/contacts/ContactsPage';
@@ -12,7 +12,27 @@ import { HistoryPage } from './features/history/HistoryPage';
 import { DataPage } from './features/data/DataPage';
 
 export default function App() {
-  const [currentPath, setCurrentPath] = useState('/jobs');
+  const [currentPath, setCurrentPath] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.location.pathname || '/jobs';
+    }
+    return '/jobs';
+  });
+
+  const navigate = useCallback((path: string) => {
+    if (typeof window !== 'undefined' && window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+    setCurrentPath(path);
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname || '/jobs');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const renderActiveView = () => {
     if (currentPath.startsWith('/contacts')) {
@@ -20,7 +40,7 @@ export default function App() {
       return (
         <ContactsPage
           initialContactId={contactId}
-          onNavigateContact={(id) => setCurrentPath(`/contacts/${id}`)}
+          onNavigateContact={(id) => navigate(`/contacts/${id}`)}
         />
       );
     }
@@ -39,7 +59,7 @@ export default function App() {
   };
 
   return (
-    <AppShell currentPath={currentPath} onNavigate={setCurrentPath}>
+    <AppShell currentPath={currentPath} onNavigate={navigate}>
       {renderActiveView()}
     </AppShell>
   );

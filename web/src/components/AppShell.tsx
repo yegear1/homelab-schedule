@@ -59,6 +59,7 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
     setIsAccessModalOpen,
     isConnected,
     latencyMs,
+    testConnection,
   } = useAuthStore();
 
   const { isCreateOpen, setIsCreateOpen } = useJobsStore();
@@ -70,6 +71,10 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
     applyThemeToDocument(theme);
   }, [theme]);
 
+  useEffect(() => {
+    testConnection();
+  }, [baseUrl, apiKey, testConnection]);
+
   const cycleTheme = () => {
     const next: Record<AppTheme, AppTheme> = {
       dark: 'light',
@@ -79,7 +84,7 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
     setTheme(next[theme]);
   };
 
-  const maskedKey = apiKey ? `${apiKey.substring(0, 7)}••••••` : 'None';
+  const maskedKey = apiKey ? `${apiKey.substring(0, Math.min(apiKey.length, 6))}••••••` : 'None';
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row antialiased">
@@ -266,7 +271,7 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
             >
               <Server size={14} className="text-sky-500 shrink-0" />
               <span className="text-xs font-mono text-foreground font-medium">
-                {baseUrl.replace(/^https?:\/\//, '')}
+                {baseUrl ? baseUrl.replace(/^https?:\/\//, '') : 'same-origin'}
               </span>
               <span className="inline-flex items-center gap-1 font-mono text-[11px] px-1.5 py-0.5 rounded bg-background border border-border text-muted-foreground">
                 <Key size={10} />
