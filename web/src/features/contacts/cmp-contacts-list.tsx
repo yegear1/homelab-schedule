@@ -31,7 +31,7 @@ export function ContactsList({
       const matchName = (c.name || c.alias || '').toLowerCase().includes(q);
       const matchPhone = c.phone.toLowerCase().includes(q);
       const matchId = c.id.toLowerCase().includes(q);
-      const matchRole = c.role.toLowerCase().includes(q);
+      const matchRole = (c.role || '').toLowerCase().includes(q);
       return matchName || matchPhone || matchId || matchRole;
     });
   }, [contacts, searchQuery]);

@@ -1,3 +1,4 @@
+import { ResourceNotice } from '../../components/ResourceNotice';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -14,6 +15,7 @@ import { JobInspector } from './wdg-job-inspector';
 
 export function AgendaPage() {
   const {
+    resources,
     jobs,
     viewMode,
     statusFilter,
@@ -75,6 +77,10 @@ export function AgendaPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      <ResourceNotice label="agendamentos" {...resources.jobs} onRetry={() => { void fetchJobs(); }} />
+      <ResourceNotice label="etiquetas" {...resources.tags} onRetry={() => { void fetchTags(); }} />
+      <ResourceNotice label="contatos" {...resources.contacts} onRetry={() => { void fetchContacts(); }} />
+      <ResourceNotice label="modelos" {...resources.templates} onRetry={() => { void fetchTemplates(); }} />
       {/* Page Title & Context Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-border">
         <div>
@@ -85,27 +91,22 @@ export function AgendaPage() {
             Active SQLite agenda daemon with WhatsApp / HTTP gateway webhook dispatching.
           </p>
         </div>
-        <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-          <span>Engine: SQLite 3.46</span>
-          <span>·</span>
-          <span className="text-emerald-500 font-medium">Gateway 202 Ready</span>
-        </div>
       </div>
 
       {/* KPI Cards */}
-      <KpiSummary onFilterErrors={() => setStatusFilter('error')} />
+      {(resources.jobs.status === 'ready' || resources.jobs.stale) && <KpiSummary onFilterErrors={() => setStatusFilter('error')} />}
 
       {/* Filters Bar & View Switcher */}
       <AgendaFilters onOpenCreate={() => setIsCreateOpen(true)} />
 
       {/* Active View Mode */}
-      {viewMode === 'table' && (
+      {(resources.jobs.status === 'ready' || resources.jobs.stale) && viewMode === 'table' && (
         <JobsTable jobs={filteredJobs} onInspect={openInspector} />
       )}
-      {viewMode === 'timeline' && (
+      {(resources.jobs.status === 'ready' || resources.jobs.stale) && viewMode === 'timeline' && (
         <JobsTimeline jobs={filteredJobs} onInspect={openInspector} />
       )}
-      {viewMode === 'calendar' && (
+      {(resources.jobs.status === 'ready' || resources.jobs.stale) && viewMode === 'calendar' && (
         <JobsCalendar jobs={filteredJobs} onInspect={openInspector} />
       )}
 

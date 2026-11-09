@@ -165,7 +165,7 @@ export function JobCreate({
         c.alias.toLowerCase().includes(q) ||
         (c.name && c.name.toLowerCase().includes(q)) ||
         c.phone.includes(q) ||
-        c.role.toLowerCase().includes(q) ||
+        (c.role || '').toLowerCase().includes(q) ||
         c.tags.some((t) => t.toLowerCase().includes(q))
     );
   }, [contacts, contactSearch]);

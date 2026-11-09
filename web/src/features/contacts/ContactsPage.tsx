@@ -1,3 +1,4 @@
+import { ResourceNotice } from '../../components/ResourceNotice';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -21,7 +22,7 @@ export interface ContactsPageProps {
 }
 
 export function ContactsPage({ initialContactId }: ContactsPageProps) {
-  const { jobs, contacts, createContact, updateContact, deleteContact, fetchContacts } = useJobsStore();
+  const { resources, jobs, contacts, createContact, updateContact, deleteContact, fetchContacts } = useJobsStore();
   const [selectedContactId, setSelectedContactId] = useState<string | null>(
     initialContactId || contacts[0]?.id || null
   );
@@ -93,6 +94,7 @@ export function ContactsPage({ initialContactId }: ContactsPageProps) {
 
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-8rem)] min-h-[600px] flex flex-col space-y-4">
+      <ResourceNotice label="contatos" {...resources.contacts} onRetry={() => { void fetchContacts(); }} />
       {/* Mobile Back button when viewing detail */}
       {isMobileDetailView && (
         <div className="md:hidden flex items-center gap-2">
@@ -108,7 +110,7 @@ export function ContactsPage({ initialContactId }: ContactsPageProps) {
       )}
 
       {/* Split-Pane / Master-Detail Layout */}
-      <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
+      {(resources.contacts.status === 'ready' || resources.contacts.stale) && <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
         {/* Left Master List Pane */}
         <div
           className={`w-full md:w-80 lg:w-96 shrink-0 h-full ${
@@ -140,7 +142,7 @@ export function ContactsPage({ initialContactId }: ContactsPageProps) {
             onInspectJob={(jobId) => setInspectJobId(jobId)}
           />
         </div>
-      </div>
+      </div>}
 
       {/* Modals & Drawers */}
       <ContactForm

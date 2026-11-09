@@ -1,3 +1,4 @@
+import { ResourceNotice } from '../../components/ResourceNotice';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -12,7 +13,7 @@ import { TemplateEditor } from './cmp-template-editor';
 import { useJobsStore } from '../../stores/jobs';
 
 export function TemplatesPage() {
-  const { jobs, templates, fetchTemplates, createTemplate, updateTemplate, deleteTemplate } = useJobsStore();
+  const { resources, jobs, templates, fetchTemplates, createTemplate, updateTemplate, deleteTemplate } = useJobsStore();
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     templates[0]?.id || null
   );
@@ -64,6 +65,7 @@ export function TemplatesPage() {
 
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-8rem)] min-h-[620px] flex flex-col space-y-4">
+      <ResourceNotice label="modelos" {...resources.templates} onRetry={() => { void fetchTemplates(); }} />
       {/* Mobile Back button when editing */}
       {isMobileEditorView && (
         <div className="md:hidden flex items-center gap-2">
@@ -79,7 +81,7 @@ export function TemplatesPage() {
       )}
 
       {/* Split-Pane Studio Workspace */}
-      <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
+      {(resources.templates.status === 'ready' || resources.templates.stale) && <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
         {/* Left Template Catalog Pane */}
         <div
           className={`w-full md:w-80 lg:w-96 shrink-0 h-full ${
@@ -106,7 +108,7 @@ export function TemplatesPage() {
             onDeleteTemplate={handleDeleteTemplate}
           />
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

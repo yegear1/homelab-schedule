@@ -273,7 +273,7 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
                   <span className="font-semibold block font-mono">Last Dispatch Failed</span>
                   <span id="detail-dead-letter-error" className="font-mono text-[11px]">{currentJob.last_error}</span>
                   <span id="detail-dead-letter-retries" className="block text-[10px] mt-0.5 opacity-80">
-                    Tentativas: {currentJob.retry_count ?? 0}
+                    Tentativas: {currentJob.retry_count ?? '—'}
                   </span>
                 </div>
               </div>
@@ -350,11 +350,11 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
                 <div id="detail-runs" className="grid grid-cols-3 gap-2 p-3 bg-muted/30 rounded-lg border border-border font-mono">
                   <div>
                     <span className="text-[10px] text-muted-foreground block">Executed</span>
-                    <span className="text-sm font-bold tabular-nums">{currentJob.runs_executed}</span>
+                    <span className="text-sm font-bold tabular-nums">{currentJob.runs_executed ?? '—'}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-muted-foreground block">Retries</span>
-                    <span className="text-sm font-bold tabular-nums">{currentJob.retry_count} / {currentJob.max_retries ?? 3}</span>
+                    <span className="text-sm font-bold tabular-nums">{currentJob.retry_count ?? '—'}{currentJob.max_retries !== undefined ? ` / ${currentJob.max_retries}` : ''}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-muted-foreground block">Max Runs</span>
@@ -498,7 +498,7 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
                   <div id="upcoming-list" className="space-y-1.5">
                     {upcomingRuns.map((p, idx) => (
                       <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-background font-mono text-[11px]">
-                        <span className="text-muted-foreground">Run #{currentJob.runs_executed + idx + 1}</span>
+                        <span className="text-muted-foreground">Próxima #{idx + 1}</span>
                         <span className="text-sky-500 font-medium">
                           {p.formatted_date || p.run_at_local || p.run_at} {p.time_local ? `(${p.time_local})` : ''}
                         </span>

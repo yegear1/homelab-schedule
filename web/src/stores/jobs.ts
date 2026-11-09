@@ -7,15 +7,14 @@ import { create } from 'zustand';
 import { AgendaViewMode, Contact, Job, JobRun, JobStatus, Template } from '../types/domain';
 import { JobListItem } from '../lib/types';
 import { api } from '../lib/api';
-import {
-  INITIAL_AVAILABLE_TAGS,
-  INITIAL_CONTACTS,
-  INITIAL_JOBS,
-  INITIAL_JOB_RUNS,
-  INITIAL_TEMPLATES,
-} from '../features/agenda/agenda.fixtures';
+type ResourceStatus = 'idle' | 'loading' | 'ready' | 'error';
+type ResourceName = 'jobs' | 'tags' | 'contacts' | 'templates';
+type ResourceState = { status: ResourceStatus; error?: string; stale: boolean };
+const generations: Record<ResourceName, number> = { jobs: 0, tags: 0, contacts: 0, templates: 0 };
+
 
 interface JobsState {
+  resources: Record<ResourceName, ResourceState>;
   jobs: Job[];
   runs: JobRun[];
   templates: Template[];
@@ -100,15 +99,13 @@ function mapJobListItemToDomain(item: JobListItem, contacts: Contact[], existing
     template_id: item.template_id || undefined,
     variables: item.variables || {},
     tags: item.tags || [],
-    created_by: item.created_by || 'operator',
-    created_at: item.run_at || item.next_run_at || new Date().toISOString(),
+    created_by: item.created_by || undefined,
+    created_at: undefined,
     next_run_at: item.next_run_at || undefined,
     last_run_at: item.last_run_at || undefined,
-    last_status_code: item.last_status === 'queued' ? 202 : undefined,
     last_error: item.last_error || undefined,
-    retry_count: item.retry_count || 0,
-    max_retries: 3,
-    runs_executed: item.run_count || 0,
+    retry_count: item.retry_count,
+    runs_executed: item.run_count,
     max_runs: item.max_runs || undefined,
     until: item.until || undefined,
     recent_runs: existing?.recent_runs,
@@ -116,11 +113,15 @@ function mapJobListItemToDomain(item: JobListItem, contacts: Contact[], existing
 }
 
 export const useJobsStore = create<JobsState>((set, get) => ({
-  jobs: INITIAL_JOBS,
-  runs: INITIAL_JOB_RUNS,
-  templates: INITIAL_TEMPLATES,
-  contacts: INITIAL_CONTACTS,
-  availableTags: INITIAL_AVAILABLE_TAGS,
+  resources: {
+    jobs: { status: 'idle', stale: false }, tags: { status: 'idle', stale: false },
+    contacts: { status: 'idle', stale: false }, templates: { status: 'idle', stale: false },
+  },
+  jobs: [],
+  runs: [],
+  templates: [],
+  contacts: [],
+  availableTags: [],
   viewMode: 'table',
   statusFilter: 'all',
   selectedTag: null,
@@ -139,25 +140,27 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   setIsCreateOpen: (open) => set({ isCreateOpen: open }),
 
   fetchJobs: async () => {
+    const generation = ++generations.jobs;
+    set((state) => ({ resources: { ...state.resources, jobs: { status: 'loading', stale: state.resources.jobs.status === 'ready' || state.resources.jobs.stale } } }));
     try {
       const items = await api.getJobs({ status: 'all' });
       const currentContacts = get().contacts;
       const currentJobs = get().jobs;
       const mappedJobs = items.map((item) => mapJobListItemToDomain(item, currentContacts, currentJobs));
-      set({ jobs: mappedJobs });
-    } catch {
-      // Keep existing jobs if offline or error
+      if (generation === generations.jobs) set((state) => ({ jobs: mappedJobs, resources: { ...state.resources, jobs: { status: 'ready', stale: false } } }));
+    } catch (error: unknown) {
+      if (generation === generations.jobs) set((state) => ({ resources: { ...state.resources, jobs: { status: 'error', error: error instanceof Error ? error.message : 'Falha de conexão', stale: state.resources.jobs.stale } } }));
     }
   },
 
   fetchTags: async () => {
+    const generation = ++generations.tags;
+    set((state) => ({ resources: { ...state.resources, tags: { status: 'loading', stale: state.resources.tags.status === 'ready' || state.resources.tags.stale } } }));
     try {
       const tags = await api.getTags();
-      if (tags && tags.length > 0) {
-        set({ availableTags: tags });
-      }
-    } catch {
-      // Keep existing tags
+      if (generation === generations.tags) set((state) => ({ availableTags: tags, resources: { ...state.resources, tags: { status: 'ready', stale: false } } }));
+    } catch (error: unknown) {
+      if (generation === generations.tags) set((state) => ({ resources: { ...state.resources, tags: { status: 'error', error: error instanceof Error ? error.message : 'Falha de conexão', stale: state.resources.tags.stale } } }));
     }
   },
 
@@ -192,7 +195,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
               last_run_at: newRun.timestamp,
               last_status_code: 202,
               last_error: undefined,
-              runs_executed: j.runs_executed + 1,
+              runs_executed: (j.runs_executed ?? 0) + 1,
               recent_runs: [newRun, ...(j.recent_runs || [])].slice(0, 5),
             };
           }
@@ -488,6 +491,8 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   },
 
   fetchContacts: async () => {
+    const generation = ++generations.contacts;
+    set((state) => ({ resources: { ...state.resources, contacts: { status: 'loading', stale: state.resources.contacts.status === 'ready' || state.resources.contacts.stale } } }));
     try {
       const raw = await api.getContacts();
       const contacts: Contact[] = raw.map((c) => ({
@@ -495,16 +500,11 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         name: c.name,
         alias: c.name,
         phone: c.phone,
-        role: 'Resident',
-        tags: ['contact'],
-        active: true,
-        active_jobs: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        tags: [],
       }));
-      set({ contacts });
-    } catch {
-      // Keep existing contacts on error
+      if (generation === generations.contacts) set((state) => ({ contacts, resources: { ...state.resources, contacts: { status: 'ready', stale: false } } }));
+    } catch (error: unknown) {
+      if (generation === generations.contacts) set((state) => ({ resources: { ...state.resources, contacts: { status: 'error', error: error instanceof Error ? error.message : 'Falha de conexão', stale: state.resources.contacts.stale } } }));
     }
   },
 
@@ -571,6 +571,8 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   },
 
   fetchTemplates: async () => {
+    const generation = ++generations.templates;
+    set((state) => ({ resources: { ...state.resources, templates: { status: 'loading', stale: state.resources.templates.status === 'ready' || state.resources.templates.stale } } }));
     try {
       const raw = await api.getTemplates();
       const templates: Template[] = raw.map((t) => {
@@ -584,13 +586,11 @@ export const useJobsStore = create<JobsState>((set, get) => ({
           body: t.body,
           variables: placeholders,
           placeholders,
-          category: 'general',
-          updated_at: new Date().toISOString(),
         };
       });
-      set({ templates });
-    } catch {
-      // Keep existing templates on error
+      if (generation === generations.templates) set((state) => ({ templates, resources: { ...state.resources, templates: { status: 'ready', stale: false } } }));
+    } catch (error: unknown) {
+      if (generation === generations.templates) set((state) => ({ resources: { ...state.resources, templates: { status: 'error', error: error instanceof Error ? error.message : 'Falha de conexão', stale: state.resources.templates.stale } } }));
     }
   },
 

@@ -43,14 +43,14 @@ export interface Job {
   variables?: Record<string, string>;
   tags: string[];
   created_by?: string;
-  created_at: string;
+  created_at?: string;
   next_run_at?: string;
   last_run_at?: string;
   last_status_code?: number;
   last_error?: string;
-  retry_count: number;
+  retry_count?: number;
   max_retries?: number;
-  runs_executed: number;
+  runs_executed?: number;
   max_runs?: number;
   until?: string;
   snooze_until?: string;
@@ -64,8 +64,8 @@ export interface Template {
   body?: string;
   variables: string[];
   placeholders?: string[];
-  category: string;
-  updated_at: string;
+  category?: string;
+  updated_at?: string;
   jobs_count?: number;
 }
 
@@ -74,10 +74,10 @@ export interface Contact {
   alias: string;
   name?: string;
   phone: string;
-  role: string;
+  role?: string;
   tags: string[];
   last_dispatch?: string;
-  active: boolean;
+  active?: boolean;
   active_jobs?: number;
   created_at?: string;
   updated_at?: string;

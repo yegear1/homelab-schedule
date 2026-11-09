@@ -196,10 +196,10 @@ export function ContactWorkspace({
         <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono text-muted-foreground pt-1">
           <div className="flex items-center gap-1">
             <Clock size={11} />
-            <span>Created: {new Date(contact.created_at || '2026-08-10').toLocaleDateString()}</span>
+            <span>Created: {contact.created_at ? new Date(contact.created_at).toLocaleDateString() : '—'}</span>
           </div>
           <div>
-            <span>Updated: {new Date(contact.updated_at || Date.now()).toLocaleDateString()}</span>
+            <span>Updated: {contact.updated_at ? new Date(contact.updated_at).toLocaleDateString() : '—'}</span>
           </div>
           <div className="text-foreground">
             <span>ID: {contact.id}</span>
