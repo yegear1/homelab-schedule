@@ -7,11 +7,13 @@
 
 ## Active Task
 
-- **Task:** [02.33] Establish behavior test foundation and inventory for real-data UI remediation.
+- **Task:** [02.34] Remove fabricated operational state and correct domain mappings.
 - **Status:** `RUNNING`
-- **Next Step:** Inventory the current React interface and establish the browser-test baseline; see [WEB_UI_REAL_DATA_PLAN.md](WEB_UI_REAL_DATA_PLAN.md).
+- **Next Step:** Implement the approved scope in [WEB_UI_REAL_DATA_PLAN.md](WEB_UI_REAL_DATA_PLAN.md).
 
 ## Completed Tasks Log
+
+- [02.33] Inventoried React UI and established browser-test baseline | [`397eeed`] | 2026-11-09 | 247 Python tests, mypy, Ruff, frontend check/build and diff check pass; browser suite interrupted after four failures on missing `#scr-jobs`
 
 - [02.32] Purged legacy Svelte files, harmonized web tests for React 19 architecture, verified Docker build | [`cf39c50`] | 2026-11-09 | tsc check, Vite build, 247 python tests, mypy, Ruff and docker build check: exit 0
 
@@ -75,7 +77,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 ## Backlog (Upcoming, in priority order)
 
-- [ ] **[02.34]** Remove fabricated operational state and correct domain mappings
 - [ ] **[02.35]** Bind authenticated reads, filters and exports
 - [ ] **[02.36]** Make job and group mutations authoritative
 - [ ] **[02.37]** Correct contact and template workflows
