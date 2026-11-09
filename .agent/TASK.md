@@ -7,11 +7,13 @@
 
 ## Active Task
 
-- **Task:** [02.35] Bind authenticated reads, filters and exports.
-- **Status:** `RUNNING`
-- **Next Step:** Implement the approved scope in [WEB_UI_REAL_DATA_PLAN.md](WEB_UI_REAL_DATA_PLAN.md).
+- **Task:** [02.36] Make job and group mutations authoritative.
+- **Status:** `READY FOR PLANNING`
+- **Next Step:** Plan and implement the approved scope in [WEB_UI_REAL_DATA_PLAN.md](WEB_UI_REAL_DATA_PLAN.md).
 
 ## Completed Tasks Log
+
+- [02.35] Bound agenda reads, filters, scoped contact jobs and CSV to one applied server query; removed local CSV fallbacks | [`431b1ac`] | 2026-11-09 | 7 targeted browser tests, 247 Python tests, mypy, Ruff, frontend check/build and diff check pass; legacy Svelte-era specs (agenda, foundation, shell, catalogs, composer, inspector, history-data) still fail on `#scr-*` selectors and are reconciled in later tasks; history CSV fallback removed, other history fallbacks belong to 02.39
 
 - [02.34] Replaced fixture-backed initial state and fabricated read metrics with explicit resource states | [`638038a`] | 2026-11-09 | 5 targeted browser tests, 247 Python tests, mypy, Ruff, frontend checks/build and diff check pass; remaining mutation and history fallbacks belong to later tasks
 
@@ -79,7 +81,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 ## Backlog (Upcoming, in priority order)
 
-- [ ] **[02.36]** Make job and group mutations authoritative
 - [ ] **[02.37]** Correct contact and template workflows
 - [ ] **[02.38]** Restore real agenda views and controls
 - [ ] **[02.39]** Make inspector and execution history authoritative
