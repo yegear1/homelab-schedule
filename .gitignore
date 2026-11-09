@@ -37,3 +37,6 @@ Thumbs.db
 web/node_modules/
 web/dist/
 web/.vite/
+
+# Test execution results
+test-results/
