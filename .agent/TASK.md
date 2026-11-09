@@ -7,13 +7,15 @@
 
 ## Active Task
 
-- **Task:** [02.28] Shell Global, Navegação e Modal de Acesso (`AppShell`, `cmdk`, `AccessDialog`, tema e conexão real com `/health`)
+- **Task:** [02.29] Workspaces de Contatos e Templates (`/contacts`, `/templates`, CRUD real, modal de conflito 409)
 - **Status:** `READY FOR PLANNING`
-- **Next Step:** Present implementation plan to wire `AppShell`, `CommandPalette`, `AccessDialog`, and routing to real backend `/health` endpoint.
+- **Next Step:** Present implementation plan to wire Contacts and Templates features directly to real `api.ts` CRUD endpoints.
 
 ---
 
 ## Completed Tasks Log
+
+- [02.28] Wired AppShell, browser history routing, and live AccessDialog connection ping | [`2527b74`] | 2026-11-09 | tsc check, Vite build, 22 python auth/spa tests, mypy, Ruff and diff check: exit 0
 
 - [02.27] Migrated build pipeline, React 19 dependencies, Radix/Zustand tooling, and sanitized auth store | [`c8b6933`] | 2026-11-09 | tsc check, Vite build, 22 python auth/spa tests, mypy, Ruff and diff check: exit 0
 
