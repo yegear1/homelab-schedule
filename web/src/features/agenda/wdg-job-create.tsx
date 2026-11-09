@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useJobsStore } from '../../stores/jobs';
+import { REFRESH_FAILED } from '../../lib/jobs/mutations';
 import { Contact, ScheduleKind } from '../../types/domain';
 
 export interface JobCreateProps {
@@ -224,7 +225,7 @@ export function JobCreate({
 
     setIsSubmitting(true);
     try {
-      await createJob(
+      const outcome = await createJob(
         {
           title: title.trim(),
           kind,
@@ -249,9 +250,10 @@ export function JobCreate({
           ? `Batch job scheduled successfully (${finalRecipients.length} recipients)`
           : 'Job scheduled successfully',
         {
-          description: `Dispatched payload queued on gateway daemon.`,
+          description: 'Saved to the agenda; delivery happens at the scheduled time.',
         }
       );
+      if (!outcome.refreshed) toast.warning(REFRESH_FAILED);
 
       setTitle('');
       setText('');
@@ -259,6 +261,7 @@ export function JobCreate({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to schedule job';
       toast.error(`Scheduling failed: ${msg}`);
+      // Draft is intentionally kept so the operator can correct it and submit again.
     } finally {
       setIsSubmitting(false);
     }

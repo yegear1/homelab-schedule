@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Job } from '../../types/domain';
 import { StatusBadge } from '../../components/wdg-status-badge';
 import { useJobsStore } from '../../stores/jobs';
+import { QUEUED_NOT_DELIVERED, runWithFeedback } from '../../lib/jobs/mutations';
 
 export interface JobsTimelineProps {
   jobs: Job[];
@@ -40,11 +41,14 @@ export function JobsTimeline({ jobs, onInspect }: JobsTimelineProps) {
 
   const handleRunNow = async (e: React.MouseEvent, jobId: string, title: string) => {
     e.stopPropagation();
-    toast.loading(`Dispatching ${title}...`, { id: `timeline-run-${jobId}` });
-    const ok = await runJobNow(jobId);
-    if (ok) {
-      toast.success(`Dispatched ${title}`, { id: `timeline-run-${jobId}` });
-    }
+    await runWithFeedback({
+      id: `timeline-run-${jobId}`,
+      pending: `Dispatching ${title}...`,
+      success: `Queued ${title}`,
+      description: QUEUED_NOT_DELIVERED,
+      failure: `Dispatch failed for ${title}`,
+      action: () => runJobNow(jobId),
+    });
   };
 
   return (

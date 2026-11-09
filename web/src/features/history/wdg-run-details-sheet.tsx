@@ -5,9 +5,9 @@
 
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, RefreshCw, AlertTriangle, CheckCircle2, Server, Terminal, ExternalLink } from 'lucide-react';
-import { toast } from 'sonner';
 import { JobRun } from '../../types/domain';
 import { useJobsStore } from '../../stores/jobs';
+import { QUEUED_NOT_DELIVERED, runWithFeedback } from '../../lib/jobs/mutations';
 
 export interface RunDetailsSheetProps {
   run: JobRun | null;
@@ -29,15 +29,15 @@ export function RunDetailsSheet({
   const isSuccess = run.status_code === 202;
 
   const handleRerun = async () => {
-    toast.loading(`Re-running dispatch for ${run.job_title}...`, { id: `rerun-${run.id}` });
-    const success = await runJobNow(run.job_id);
-    if (success) {
-      toast.success(`Dispatched ${run.job_title}`, {
-        id: `rerun-${run.id}`,
-        description: `HTTP 202 Accepted → Sent to ${run.recipient}`,
-      });
-      onOpenChange(false);
-    }
+    const accepted = await runWithFeedback({
+      id: `rerun-${run.id}`,
+      pending: `Re-running dispatch for ${run.job_title}...`,
+      success: `Queued ${run.job_title}`,
+      description: QUEUED_NOT_DELIVERED,
+      failure: `Dispatch failed for ${run.job_title}`,
+      action: () => runJobNow(run.job_id),
+    });
+    if (accepted) onOpenChange(false);
   };
 
   return (

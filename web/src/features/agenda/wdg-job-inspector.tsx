@@ -23,6 +23,7 @@ import { UpcomingRunItem } from '../../lib/types';
 import { StatusBadge, SourceBadge } from '../../components/wdg-status-badge';
 import { useJobsStore } from '../../stores/jobs';
 import { api } from '../../lib/api';
+import { QUEUED_NOT_DELIVERED, runWithFeedback, type MutationFeedback } from '../../lib/jobs/mutations';
 
 export interface JobInspectorProps {
   job: Job | null;
@@ -125,114 +126,87 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
   const currentJob = fullJob || job;
   const isYaml = currentJob.source === 'yaml';
 
-  const handleRunNow = async () => {
+  const rejectYaml = (): boolean => {
+    if (!isYaml) return false;
+    toast.error('Rotinas YAML são imutáveis (edite routines.yaml)');
+    return true;
+  };
+
+  const mutate = async (feedback: MutationFeedback): Promise<boolean> => {
     setIsBusy(true);
-    toast.loading(`Triggering immediate run for ${currentJob.title}...`, { id: `inspect-run-${currentJob.id}` });
     try {
-      await runJobNow(currentJob.id);
-      toast.success(`Dispatched ${currentJob.title}`, {
-        id: `inspect-run-${currentJob.id}`,
-        description: 'HTTP 202 Accepted (queued).',
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Execution failed';
-      toast.error(`Dispatch failed: ${msg}`, { id: `inspect-run-${currentJob.id}` });
+      return await runWithFeedback(feedback);
     } finally {
       setIsBusy(false);
     }
   };
 
+  const handleRunNow = () =>
+    mutate({
+      id: `inspect-run-${currentJob.id}`,
+      pending: `Triggering immediate run for ${currentJob.title}...`,
+      success: `Queued ${currentJob.title}`,
+      description: QUEUED_NOT_DELIVERED,
+      failure: 'Dispatch failed',
+      action: () => runJobNow(currentJob.id),
+    });
+
   const handleTogglePause = async () => {
-    if (isYaml) {
-      toast.error('Rotinas YAML são imutáveis (edite routines.yaml)');
-      return;
-    }
-    setIsBusy(true);
-    try {
-      await togglePauseResume(currentJob.id);
-      toast.info(currentJob.status === 'paused' ? 'Schedule resumed' : 'Schedule paused');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Operation failed';
-      toast.error(msg);
-    } finally {
-      setIsBusy(false);
-    }
+    if (rejectYaml()) return;
+    await mutate({
+      id: `inspect-pause-${currentJob.id}`,
+      success: currentJob.status === 'paused' ? 'Schedule resumed' : 'Schedule paused',
+      failure: 'Operation failed',
+      action: () => togglePauseResume(currentJob.id),
+    });
   };
 
   const handleSnooze = async (preset: string) => {
-    if (isYaml) {
-      toast.error('Rotinas YAML são imutáveis (edite routines.yaml)');
-      return;
-    }
-    setIsBusy(true);
-    try {
-      await snoozeJob(currentJob.id, preset);
-      toast.success(`Job snoozed: ${preset}`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Snooze failed';
-      toast.error(msg);
-    } finally {
-      setIsBusy(false);
-    }
+    if (rejectYaml()) return;
+    await mutate({
+      id: `inspect-snooze-${currentJob.id}`,
+      success: `Job snoozed: ${preset}`,
+      failure: 'Snooze failed',
+      action: () => snoozeJob(currentJob.id, preset),
+    });
   };
 
   const handleRetry = async () => {
-    if (isYaml) {
-      toast.error('Rotinas YAML são imutáveis (edite routines.yaml)');
-      return;
-    }
-    setIsBusy(true);
-    try {
-      await retryJob(currentJob.id);
-      toast.success(`Job re-enqueued for dispatch: ${currentJob.title}`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Retry failed';
-      toast.error(msg);
-    } finally {
-      setIsBusy(false);
-    }
+    if (rejectYaml()) return;
+    await mutate({
+      id: `inspect-retry-${currentJob.id}`,
+      success: `Job queued for another attempt: ${currentJob.title}`,
+      description: QUEUED_NOT_DELIVERED,
+      failure: 'Retry failed',
+      action: () => retryJob(currentJob.id),
+    });
   };
 
   const handleRescheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isYaml) {
-      toast.error('Rotinas YAML são imutáveis (edite routines.yaml)');
-      return;
-    }
-    setIsBusy(true);
-    try {
-      await rescheduleJob(currentJob.id, {
+    if (rejectYaml()) return;
+    const accepted = await mutate({
+      id: `inspect-reschedule-${currentJob.id}`,
+      success: 'Job schedule modified',
+      failure: 'Reschedule failed',
+      action: () => rescheduleJob(currentJob.id, {
         run_at: currentJob.kind === 'once' ? (newRunAt ? new Date(newRunAt).toISOString() : undefined) : undefined,
         cron_expr: currentJob.kind === 'cron' ? newCron : undefined,
-      });
-      setIsRescheduling(false);
-      toast.success('Job schedule modified successfully');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Reschedule failed';
-      toast.error(msg);
-    } finally {
-      setIsBusy(false);
-    }
+      }),
+    });
+    if (accepted) setIsRescheduling(false);
   };
 
   const handleCancel = async () => {
-    if (isYaml) {
-      toast.error('Rotinas YAML são imutáveis (edite routines.yaml)');
-      return;
-    }
-    if (confirm(`Are you sure you want to cancel and delete "${currentJob.title}"?`)) {
-      setIsBusy(true);
-      try {
-        await cancelJob(currentJob.id);
-        toast.info('Job cancelled and removed from SQLite agenda');
-        onOpenChange(false);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Cancellation failed';
-        toast.error(msg);
-      } finally {
-        setIsBusy(false);
-      }
-    }
+    if (rejectYaml()) return;
+    if (!confirm(`Are you sure you want to cancel and delete "${currentJob.title}"?`)) return;
+    const accepted = await mutate({
+      id: `inspect-cancel-${currentJob.id}`,
+      success: 'Job cancelled',
+      failure: 'Cancellation failed',
+      action: () => cancelJob(currentJob.id),
+    });
+    if (accepted) onOpenChange(false);
   };
 
   return (

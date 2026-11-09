@@ -16,10 +16,10 @@ import {
   Repeat,
   AlertCircle,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { Job } from '../../types/domain';
 import { StatusBadge, SourceBadge } from '../../components/wdg-status-badge';
 import { useJobsStore } from '../../stores/jobs';
+import { QUEUED_NOT_DELIVERED, runWithFeedback } from '../../lib/jobs/mutations';
 
 export interface JobsTableProps {
   jobs: Job[];
@@ -27,7 +27,8 @@ export interface JobsTableProps {
 }
 
 export function JobsTable({ jobs, onInspect }: JobsTableProps) {
-  const { runJobNow, togglePauseResume, snoozeJob, togglePauseResumeGroup, snoozeGroup } = useJobsStore();
+  const { runJobNow, togglePauseResume, snoozeJob, togglePauseResumeGroup, snoozeGroup, pendingMutations } = useJobsStore();
+  const isPending = (key: string) => pendingMutations.includes(key);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   // Group batch jobs by group_id if present
@@ -53,30 +54,43 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
 
   const handleRunNow = async (e: React.MouseEvent, job: Job) => {
     e.stopPropagation();
-    toast.loading(`Dispatching ${job.title}...`, { id: `run-${job.id}` });
-    const success = await runJobNow(job.id);
-    if (success) {
-      toast.success(`Dispatched ${job.title}`, {
-        id: `run-${job.id}`,
-        description: `HTTP 202 Accepted → Sent to ${job.recipient}`,
-      });
-    }
+    await runWithFeedback({
+      id: `run-${job.id}`,
+      pending: `Dispatching ${job.title}...`,
+      success: `Queued ${job.title}`,
+      description: QUEUED_NOT_DELIVERED,
+      failure: `Dispatch failed for ${job.title}`,
+      action: () => runJobNow(job.id),
+    });
   };
 
-  const handleTogglePause = (e: React.MouseEvent, job: Job) => {
+  const handleTogglePause = async (e: React.MouseEvent, job: Job) => {
     e.stopPropagation();
-    togglePauseResume(job.id);
-    toast.info(
-      job.status === 'paused'
-        ? `Resumed schedule: ${job.title}`
-        : `Paused schedule: ${job.title}`
-    );
+    await runWithFeedback({
+      id: `pause-${job.id}`,
+      success: job.status === 'paused' ? `Resumed schedule: ${job.title}` : `Paused schedule: ${job.title}`,
+      failure: `Could not change ${job.title}`,
+      action: () => togglePauseResume(job.id),
+    });
   };
 
-  const handleQuickSnooze = (e: React.MouseEvent, job: Job) => {
+  const handleQuickSnooze = async (e: React.MouseEvent, job: Job) => {
     e.stopPropagation();
-    snoozeJob(job.id, 'In 1 hour');
-    toast.success(`Snoozed ${job.title} for 1 hour`);
+    await runWithFeedback({
+      id: `snooze-${job.id}`,
+      success: `Snoozed ${job.title} for 1 hour`,
+      failure: `Could not snooze ${job.title}`,
+      action: () => snoozeJob(job.id, 'In 1 hour'),
+    });
+  };
+
+  const handleGroup = async (groupId: string, label: string, action: () => ReturnType<typeof togglePauseResumeGroup>) => {
+    await runWithFeedback({
+      id: `group-${groupId}`,
+      success: `${label}: group ${groupId}`,
+      failure: `${label} failed for group ${groupId}`,
+      action,
+    });
   };
 
   if (jobs.length === 0) {
@@ -165,6 +179,7 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
           <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
+              disabled={isPending(`job:${job.id}`)}
               onClick={(e) => handleRunNow(e, job)}
               title="Run Now (POST /jobs/{id}/run)"
               className="p-2 rounded-lg text-sky-500 hover:bg-sky-500/10 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-[0.98]"
@@ -173,7 +188,7 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
             </button>
             <button
               type="button"
-              disabled={isYaml}
+              disabled={isYaml || isPending(`job:${job.id}`)}
               onClick={(e) => handleTogglePause(e, job)}
               title={isYaml ? 'Managed via routines.yaml' : job.status === 'paused' ? 'Resume' : 'Pause'}
               className={`p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-[0.98] ${
@@ -186,7 +201,7 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
             </button>
             <button
               type="button"
-              disabled={isYaml}
+              disabled={isYaml || isPending(`job:${job.id}`)}
               onClick={(e) => handleQuickSnooze(e, job)}
               title={isYaml ? 'Managed via routines.yaml' : 'Quick Snooze (+1h)'}
               className={`p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-[0.98] ${
@@ -252,7 +267,8 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
                         <button
                           type="button"
                           id="btn-group-pause-all"
-                          onClick={() => togglePauseResumeGroup(groupId, true)}
+                          disabled={isPending(`group:${groupId}`)}
+                          onClick={() => handleGroup(groupId, 'Paused', () => togglePauseResumeGroup(groupId, true))}
                           className="px-2 py-1 text-[11px] font-medium rounded border border-border bg-card hover:bg-muted"
                         >
                           Pause All
@@ -260,7 +276,8 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
                         <button
                           type="button"
                           id="btn-group-resume-all"
-                          onClick={() => togglePauseResumeGroup(groupId, false)}
+                          disabled={isPending(`group:${groupId}`)}
+                          onClick={() => handleGroup(groupId, 'Resumed', () => togglePauseResumeGroup(groupId, false))}
                           className="px-2 py-1 text-[11px] font-medium rounded border border-border bg-card hover:bg-muted"
                         >
                           Resume All
@@ -268,7 +285,8 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
                         <button
                           type="button"
                           id="btn-group-snooze-all"
-                          onClick={() => snoozeGroup(groupId, '1h')}
+                          disabled={isPending(`group:${groupId}`)}
+                          onClick={() => handleGroup(groupId, 'Snoozed', () => snoozeGroup(groupId, '1h'))}
                           className="px-2 py-1 text-[11px] font-medium rounded border border-border bg-card hover:bg-muted"
                         >
                           Snooze All

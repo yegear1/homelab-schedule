@@ -8,10 +8,10 @@ import { api } from '../../lib/api';
 import { ResourceNotice } from '../../components/ResourceNotice';
 import { mapJobListItemToDomain } from '../../stores/jobs';
 import { Play, Pause, Clock, Eye, Calendar, Repeat, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
 import { Contact, Job, JobStatus } from '../../types/domain';
 import { StatusBadge, SourceBadge } from '../../components/wdg-status-badge';
 import { useJobsStore } from '../../stores/jobs';
+import { QUEUED_NOT_DELIVERED, runWithFeedback } from '../../lib/jobs/mutations';
 
 export interface ContactJobsProps {
   contact: Contact;
@@ -52,11 +52,14 @@ export function ContactJobs({ contact, onInspectJob }: ContactJobsProps) {
   }), [scopedJobs]);
 
   const handleRunNow = async (job: Job) => {
-    toast.loading(`Triggering ${job.title}...`, { id: `scoped-run-${job.id}` });
-    const ok = await runJobNow(job.id);
-    if (ok) {
-      toast.success(`Dispatched ${job.title}`, { id: `scoped-run-${job.id}` });
-    }
+    await runWithFeedback({
+      id: `scoped-run-${job.id}`,
+      pending: `Triggering ${job.title}...`,
+      success: `Queued ${job.title}`,
+      description: QUEUED_NOT_DELIVERED,
+      failure: `Dispatch failed for ${job.title}`,
+      action: () => runJobNow(job.id),
+    });
   };
 
   return (
@@ -168,10 +171,12 @@ export function ContactJobs({ contact, onInspectJob }: ContactJobsProps) {
                         <button
                           type="button"
                           disabled={isYaml}
-                          onClick={() => {
-                            togglePauseResume(job.id);
-                            toast.info(job.status === 'paused' ? 'Resumed' : 'Paused');
-                          }}
+                          onClick={() => void runWithFeedback({
+                            id: `scoped-pause-${job.id}`,
+                            success: job.status === 'paused' ? 'Resumed' : 'Paused',
+                            failure: `Could not change ${job.title}`,
+                            action: () => togglePauseResume(job.id),
+                          })}
                           title={isYaml ? 'Managed via routines.yaml' : 'Pause / Resume'}
                           className={`p-1.5 rounded-md min-h-[36px] min-w-[36px] inline-flex items-center justify-center active:scale-[0.98] ${
                             isYaml ? 'opacity-30 cursor-not-allowed' : 'text-amber-500 hover:bg-amber-500/10'
@@ -182,10 +187,12 @@ export function ContactJobs({ contact, onInspectJob }: ContactJobsProps) {
                         <button
                           type="button"
                           disabled={isYaml}
-                          onClick={() => {
-                            snoozeJob(job.id, 'In 1 hour');
-                            toast.success('Snoozed for 1 hour');
-                          }}
+                          onClick={() => void runWithFeedback({
+                            id: `scoped-snooze-${job.id}`,
+                            success: 'Snoozed for 1 hour',
+                            failure: `Could not snooze ${job.title}`,
+                            action: () => snoozeJob(job.id, 'In 1 hour'),
+                          })}
                           title={isYaml ? 'Managed via routines.yaml' : 'Snooze'}
                           className={`p-1.5 rounded-md min-h-[36px] min-w-[36px] inline-flex items-center justify-center active:scale-[0.98] ${
                             isYaml ? 'opacity-30 cursor-not-allowed' : 'text-purple-500 hover:bg-purple-500/10'

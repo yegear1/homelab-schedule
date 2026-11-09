@@ -14,6 +14,56 @@ type ResourceName = 'jobs' | 'tags' | 'contacts' | 'templates';
 type ResourceState = { status: ResourceStatus; error?: string; stale: boolean };
 const generations: Record<ResourceName, number> = { jobs: 0, tags: 0, contacts: 0, templates: 0 };
 
+export const YAML_IMMUTABLE_MESSAGE = 'Rotinas YAML são imutáveis via interface (edite routines.yaml)';
+
+/** Raised when a write for the same job, group or composer is still running. */
+export class MutationInFlightError extends Error {
+  constructor() {
+    super('Já existe uma operação em andamento para este item');
+    this.name = 'MutationInFlightError';
+  }
+}
+
+/** `refreshed` is false when the server accepted the write but the follow-up read failed. */
+export interface MutationOutcome { refreshed: boolean }
+
+const inFlight = new Set<string>();
+
+function _snoozeWhen(duration: string): string {
+  return duration.toLowerCase().includes('hour') ? '+1h' : duration;
+}
+
+function _requireJob(id: string, options: { mutable: boolean } = { mutable: true }): Job {
+  const job = useJobsStore.getState().jobs.find((j) => j.id === id);
+  if (!job) throw new Error('Agendamento não encontrado na lista carregada; atualize a agenda');
+  if (options.mutable && job.source === 'yaml') throw new Error(YAML_IMMUTABLE_MESSAGE);
+  return job;
+}
+
+/**
+ * Sends one write. State changes only from the server response: on failure nothing is
+ * mutated locally and the error propagates; on success the read model is refreshed
+ * separately. Nothing is ever retried automatically, and the key stays locked until the
+ * refresh settles so a second submit cannot replay the write.
+ */
+async function _mutate(
+  key: string,
+  action: () => Promise<unknown>,
+  options: { refreshTags?: boolean } = {},
+): Promise<MutationOutcome> {
+  if (inFlight.has(key)) throw new MutationInFlightError();
+  inFlight.add(key);
+  useJobsStore.setState({ pendingMutations: [...inFlight] });
+  try {
+    await action();
+    const store = useJobsStore.getState();
+    await Promise.all([store.fetchJobs(), options.refreshTags ? store.fetchTags() : Promise.resolve()]);
+    return { refreshed: useJobsStore.getState().resources.jobs.status !== 'error' };
+  } finally {
+    inFlight.delete(key);
+    useJobsStore.setState({ pendingMutations: [...inFlight] });
+  }
+}
 
 interface JobsState {
   resources: Record<ResourceName, ResourceState>;
@@ -31,6 +81,8 @@ interface JobsState {
   selectedJobId: string | null;
   isInspectorOpen: boolean;
   isCreateOpen: boolean;
+  /** Keys (`job:<id>`, `group:<id>`, `create`) with a write in flight. */
+  pendingMutations: string[];
 
   // Actions
   setViewMode: (mode: AgendaViewMode) => void;
@@ -44,21 +96,21 @@ interface JobsState {
   // Job Operations
   fetchJobs: () => Promise<void>;
   fetchTags: () => Promise<void>;
-  runJobNow: (id: string) => Promise<boolean>;
-  togglePauseResume: (id: string) => Promise<void>;
-  snoozeJob: (id: string, snoozeDuration: string) => Promise<void>;
-  rescheduleJob: (id: string, newTiming: { run_at?: string; cron_expr?: string }) => Promise<void>;
-  cancelJob: (id: string) => Promise<void>;
-  retryJob: (id: string) => Promise<void>;
-  createJob: (jobData: Partial<Job>, recipients: string[]) => Promise<void>;
+  runJobNow: (id: string) => Promise<MutationOutcome>;
+  togglePauseResume: (id: string) => Promise<MutationOutcome>;
+  snoozeJob: (id: string, snoozeDuration: string) => Promise<MutationOutcome>;
+  rescheduleJob: (id: string, newTiming: { run_at?: string; cron_expr?: string }) => Promise<MutationOutcome>;
+  cancelJob: (id: string) => Promise<MutationOutcome>;
+  retryJob: (id: string) => Promise<MutationOutcome>;
+  createJob: (jobData: Partial<Job>, recipients: string[]) => Promise<MutationOutcome>;
   exportCsv: () => Promise<void>;
 
   // Group Operations
-  runGroup: (groupId: string) => Promise<boolean>;
-  togglePauseResumeGroup: (groupId: string, pause: boolean) => Promise<void>;
-  snoozeGroup: (groupId: string, snoozeDuration: string) => Promise<void>;
-  cancelGroup: (groupId: string) => Promise<void>;
-  retryGroup: (groupId: string) => Promise<void>;
+  runGroup: (groupId: string) => Promise<MutationOutcome>;
+  togglePauseResumeGroup: (groupId: string, pause: boolean) => Promise<MutationOutcome>;
+  snoozeGroup: (groupId: string, snoozeDuration: string) => Promise<MutationOutcome>;
+  cancelGroup: (groupId: string) => Promise<MutationOutcome>;
+  retryGroup: (groupId: string) => Promise<MutationOutcome>;
 
   // Contact Operations
   fetchContacts: () => Promise<void>;
@@ -135,6 +187,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   selectedJobId: null,
   isInspectorOpen: false,
   isCreateOpen: false,
+  pendingMutations: [],
 
   setViewMode: (mode) => set({ viewMode: mode }),
   setStatusFilter: (status) => set({ statusFilter: status }),
@@ -173,169 +226,38 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   },
 
   runJobNow: async (id: string) => {
-    try {
-      await api.runJob(id);
-      await get().fetchJobs();
-      return true;
-    } catch {
-      // Fallback local simulation if offline
-      const job = get().jobs.find((j) => j.id === id);
-      if (!job) return false;
-
-      const newRun: JobRun = {
-        id: `run-${Date.now()}`,
-        job_id: job.id,
-        job_title: job.title,
-        recipient: job.recipient,
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        status_code: 202,
-        status: 'success',
-        duration_ms: 140,
-        payload_preview: job.text || (job.template_id ? `Rendered template ${job.template_id}` : 'Manual dispatch trigger'),
-      };
-
-      set((state) => ({
-        jobs: state.jobs.map((j) => {
-          if (j.id === id) {
-            return {
-              ...j,
-              status: j.kind === 'once' ? 'done' : j.status,
-              last_run_at: newRun.timestamp,
-              last_status_code: 202,
-              last_error: undefined,
-              runs_executed: (j.runs_executed ?? 0) + 1,
-              recent_runs: [newRun, ...(j.recent_runs || [])].slice(0, 5),
-            };
-          }
-          return j;
-        }),
-        runs: [newRun, ...state.runs],
-      }));
-      return true;
-    }
+    _requireJob(id, { mutable: false });
+    return _mutate(`job:${id}`, () => api.runJob(id));
   },
 
   togglePauseResume: async (id: string) => {
-    const job = get().jobs.find((j) => j.id === id);
-    if (!job) return;
-    if (job.source === 'yaml') {
-      throw new Error('Rotinas YAML são imutáveis via interface (edite routines.yaml)');
-    }
-    try {
-      if (job.status === 'paused') {
-        await api.resumeJob(id);
-      } else {
-        await api.pauseJob(id);
-      }
-      await get().fetchJobs();
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes('YAML')) {
-        throw err;
-      }
-      // Fallback local update
-      set((state) => ({
-        jobs: state.jobs.map((j) => {
-          if (j.id === id) {
-            const nextStatus = j.status === 'paused' ? 'scheduled' : 'paused';
-            return { ...j, status: nextStatus };
-          }
-          return j;
-        }),
-      }));
-    }
+    const job = _requireJob(id);
+    return _mutate(`job:${id}`, () => (job.status === 'paused' ? api.resumeJob(id) : api.pauseJob(id)));
   },
 
   snoozeJob: async (id: string, snoozeDuration: string) => {
-    const job = get().jobs.find((j) => j.id === id);
-    if (!job) return;
-    if (job.source === 'yaml') {
-      throw new Error('Rotinas YAML são imutáveis via interface (edite routines.yaml)');
-    }
-    const when = snoozeDuration.toLowerCase().includes('hour') ? '+1h' : snoozeDuration;
-    try {
-      await api.snoozeJob(id, { when });
-      await get().fetchJobs();
-    } catch {
-      // Fallback local update
-      set((state) => ({
-        jobs: state.jobs.map((j) => {
-          if (j.id === id) {
-            return {
-              ...j,
-              status: 'snoozed',
-              snooze_until: snoozeDuration,
-              next_run_at: snoozeDuration,
-            };
-          }
-          return j;
-        }),
-      }));
-    }
+    _requireJob(id);
+    return _mutate(`job:${id}`, () => api.snoozeJob(id, { when: _snoozeWhen(snoozeDuration) }));
   },
 
   rescheduleJob: async (id: string, { run_at, cron_expr }) => {
-    const job = get().jobs.find((j) => j.id === id);
-    if (!job) return;
-    if (job.source === 'yaml') {
-      throw new Error('Rotinas YAML são imutáveis via interface (edite routines.yaml)');
-    }
-    try {
-      await api.rescheduleJob(id, { run_at, cron_expr });
-      await get().fetchJobs();
-    } catch {
-      set((state) => ({
-        jobs: state.jobs.map((j) => {
-          if (j.id === id) {
-            return {
-              ...j,
-              run_at: run_at || j.run_at,
-              cron_expr: cron_expr || j.cron_expr,
-              status: 'scheduled',
-              next_run_at: run_at ? new Date(run_at).toLocaleString() : j.next_run_at,
-            };
-          }
-          return j;
-        }),
-      }));
-    }
+    _requireJob(id);
+    return _mutate(`job:${id}`, () => api.rescheduleJob(id, { run_at, cron_expr }));
   },
 
   retryJob: async (id: string) => {
-    const job = get().jobs.find((j) => j.id === id);
-    if (!job) return;
-    if (job.source === 'yaml') {
-      throw new Error('Rotinas YAML são imutáveis via interface (edite routines.yaml)');
-    }
-    try {
-      await api.retryJob(id);
-      await get().fetchJobs();
-    } catch {
-      set((state) => ({
-        jobs: state.jobs.map((j) =>
-          j.id === id
-            ? { ...j, status: 'scheduled', last_error: undefined, retry_count: 0 }
-            : j
-        ),
-      }));
-    }
+    _requireJob(id);
+    return _mutate(`job:${id}`, () => api.retryJob(id));
   },
 
   cancelJob: async (id: string) => {
-    const job = get().jobs.find((j) => j.id === id);
-    if (!job) return;
-    if (job.source === 'yaml') {
-      throw new Error('Rotinas YAML são imutáveis via interface (edite routines.yaml)');
-    }
-    try {
-      await api.cancelJob(id);
-    } catch {
-      // Proceed to update local state
-    }
+    _requireJob(id);
+    const outcome = await _mutate(`job:${id}`, () => api.cancelJob(id));
     set((state) => ({
-      jobs: state.jobs.filter((j) => j.id !== id),
       selectedJobId: state.selectedJobId === id ? null : state.selectedJobId,
       isInspectorOpen: state.selectedJobId === id ? false : state.isInspectorOpen,
     }));
+    return outcome;
   },
 
   createJob: async (jobData: Partial<Job>, recipients: string[]) => {
@@ -343,160 +265,37 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     if (cleanRecipients.length === 0) {
       throw new Error('Ao menos um destinatário é obrigatório');
     }
-
-    try {
-      if (cleanRecipients.length === 1) {
-        await api.createJob({
-          title: jobData.title || 'Untitled Job',
-          content: jobData.message_type === 'direct' ? (jobData.text || '') : undefined,
-          to: cleanRecipients[0],
-          kind: jobData.kind || 'once',
-          run_at: jobData.kind === 'once' ? jobData.run_at : undefined,
-          cron_expr: jobData.kind === 'cron' ? jobData.cron_expr : undefined,
-          created_by: jobData.created_by,
-          template_id: jobData.message_type === 'template' ? jobData.template_id : undefined,
-          variables: jobData.variables,
-          tags: jobData.tags,
-          until: jobData.until,
-          max_runs: jobData.max_runs,
-        });
-      } else {
-        await api.createBatchJobs({
-          title: jobData.title || 'Untitled Batch Job',
-          content: jobData.message_type === 'direct' ? (jobData.text || '') : undefined,
-          recipients: cleanRecipients,
-          kind: jobData.kind || 'once',
-          run_at: jobData.kind === 'once' ? jobData.run_at : undefined,
-          cron_expr: jobData.kind === 'cron' ? jobData.cron_expr : undefined,
-          created_by: jobData.created_by,
-          template_id: jobData.message_type === 'template' ? jobData.template_id : undefined,
-          variables: jobData.variables,
-          tags: jobData.tags,
-          until: jobData.until,
-          max_runs: jobData.max_runs,
-        });
-      }
-      await get().fetchJobs();
-    } catch {
-      // Fallback local creation if offline
-      const isBatch = cleanRecipients.length > 1;
-      const groupId = isBatch ? `grp-${Date.now().toString(36)}` : undefined;
-      const currentContacts = get().contacts;
-
-      const newJobs: Job[] = cleanRecipients.map((rawRecipient, idx) => {
-        const matched = currentContacts.find(
-          (c) =>
-            c.phone === rawRecipient ||
-            c.alias.toLowerCase() === rawRecipient.toLowerCase() ||
-            c.name?.toLowerCase() === rawRecipient.toLowerCase()
-        );
-
-        const finalPhone = matched ? matched.phone : rawRecipient;
-        const finalAlias = matched ? matched.alias : (jobData.recipient_alias || undefined);
-
-        return {
-          id: `job-${Date.now()}-${idx}`,
-          title: jobData.title || 'Untitled Job',
-          kind: jobData.kind || 'once',
-          status: 'scheduled',
-          source: 'sqlite',
-          recipient: finalPhone,
-          recipient_alias: finalAlias,
-          group_id: groupId,
-          run_at: jobData.run_at,
-          cron_expr: jobData.cron_expr,
-          cron_human: jobData.cron_human,
-          message_type: jobData.message_type || 'direct',
-          text: jobData.text,
-          template_id: jobData.template_id,
-          variables: jobData.variables || {},
-          tags: jobData.tags || ['alerts'],
-          created_by: jobData.created_by || 'operator',
-          created_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-          next_run_at: jobData.kind === 'once' ? (jobData.run_at || 'Soon') : 'Next matching cron cycle',
-          retry_count: 0,
-          runs_executed: 0,
-          max_runs: jobData.max_runs,
-          until: jobData.until,
-        };
-      });
-
-      set((state) => ({
-        jobs: [...newJobs, ...state.jobs],
-      }));
-    }
+    const common = {
+      content: jobData.message_type === 'direct' ? (jobData.text || '') : undefined,
+      kind: jobData.kind || 'once',
+      run_at: jobData.kind === 'once' ? jobData.run_at : undefined,
+      cron_expr: jobData.kind === 'cron' ? jobData.cron_expr : undefined,
+      created_by: jobData.created_by,
+      template_id: jobData.message_type === 'template' ? jobData.template_id : undefined,
+      variables: jobData.variables,
+      tags: jobData.tags,
+      until: jobData.until,
+      max_runs: jobData.max_runs,
+    } as const;
+    const request = cleanRecipients.length === 1
+      ? () => api.createJob({ ...common, title: jobData.title || 'Untitled Job', to: cleanRecipients[0] })
+      : () => api.createBatchJobs({ ...common, title: jobData.title || 'Untitled Batch Job', recipients: cleanRecipients });
+    return _mutate('create', request, { refreshTags: true });
   },
 
   // Group Operations
-  runGroup: async (groupId: string) => {
-    try {
-      await api.runGroup(groupId);
-      await get().fetchJobs();
-      return true;
-    } catch {
-      return false;
-    }
-  },
+  runGroup: async (groupId: string) => _mutate(`group:${groupId}`, () => api.runGroup(groupId)),
 
-  togglePauseResumeGroup: async (groupId: string, pause: boolean) => {
-    try {
-      if (pause) {
-        await api.pauseGroup(groupId);
-      } else {
-        await api.resumeGroup(groupId);
-      }
-      await get().fetchJobs();
-    } catch {
-      // Fallback local update
-      set((state) => ({
-        jobs: state.jobs.map((j) =>
-          j.group_id === groupId ? { ...j, status: pause ? 'paused' : 'scheduled' } : j
-        ),
-      }));
-    }
-  },
+  togglePauseResumeGroup: async (groupId: string, pause: boolean) =>
+    _mutate(`group:${groupId}`, () => (pause ? api.pauseGroup(groupId) : api.resumeGroup(groupId))),
 
-  snoozeGroup: async (groupId: string, snoozeDuration: string) => {
-    const when = snoozeDuration.toLowerCase().includes('hour') ? '+1h' : snoozeDuration;
-    try {
-      await api.snoozeGroup(groupId, { when });
-      await get().fetchJobs();
-    } catch {
-      set((state) => ({
-        jobs: state.jobs.map((j) =>
-          j.group_id === groupId
-            ? { ...j, status: 'snoozed', snooze_until: snoozeDuration, next_run_at: snoozeDuration }
-            : j
-        ),
-      }));
-    }
-  },
+  snoozeGroup: async (groupId: string, snoozeDuration: string) =>
+    _mutate(`group:${groupId}`, () => api.snoozeGroup(groupId, { when: _snoozeWhen(snoozeDuration) })),
 
-  cancelGroup: async (groupId: string) => {
-    try {
-      await api.cancelGroup(groupId);
-      await get().fetchJobs();
-    } catch {
-      set((state) => ({
-        jobs: state.jobs.filter((j) => j.group_id !== groupId),
-      }));
-    }
-  },
+  cancelGroup: async (groupId: string) => _mutate(`group:${groupId}`, () => api.cancelGroup(groupId)),
 
-  retryGroup: async (groupId: string) => {
-    try {
-      await api.retryGroup(groupId);
-      await get().fetchJobs();
-    } catch {
-      set((state) => ({
-        jobs: state.jobs.map((j) =>
-          j.group_id === groupId && j.status === 'error'
-            ? { ...j, status: 'scheduled', last_error: undefined, retry_count: 0 }
-            : j
-        ),
-      }));
-    }
-  },
+  retryGroup: async (groupId: string) => _mutate(`group:${groupId}`, () => api.retryGroup(groupId)),
+
 
   fetchContacts: async () => {
     const generation = ++generations.contacts;
