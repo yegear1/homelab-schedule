@@ -7,6 +7,8 @@ import { create } from 'zustand';
 import { AgendaViewMode, Contact, Job, JobRun, JobStatus, Template } from '../types/domain';
 import { JobListItem } from '../lib/types';
 import { api } from '../lib/api';
+import { saveCsv } from '../lib/jobs/agenda';
+import { toast } from 'sonner';
 type ResourceStatus = 'idle' | 'loading' | 'ready' | 'error';
 type ResourceName = 'jobs' | 'tags' | 'contacts' | 'templates';
 type ResourceState = { status: ResourceStatus; error?: string; stale: boolean };
@@ -24,6 +26,8 @@ interface JobsState {
   statusFilter: 'all' | JobStatus;
   selectedTag: string | null;
   searchQuery: string;
+  appliedQuery: { status: 'all' | 'upcoming' | 'done' | 'paused' | 'error'; tag?: string; query?: string; limit: number } | null;
+  exportBusy: boolean;
   selectedJobId: string | null;
   isInspectorOpen: boolean;
   isCreateOpen: boolean;
@@ -69,7 +73,7 @@ interface JobsState {
   deleteTemplate: (id: string) => Promise<void>;
 }
 
-function mapJobListItemToDomain(item: JobListItem, contacts: Contact[], existingJobs: Job[]): Job {
+export function mapJobListItemToDomain(item: JobListItem, contacts: Contact[], existingJobs: Job[]): Job {
   const rawPhone = item.target_number || item.to;
   const matched = contacts.find(
     (c) =>
@@ -126,6 +130,8 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   statusFilter: 'all',
   selectedTag: null,
   searchQuery: '',
+  appliedQuery: null,
+  exportBusy: false,
   selectedJobId: null,
   isInspectorOpen: false,
   isCreateOpen: false,
@@ -143,11 +149,13 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     const generation = ++generations.jobs;
     set((state) => ({ resources: { ...state.resources, jobs: { status: 'loading', stale: state.resources.jobs.status === 'ready' || state.resources.jobs.stale } } }));
     try {
-      const items = await api.getJobs({ status: 'all' });
+      const { statusFilter, selectedTag, searchQuery } = get();
+      const query = { status: statusFilter === 'scheduled' || statusFilter === 'snoozed' ? 'upcoming' as const : statusFilter, tag: selectedTag || undefined, query: searchQuery.trim() || undefined, limit: 50 };
+      const items = await api.getJobs(query);
       const currentContacts = get().contacts;
       const currentJobs = get().jobs;
       const mappedJobs = items.map((item) => mapJobListItemToDomain(item, currentContacts, currentJobs));
-      if (generation === generations.jobs) set((state) => ({ jobs: mappedJobs, resources: { ...state.resources, jobs: { status: 'ready', stale: false } } }));
+      if (generation === generations.jobs) set((state) => ({ jobs: mappedJobs, appliedQuery: query, resources: { ...state.resources, jobs: { status: 'ready', stale: false } } }));
     } catch (error: unknown) {
       if (generation === generations.jobs) set((state) => ({ resources: { ...state.resources, jobs: { status: 'error', error: error instanceof Error ? error.message : 'Falha de conexão', stale: state.resources.jobs.stale } } }));
     }
@@ -667,55 +675,21 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   },
 
   exportCsv: async () => {
-    const { statusFilter, selectedTag, searchQuery, jobs } = get();
+    const { appliedQuery, exportBusy, resources } = get();
+    if (exportBusy || !appliedQuery || resources.jobs.status !== 'ready') return;
+    set({ exportBusy: true });
     try {
-      const searchParams = new URLSearchParams();
-      if (statusFilter === 'all') {
-        searchParams.set('status', 'all');
-      } else if (statusFilter === 'scheduled') {
-        searchParams.set('status', 'upcoming');
-      } else if (statusFilter) {
-        searchParams.set('status', statusFilter);
-      }
-      if (selectedTag) searchParams.set('tag', selectedTag);
-      if (searchQuery.trim()) searchParams.set('query', searchQuery.trim());
-
-      const blob = await api.downloadCsv('/jobs/export.csv', searchParams);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `homelab_jobs_export_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch {
-      // Fallback local export if offline
-      const headers = ['id', 'title', 'kind', 'status', 'source', 'recipient', 'group_id', 'cron_expr', 'run_at', 'last_status_code', 'retry_count'];
-      const rows = jobs.map((j) => [
-        j.id,
-        `"${(j.title || '').replace(/"/g, '""')}"`,
-        j.kind,
-        j.status,
-        j.source,
-        `"${j.recipient}"`,
-        j.group_id || '',
-        j.cron_expr || '',
-        j.run_at || '',
-        j.last_status_code || '',
-        j.retry_count,
-      ]);
-
-      const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `homelab_jobs_export_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const params = new URLSearchParams();
+      params.set('status', appliedQuery.status);
+      if (appliedQuery.tag) params.set('tag', appliedQuery.tag);
+      if (appliedQuery.query) params.set('query', appliedQuery.query);
+      const blob = await api.downloadCsv('/jobs/export.csv', params);
+      saveCsv(blob, `homelab_jobs_export_${new Date().toISOString().split('T')[0]}.csv`);
+      toast.success('CSV exportado.');
+    } catch (error: unknown) {
+      toast.error(`Falha ao exportar CSV: ${error instanceof Error ? error.message : 'falha de conexão'}`);
+    } finally {
+      set({ exportBusy: false });
     }
   },
 }));

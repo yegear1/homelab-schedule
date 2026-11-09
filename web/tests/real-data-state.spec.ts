@@ -29,7 +29,7 @@ test('failed refresh labels previously loaded contacts as stale', async ({ page 
   await page.evaluate(() => { history.pushState({}, '', '/templates'); dispatchEvent(new PopStateEvent('popstate')); });
   await expect(page.getByText('Message Templates').first()).toBeVisible();
   await page.evaluate(() => { history.pushState({}, '', '/contacts'); dispatchEvent(new PopStateEvent('popstate')); });
-  await expect(page.getByRole('alert')).toContainText('podem estar desatualizados');
+  await expect(page.getByRole('alert').filter({ hasText: 'carregar contatos' })).toContainText('podem estar desatualizados');
   await expect(page.getByText('Real Contact').first()).toBeVisible();
 });
 

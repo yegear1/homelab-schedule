@@ -34,42 +34,17 @@ export function AgendaPage() {
   } = useJobsStore();
 
   useEffect(() => {
-    fetchJobs();
     fetchTags();
     fetchContacts();
     fetchTemplates();
-  }, [fetchJobs, fetchTags, fetchContacts, fetchTemplates]);
+  }, [fetchTags, fetchContacts, fetchTemplates]);
 
-  // Filter jobs based on active search, status tab, and tag filter
-  const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
-      // 1. Status Filter
-      if (statusFilter !== 'all' && job.status !== statusFilter) {
-        return false;
-      }
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchJobs(); }, searchQuery ? 250 : 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchJobs, statusFilter, selectedTag, searchQuery]);
 
-      // 2. Tag Filter
-      if (selectedTag && !job.tags.includes(selectedTag)) {
-        return false;
-      }
-
-      // 3. Search Query (title, recipient, or group_id)
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesTitle = job.title.toLowerCase().includes(q);
-        const matchesRecipient = job.recipient.toLowerCase().includes(q);
-        const matchesAlias = (job.recipient_alias || '').toLowerCase().includes(q);
-        const matchesGroup = (job.group_id || '').toLowerCase().includes(q);
-        const matchesTags = job.tags.some((t) => t.toLowerCase().includes(q));
-
-        if (!matchesTitle && !matchesRecipient && !matchesAlias && !matchesGroup && !matchesTags) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [jobs, statusFilter, selectedTag, searchQuery]);
+  const filteredJobs = jobs;
 
   const selectedJob = useMemo(() => {
     return jobs.find((j) => j.id === selectedJobId) || null;

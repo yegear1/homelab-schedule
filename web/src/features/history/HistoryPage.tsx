@@ -138,41 +138,8 @@ export function HistoryPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       toast.success('Audit history CSV exported');
-    } catch {
-      const headers = [
-        'id',
-        'timestamp',
-        'trigger_mode',
-        'job_id',
-        'job_title',
-        'recipient',
-        'status_code',
-        'duration_ms',
-        'error_message',
-      ];
-      const rows = filteredRuns.map((r) => [
-        r.id,
-        r.timestamp,
-        r.trigger_mode || 'scheduled',
-        r.job_id,
-        `"${r.job_title.replace(/"/g, '""')}"`,
-        r.recipient,
-        r.status_code,
-        r.duration_ms,
-        `"${(r.error_message || '').replace(/"/g, '""')}"`,
-      ]);
-
-      const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `homelab_history_audit_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success('Audit history CSV exported (offline fallback)');
+    } catch (error: unknown) {
+      toast.error(`Falha ao exportar CSV: ${error instanceof Error ? error.message : 'falha de conexão'}`);
     }
   };
 

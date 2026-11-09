@@ -3,7 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { api } from '../../lib/api';
+import { ResourceNotice } from '../../components/ResourceNotice';
+import { mapJobListItemToDomain } from '../../stores/jobs';
 import { Play, Pause, Clock, Eye, Calendar, Repeat, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Contact, Job, JobStatus } from '../../types/domain';
@@ -16,19 +19,23 @@ export interface ContactJobsProps {
 }
 
 export function ContactJobs({ contact, onInspectJob }: ContactJobsProps) {
-  const { jobs, runJobNow, togglePauseResume, snoozeJob } = useJobsStore();
-  const [statusFilter, setStatusFilter] = useState<'all' | JobStatus>('all');
-
-  // Scoped jobs: contact is Recipient OR Creator
-  const scopedJobs = useMemo(() => {
-    const contactPhone = contact.phone.toLowerCase();
-    const contactName = (contact.name || contact.alias || '').toLowerCase();
-    return jobs.filter((job) => {
-      const matchRecipient = job.recipient.toLowerCase() === contactPhone;
-      const matchCreator = (job.created_by || '').toLowerCase() === contactName;
-      return matchRecipient || matchCreator;
+  const { contacts, runJobNow, togglePauseResume, snoozeJob } = useJobsStore();
+  const [scopedJobs, setScopedJobs] = useState<Job[]>([]);
+  const [readState, setReadState] = useState<{ status: 'loading' | 'ready' | 'error'; error?: string }>({ status: 'loading' });
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => {
+    let current = true;
+    setReadState({ status: 'loading' });
+    api.getJobs({ status: 'all', phone: contact.phone, limit: 100 }).then((items) => {
+      if (!current) return;
+      setScopedJobs(items.map((item) => mapJobListItemToDomain(item, contacts, [])));
+      setReadState({ status: 'ready' });
+    }).catch((error: unknown) => {
+      if (current) setReadState({ status: 'error', error: error instanceof Error ? error.message : 'Falha de conexão' });
     });
-  }, [jobs, contact]);
+    return () => { current = false; };
+  }, [contact.phone, contacts, refresh]);
+  const [statusFilter, setStatusFilter] = useState<'all' | JobStatus>('all');
 
   // Derived filtered jobs based on active tab
   const filteredJobs = useMemo(() => {
@@ -54,6 +61,9 @@ export function ContactJobs({ contact, onInspectJob }: ContactJobsProps) {
 
   return (
     <div className="space-y-4">
+      <ResourceNotice label="agendamentos do contato" {...readState} stale={false} onRetry={() => setRefresh((n) => n + 1)} />
+      {readState.status === 'ready' && <p className="text-xs text-muted-foreground">Resultados carregados para este contato: até 100.</p>}
+      {readState.status === 'ready' && <>
       {/* Status filter tabs */}
       <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
         {[
@@ -200,6 +210,7 @@ export function ContactJobs({ contact, onInspectJob }: ContactJobsProps) {
           </table>
         </div>
       )}
+      </>}
     </div>
   );
 }

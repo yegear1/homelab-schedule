@@ -34,6 +34,8 @@ export function AgendaFilters({ onOpenCreate }: AgendaFiltersProps) {
     setSelectedTag,
     setSearchQuery,
     exportCsv,
+    exportBusy,
+    resources,
   } = useJobsStore();
 
   // Status counts derived directly
@@ -68,7 +70,7 @@ export function AgendaFilters({ onOpenCreate }: AgendaFiltersProps) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search title, recipient, group ID..."
+              placeholder="Buscar título ou conteúdo..."
               className="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-sky-500 min-h-[44px]"
             />
             {searchQuery && (
@@ -150,6 +152,7 @@ export function AgendaFilters({ onOpenCreate }: AgendaFiltersProps) {
           <button
             type="button"
             onClick={exportCsv}
+            disabled={exportBusy || resources.jobs.status !== 'ready'}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors min-h-[44px] active:scale-[0.98]"
             title="Export CSV (authenticated GET /jobs/export.csv)"
           >
@@ -169,6 +172,7 @@ export function AgendaFilters({ onOpenCreate }: AgendaFiltersProps) {
         </div>
       </div>
 
+      <p className="text-xs text-muted-foreground">A contagem mostra apenas os resultados carregados do filtro ativo (até 50).</p>
       {/* Quick Status Filter Tabs */}
       <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
         {statusTabs.map((tab) => {
@@ -185,15 +189,11 @@ export function AgendaFilters({ onOpenCreate }: AgendaFiltersProps) {
               }`}
             >
               <span>{tab.label}</span>
-              <span
-                className={`text-[11px] font-mono tabular-nums px-1.5 py-0.2 rounded-full ${
-                  isActive
-                    ? 'bg-background/20 text-background'
-                    : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {tab.count}
-              </span>
+              {isActive && resources.jobs.status === 'ready' && (
+                <span className="text-[11px] font-mono tabular-nums px-1.5 py-0.2 rounded-full bg-background/20 text-background">
+                  {tab.count}
+                </span>
+              )}
             </button>
           );
         })}
