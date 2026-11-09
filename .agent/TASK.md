@@ -7,11 +7,9 @@
 
 ## Active Task
 
-- **Task:** None — React 19 migration, component rebuild, and legacy code purge complete in [02.32].
-- **Status:** `IDLE`
-- **Next Step:** Await the next operator-defined scope. Release/tag, push, deployment and additional dependencies require explicit authorization.
-
----
+- **Task:** [02.33] Establish behavior test foundation and inventory for real-data UI remediation.
+- **Status:** `RUNNING`
+- **Next Step:** Inventory the current React interface and establish the browser-test baseline; see [WEB_UI_REAL_DATA_PLAN.md](WEB_UI_REAL_DATA_PLAN.md).
 
 ## Completed Tasks Log
 
@@ -76,12 +74,18 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 ---
 
 ## Backlog (Upcoming, in priority order)
-- [x] **[02.28]** Shell Global, Navegação e Modal de Acesso (`AppShell`, `cmdk`, `AccessDialog`, tema e conexão real com `/health`)
-- [x] **[02.29]** Workspaces de Contatos e Templates (`/contacts`, `/templates`, CRUD real, modal de conflito 409)
-- [x] **[02.30]** Agenda Operacional, Composer e Inspetor de Jobs (`/jobs`, filtros, criação single/batch, lifecycle 202, imutabilidade YAML, CSV)
-- [x] **[02.31]** Histórico de Execuções e Data Vault (`/history`, `/data`, logs de tentativa, snapshot SQLite, JSON export/import com replace seguro, integridade)
-- [x] **[02.32]** Limpeza do Código Legado, Testes e Validação de Build (exclusão de `*.svelte`, testes Python/Playwright, mypy/ruff, Docker build)
 
+- [ ] **[02.34]** Remove fabricated operational state and correct domain mappings
+- [ ] **[02.35]** Bind authenticated reads, filters and exports
+- [ ] **[02.36]** Make job and group mutations authoritative
+- [ ] **[02.37]** Correct contact and template workflows
+- [ ] **[02.38]** Restore real agenda views and controls
+- [ ] **[02.39]** Make inspector and execution history authoritative
+- [ ] **[02.40]** Secure data operations and integrity display
+- [ ] **[02.41]** Align shell, navigation and access feedback
+- [ ] **[02.42]** End-to-end production readiness verification
+
+Details and acceptance criteria: [WEB_UI_REAL_DATA_PLAN.md](WEB_UI_REAL_DATA_PLAN.md).
 
 ---
 
