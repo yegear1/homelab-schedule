@@ -148,7 +148,9 @@ export interface RescheduleJobRequest {
 }
 
 export interface SnoozeJobRequest {
-  until: string;
+  until?: string;
+  duration_minutes?: number;
+  when?: string;
 }
 
 export interface RunNowResponse {

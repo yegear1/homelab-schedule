@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -224,7 +224,7 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
             const isExpanded = expandedGroups[groupId] ?? true;
             const primaryJob = batchJobs[0];
             return (
-              <tbody key={groupId} className="contents">
+              <Fragment key={groupId}>
                 <tr
                   onClick={() => toggleGroup(groupId)}
                   className="bg-muted/30 hover:bg-muted/50 cursor-pointer border-b border-border"
@@ -248,7 +248,7 @@ export function JobsTable({ jobs, onInspect }: JobsTableProps) {
                   </td>
                 </tr>
                 {isExpanded && batchJobs.map((j) => renderJobRow(j, true))}
-              </tbody>
+              </Fragment>
             );
           })}
 

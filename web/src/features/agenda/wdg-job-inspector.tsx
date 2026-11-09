@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {
   X,
@@ -13,16 +13,16 @@ import {
   Calendar,
   Trash2,
   AlertTriangle,
-  CheckCircle2,
-  FileCode,
-  Tag,
+  RotateCw,
   Repeat,
-  Send,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Job } from '../../types/domain';
+import { Job, JobRun } from '../../types/domain';
+import { UpcomingRunItem } from '../../lib/types';
 import { StatusBadge, SourceBadge } from '../../components/wdg-status-badge';
 import { useJobsStore } from '../../stores/jobs';
+import { api } from '../../lib/api';
 
 export interface JobInspectorProps {
   job: Job | null;
@@ -31,62 +31,209 @@ export interface JobInspectorProps {
 }
 
 export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
-  const { runJobNow, togglePauseResume, snoozeJob, rescheduleJob, cancelJob } = useJobsStore();
+  const { runJobNow, togglePauseResume, snoozeJob, rescheduleJob, cancelJob, retryJob } = useJobsStore();
   const [activeTab, setActiveTab] = useState<'details' | 'history' | 'projection'>('details');
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [newRunAt, setNewRunAt] = useState('');
   const [newCron, setNewCron] = useState('');
+  const [fullJob, setFullJob] = useState<Job | null>(null);
+  const [auditRuns, setAuditRuns] = useState<JobRun[]>([]);
+  const [upcomingRuns, setUpcomingRuns] = useState<UpcomingRunItem[]>([]);
+  const [loadingRuns, setLoadingRuns] = useState(false);
+  const [loadingUpcoming, setLoadingUpcoming] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
+
+  useEffect(() => {
+    if (!job || !open) {
+      setFullJob(null);
+      setAuditRuns([]);
+      setUpcomingRuns([]);
+      return;
+    }
+    let active = true;
+
+    api.getJob(job.id)
+      .then((loaded) => {
+        if (!active) return;
+        setFullJob({
+          ...job,
+          text: loaded.content,
+          template_id: loaded.template_id || undefined,
+          variables: loaded.variables || {},
+          tags: loaded.tags || [],
+        });
+      })
+      .catch(() => {
+        if (active) setFullJob(job);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [job?.id, open]);
+
+  useEffect(() => {
+    if (!job || !open) return;
+    let active = true;
+
+    if (activeTab === 'history') {
+      setLoadingRuns(true);
+      api.getJobRuns(job.id, 50)
+        .then((rawRuns) => {
+          if (!active) return;
+          const mapped: JobRun[] = rawRuns.map((r) => ({
+            id: r.id,
+            job_id: r.job_id,
+            job_title: job.title,
+            recipient: job.recipient,
+            timestamp: r.ran_at ? r.ran_at.replace('T', ' ').substring(0, 19) : '',
+            status_code: r.status_code,
+            status: r.status === 'success' ? 'success' : 'failed',
+            duration_ms: Math.round(r.duration_ms),
+            payload_preview: '',
+            error_message: r.error_message || undefined,
+          }));
+          setAuditRuns(mapped);
+        })
+        .catch(() => {
+          if (active) setAuditRuns(job.recent_runs || []);
+        })
+        .finally(() => {
+          if (active) setLoadingRuns(false);
+        });
+    } else if (activeTab === 'projection') {
+      setLoadingUpcoming(true);
+      api.getUpcomingRuns(job.id, 5)
+        .then((res) => {
+          if (!active) return;
+          setUpcomingRuns(res.runs || []);
+        })
+        .catch(() => {
+          // Keep empty if none
+        })
+        .finally(() => {
+          if (!active) setLoadingUpcoming(false);
+        });
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [job?.id, activeTab, open]);
 
   if (!job) return null;
-  const isYaml = job.source === 'yaml';
+  const currentJob = fullJob || job;
+  const isYaml = currentJob.source === 'yaml';
 
   const handleRunNow = async () => {
-    toast.loading(`Triggering immediate run for ${job.title}...`, { id: `inspect-run-${job.id}` });
-    const success = await runJobNow(job.id);
-    if (success) {
-      toast.success(`Dispatched ${job.title}`, {
-        id: `inspect-run-${job.id}`,
-        description: `HTTP 202 Accepted.`,
+    setIsBusy(true);
+    toast.loading(`Triggering immediate run for ${currentJob.title}...`, { id: `inspect-run-${currentJob.id}` });
+    try {
+      await runJobNow(currentJob.id);
+      toast.success(`Dispatched ${currentJob.title}`, {
+        id: `inspect-run-${currentJob.id}`,
+        description: 'HTTP 202 Accepted (queued).',
       });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Execution failed';
+      toast.error(`Dispatch failed: ${msg}`, { id: `inspect-run-${currentJob.id}` });
+    } finally {
+      setIsBusy(false);
     }
   };
 
-  const handleTogglePause = () => {
-    togglePauseResume(job.id);
-    toast.info(job.status === 'paused' ? 'Schedule resumed' : 'Schedule paused');
+  const handleTogglePause = async () => {
+    if (isYaml) {
+      toast.error('Rotinas YAML são imutáveis (edite routines.yaml)');
+      return;
+    }
+    setIsBusy(true);
+    try {
+      await togglePauseResume(currentJob.id);
+      toast.info(currentJob.status === 'paused' ? 'Schedule resumed' : 'Schedule paused');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Operation failed';
+      toast.error(msg);
+    } finally {
+      setIsBusy(false);
+    }
   };
 
-  const handleSnooze = (preset: string) => {
-    snoozeJob(job.id, preset);
-    toast.success(`Job snoozed until: ${preset}`);
+  const handleSnooze = async (preset: string) => {
+    if (isYaml) {
+      toast.error('Rotinas YAML são imutáveis (edite routines.yaml)');
+      return;
+    }
+    setIsBusy(true);
+    try {
+      await snoozeJob(currentJob.id, preset);
+      toast.success(`Job snoozed: ${preset}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Snooze failed';
+      toast.error(msg);
+    } finally {
+      setIsBusy(false);
+    }
   };
 
-  const handleRescheduleSubmit = (e: React.FormEvent) => {
+  const handleRetry = async () => {
+    if (isYaml) {
+      toast.error('Rotinas YAML são imutáveis (edite routines.yaml)');
+      return;
+    }
+    setIsBusy(true);
+    try {
+      await retryJob(currentJob.id);
+      toast.success(`Job re-enqueued for dispatch: ${currentJob.title}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Retry failed';
+      toast.error(msg);
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleRescheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    rescheduleJob(job.id, {
-      run_at: job.kind === 'once' ? newRunAt : undefined,
-      cron_expr: job.kind === 'cron' ? newCron : undefined,
-    });
-    setIsRescheduling(false);
-    toast.success('Job schedule modified successfully');
-  };
-
-  const handleCancel = () => {
-    if (confirm(`Are you sure you want to cancel and delete "${job.title}"?`)) {
-      cancelJob(job.id);
-      toast.info('Job cancelled and removed from SQLite agenda');
-      onOpenChange(false);
+    if (isYaml) {
+      toast.error('Rotinas YAML são imutáveis (edite routines.yaml)');
+      return;
+    }
+    setIsBusy(true);
+    try {
+      await rescheduleJob(currentJob.id, {
+        run_at: currentJob.kind === 'once' ? (newRunAt ? new Date(newRunAt).toISOString() : undefined) : undefined,
+        cron_expr: currentJob.kind === 'cron' ? newCron : undefined,
+      });
+      setIsRescheduling(false);
+      toast.success('Job schedule modified successfully');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Reschedule failed';
+      toast.error(msg);
+    } finally {
+      setIsBusy(false);
     }
   };
 
-  // Mock next 5 projections
-  const projections = [
-    job.next_run_at || 'Tomorrow 08:00',
-    'Nov 10, 2026 08:00',
-    'Nov 11, 2026 08:00',
-    'Nov 12, 2026 08:00',
-    'Nov 13, 2026 08:00',
-  ];
+  const handleCancel = async () => {
+    if (isYaml) {
+      toast.error('Rotinas YAML são imutáveis (edite routines.yaml)');
+      return;
+    }
+    if (confirm(`Are you sure you want to cancel and delete "${currentJob.title}"?`)) {
+      setIsBusy(true);
+      try {
+        await cancelJob(currentJob.id);
+        toast.info('Job cancelled and removed from SQLite agenda');
+        onOpenChange(false);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Cancellation failed';
+        toast.error(msg);
+      } finally {
+        setIsBusy(false);
+      }
+    }
+  };
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -98,14 +245,14 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
             <div className="flex items-start justify-between pb-4 border-b border-border">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <StatusBadge status={job.status} size="sm" />
-                  <SourceBadge source={job.source} size="sm" />
+                  <StatusBadge status={currentJob.status} size="sm" />
+                  <SourceBadge source={currentJob.source} size="sm" />
                 </div>
                 <Dialog.Title className="text-base font-semibold leading-tight">
-                  {job.title}
+                  {currentJob.title}
                 </Dialog.Title>
                 <div className="text-xs font-mono text-muted-foreground">
-                  ID: {job.id} {job.group_id && `· Group: ${job.group_id}`}
+                  ID: {currentJob.id} {currentJob.group_id && `· Group: ${currentJob.group_id}`}
                 </div>
               </div>
               <Dialog.Close asChild>
@@ -119,12 +266,12 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
             </div>
 
             {/* Error banner if last execution failed */}
-            {job.last_error && (
+            {currentJob.last_error && (
               <div className="mt-4 p-3 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 text-xs flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-rose-500" />
                 <div>
                   <span className="font-semibold block font-mono">Last Dispatch Failed</span>
-                  <span className="font-mono text-[11px]">{job.last_error}</span>
+                  <span className="font-mono text-[11px]">{currentJob.last_error}</span>
                 </div>
               </div>
             )}
@@ -175,18 +322,18 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
                     Rendered Notification Payload
                   </span>
                   <div className="p-3 rounded-lg border border-border bg-background font-mono text-xs whitespace-pre-wrap text-foreground">
-                    {job.text || (job.template_id ? `[Template: ${job.template_id}]` : 'No payload defined')}
+                    {currentJob.text || (currentJob.template_id ? `[Template: ${currentJob.template_id}]` : 'No payload defined')}
                   </div>
                 </div>
 
                 {/* Variable table */}
-                {job.variables && Object.keys(job.variables).length > 0 && (
+                {currentJob.variables && Object.keys(currentJob.variables).length > 0 && (
                   <div>
                     <span className="text-[11px] font-medium text-muted-foreground block mb-1">
                       Template Variables
                     </span>
                     <div className="border border-border rounded-lg overflow-hidden font-mono text-[11px]">
-                      {Object.entries(job.variables).map(([k, v]) => (
+                      {Object.entries(currentJob.variables).map(([k, v]) => (
                         <div key={k} className="flex justify-between px-3 py-1.5 border-b border-border last:border-b-0 bg-background">
                           <span className="text-muted-foreground">{k}</span>
                           <span className="text-foreground">{v}</span>
@@ -200,15 +347,15 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
                 <div className="grid grid-cols-3 gap-2 p-3 bg-muted/30 rounded-lg border border-border font-mono">
                   <div>
                     <span className="text-[10px] text-muted-foreground block">Executed</span>
-                    <span className="text-sm font-bold tabular-nums">{job.runs_executed}</span>
+                    <span className="text-sm font-bold tabular-nums">{currentJob.runs_executed}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-muted-foreground block">Retries</span>
-                    <span className="text-sm font-bold tabular-nums">{job.retry_count} / {job.max_retries ?? 3}</span>
+                    <span className="text-sm font-bold tabular-nums">{currentJob.retry_count} / {currentJob.max_retries ?? 3}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-muted-foreground block">Max Runs</span>
-                    <span className="text-sm font-bold tabular-nums">{job.max_runs ?? '∞'}</span>
+                    <span className="text-sm font-bold tabular-nums">{currentJob.max_runs ?? '∞'}</span>
                   </div>
                 </div>
 
@@ -216,20 +363,20 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
                 <div className="space-y-1.5 text-[11px] text-muted-foreground">
                   <div className="flex justify-between">
                     <span>Recipient</span>
-                    <span className="font-mono text-foreground">{job.recipient} ({job.recipient_alias || 'Alias'})</span>
+                    <span className="font-mono text-foreground">{currentJob.recipient} ({currentJob.recipient_alias || 'Alias'})</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Created by</span>
-                    <span className="font-mono text-foreground">{job.created_by || 'Unknown'}</span>
+                    <span className="font-mono text-foreground">{currentJob.created_by || 'Unknown'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Schedule</span>
-                    <span className="font-mono text-foreground">{job.kind === 'cron' ? job.cron_expr : 'One-off'}</span>
+                    <span className="font-mono text-foreground">{currentJob.kind === 'cron' ? currentJob.cron_expr : 'One-off'}</span>
                   </div>
-                  {job.snooze_until && (
+                  {currentJob.snooze_until && (
                     <div className="flex justify-between text-purple-400">
                       <span>Snooze until</span>
-                      <span className="font-mono">{job.snooze_until}</span>
+                      <span className="font-mono">{currentJob.snooze_until}</span>
                     </div>
                   )}
                 </div>
@@ -238,12 +385,16 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
 
             {activeTab === 'history' && (
               <div className="mt-4 space-y-2">
-                {(job.recent_runs || []).length === 0 ? (
+                {loadingRuns ? (
+                  <div className="py-8 flex justify-center">
+                    <Loader2 className="animate-spin h-5 w-5 text-sky-500" />
+                  </div>
+                ) : auditRuns.length === 0 ? (
                   <p className="text-xs text-muted-foreground py-6 text-center font-mono">
                     No recorded execution history for this task.
                   </p>
                 ) : (
-                  job.recent_runs?.map((run) => (
+                  auditRuns.map((run) => (
                     <div key={run.id} className="p-3 rounded-lg border border-border bg-background text-xs space-y-1">
                       <div className="flex items-center justify-between font-mono">
                         <span className={run.status === 'success' ? 'text-emerald-500 font-semibold' : 'text-rose-500 font-semibold'}>
@@ -264,39 +415,67 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
             {activeTab === 'projection' && (
               <div className="mt-4 space-y-2 text-xs">
                 <span className="text-[11px] text-muted-foreground block mb-2">
-                  Next 5 Planned Trigger Dispatches (UTC)
+                  Next Planned Trigger Dispatches (UTC)
                 </span>
-                {projections.map((p, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-background font-mono text-[11px]">
-                    <span className="text-muted-foreground">Run #{job.runs_executed + idx + 1}</span>
-                    <span className="text-sky-500 font-medium">{p}</span>
+                {loadingUpcoming ? (
+                  <div className="py-8 flex justify-center">
+                    <Loader2 className="animate-spin h-5 w-5 text-sky-500" />
                   </div>
-                ))}
+                ) : upcomingRuns.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-6 text-center font-mono">
+                    No upcoming runs projected for this task.
+                  </p>
+                ) : (
+                  upcomingRuns.map((p, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-background font-mono text-[11px]">
+                      <span className="text-muted-foreground">Run #{currentJob.runs_executed + idx + 1}</span>
+                      <span className="text-sky-500 font-medium">
+                        {p.formatted_date || p.run_at_local || p.run_at} {p.time_local ? `(${p.time_local})` : ''}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>
 
           {/* Interactive Action Bar */}
           <div className="pt-4 border-t border-border mt-6 space-y-2">
+            {/* Dead-Letter Retry Action if error */}
+            {currentJob.status === 'error' && (
+              <button
+                type="button"
+                disabled={isYaml || isBusy}
+                onClick={handleRetry}
+                className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors min-h-[44px] active:scale-[0.98] ${
+                  isYaml ? 'opacity-40 cursor-not-allowed' : ''
+                }`}
+              >
+                <RotateCw size={13} />
+                <span>Retry Dead-Letter Job</span>
+              </button>
+            )}
+
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
+                disabled={isBusy}
                 onClick={handleRunNow}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98]"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] disabled:opacity-50"
               >
                 <Play size={13} className="fill-current" />
                 <span>Run Now</span>
               </button>
               <button
                 type="button"
-                disabled={isYaml}
+                disabled={isYaml || isBusy}
                 onClick={handleTogglePause}
                 className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border transition-colors min-h-[44px] active:scale-[0.98] ${
                   isYaml ? 'opacity-40 cursor-not-allowed' : 'bg-muted hover:bg-accent text-foreground'
                 }`}
               >
                 <Pause size={13} />
-                <span>{job.status === 'paused' ? 'Resume' : 'Pause'}</span>
+                <span>{currentJob.status === 'paused' ? 'Resume' : 'Pause'}</span>
               </button>
             </div>
 
@@ -304,8 +483,8 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
               {/* Snooze Presets */}
               <button
                 type="button"
-                disabled={isYaml}
-                onClick={() => handleSnooze('+1 Hour')}
+                disabled={isYaml || isBusy}
+                onClick={() => handleSnooze('+1h')}
                 className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border transition-colors min-h-[44px] active:scale-[0.98] ${
                   isYaml ? 'opacity-40 cursor-not-allowed' : 'bg-muted hover:bg-accent text-foreground'
                 }`}
@@ -317,7 +496,7 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
               {/* Cancel Job */}
               <button
                 type="button"
-                disabled={isYaml}
+                disabled={isYaml || isBusy}
                 onClick={handleCancel}
                 className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-rose-500/20 text-rose-500 hover:bg-rose-500/10 transition-colors min-h-[44px] active:scale-[0.98] ${
                   isYaml ? 'opacity-40 cursor-not-allowed' : ''

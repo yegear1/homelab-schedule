@@ -193,8 +193,12 @@ export function JobCreate({
     setVariables(updated);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!title.trim()) {
       toast.error('Title is required');
       return;
@@ -204,42 +208,60 @@ export function JobCreate({
       toast.error('At least one recipient phone number or contact alias is required');
       return;
     }
+    if (messageType === 'direct' && !text.trim()) {
+      toast.error('Message text is required for direct dispatch');
+      return;
+    }
+    if (messageType === 'template' && !templateId) {
+      toast.error('Please select a template');
+      return;
+    }
 
     const varMap: Record<string, string> = {};
     variables.forEach(({ key, val }) => {
       if (key.trim()) varMap[key.trim()] = val;
     });
 
-    createJob(
-      {
-        title: title.trim(),
-        kind,
-        run_at: kind === 'once' ? new Date(runAt).toISOString() : undefined,
-        cron_expr: kind === 'cron' ? cronExpr : undefined,
-        cron_human: kind === 'cron' ? cronHuman : undefined,
-        message_type: messageType,
-        text: messageType === 'direct' ? text : undefined,
-        template_id: messageType === 'template' ? templateId : undefined,
-        variables: varMap,
-        created_by: createdBy || 'operator',
-        max_runs: maxRuns ? Number(maxRuns) : undefined,
-        until: until ? new Date(until).toISOString() : undefined,
-        tags: ['alerts', 'custom'],
-      },
-      finalRecipients
-    );
+    setIsSubmitting(true);
+    try {
+      await createJob(
+        {
+          title: title.trim(),
+          kind,
+          run_at: kind === 'once' ? new Date(runAt).toISOString() : undefined,
+          cron_expr: kind === 'cron' ? cronExpr : undefined,
+          cron_human: kind === 'cron' ? cronHuman : undefined,
+          message_type: messageType,
+          text: messageType === 'direct' ? text.trim() : undefined,
+          template_id: messageType === 'template' ? templateId : undefined,
+          variables: varMap,
+          created_by: createdBy || 'operator',
+          max_runs: maxRuns ? Number(maxRuns) : undefined,
+          until: until ? new Date(until).toISOString() : undefined,
+          tags: ['alerts', 'custom'],
+        },
+        finalRecipients
+      );
 
-    const isBatch = finalRecipients.length > 1;
-    toast.success(
-      isBatch
-        ? `Batch job scheduled successfully (${finalRecipients.length} recipients)`
-        : 'Job scheduled successfully',
-      {
-        description: `Dispatched payload queued on gateway daemon.`,
-      }
-    );
+      const isBatch = finalRecipients.length > 1;
+      toast.success(
+        isBatch
+          ? `Batch job scheduled successfully (${finalRecipients.length} recipients)`
+          : 'Job scheduled successfully',
+        {
+          description: `Dispatched payload queued on gateway daemon.`,
+        }
+      );
 
-    onOpenChange(false);
+      setTitle('');
+      setText('');
+      onOpenChange(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to schedule job';
+      toast.error(`Scheduling failed: ${msg}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -805,9 +827,10 @@ export function JobCreate({
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] shadow-xs"
+                disabled={isSubmitting}
+                className="px-5 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Schedule Dispatch
+                {isSubmitting ? 'Scheduling...' : 'Schedule Dispatch'}
               </button>
             </div>
           </form>

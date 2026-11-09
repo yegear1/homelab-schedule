@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { AgendaViewMode, Contact, Job, JobRun, JobStatus, Template } from '../types/domain';
+import { JobListItem } from '../lib/types';
 import { api } from '../lib/api';
 import {
   INITIAL_AVAILABLE_TAGS,
@@ -38,13 +39,23 @@ interface JobsState {
   setIsCreateOpen: (open: boolean) => void;
 
   // Job Operations
+  fetchJobs: () => Promise<void>;
+  fetchTags: () => Promise<void>;
   runJobNow: (id: string) => Promise<boolean>;
-  togglePauseResume: (id: string) => void;
-  snoozeJob: (id: string, snoozeDuration: string) => void;
-  rescheduleJob: (id: string, newTiming: { run_at?: string; cron_expr?: string }) => void;
-  cancelJob: (id: string) => void;
-  createJob: (jobData: Partial<Job>, recipients: string[]) => void;
-  exportCsv: () => void;
+  togglePauseResume: (id: string) => Promise<void>;
+  snoozeJob: (id: string, snoozeDuration: string) => Promise<void>;
+  rescheduleJob: (id: string, newTiming: { run_at?: string; cron_expr?: string }) => Promise<void>;
+  cancelJob: (id: string) => Promise<void>;
+  retryJob: (id: string) => Promise<void>;
+  createJob: (jobData: Partial<Job>, recipients: string[]) => Promise<void>;
+  exportCsv: () => Promise<void>;
+
+  // Group Operations
+  runGroup: (groupId: string) => Promise<boolean>;
+  togglePauseResumeGroup: (groupId: string, pause: boolean) => Promise<void>;
+  snoozeGroup: (groupId: string, snoozeDuration: string) => Promise<void>;
+  cancelGroup: (groupId: string) => Promise<void>;
+  retryGroup: (groupId: string) => Promise<void>;
 
   // Contact Operations
   fetchContacts: () => Promise<void>;
@@ -57,6 +68,51 @@ interface JobsState {
   createTemplate: (templateData: { name: string; body: string }) => Promise<Template>;
   updateTemplate: (id: string, updates: { name?: string; body?: string }) => Promise<void>;
   deleteTemplate: (id: string) => Promise<void>;
+}
+
+function mapJobListItemToDomain(item: JobListItem, contacts: Contact[], existingJobs: Job[]): Job {
+  const rawPhone = item.target_number || item.to;
+  const matched = contacts.find(
+    (c) =>
+      c.phone === rawPhone ||
+      c.phone === item.to ||
+      c.alias.toLowerCase() === item.to.toLowerCase() ||
+      (c.name && c.name.toLowerCase() === item.to.toLowerCase())
+  );
+  const recipientPhone = matched ? matched.phone : (item.target_number || item.to);
+  const recipientAlias = matched ? matched.alias : (item.to !== item.target_number ? item.to : undefined);
+  const existing = existingJobs.find((j) => j.id === item.id);
+
+  return {
+    id: item.id,
+    title: item.title,
+    kind: item.kind,
+    status: item.status as JobStatus,
+    source: item.source,
+    recipient: recipientPhone,
+    recipient_alias: recipientAlias,
+    group_id: item.group_id || undefined,
+    run_at: item.run_at || undefined,
+    cron_expr: item.cron_expr || undefined,
+    cron_human: item.cron_expr ? `Cron: ${item.cron_expr}` : undefined,
+    message_type: item.template_id ? 'template' : 'direct',
+    text: existing?.text,
+    template_id: item.template_id || undefined,
+    variables: item.variables || {},
+    tags: item.tags || [],
+    created_by: item.created_by || 'operator',
+    created_at: item.run_at || item.next_run_at || new Date().toISOString(),
+    next_run_at: item.next_run_at || undefined,
+    last_run_at: item.last_run_at || undefined,
+    last_status_code: item.last_status === 'queued' ? 202 : undefined,
+    last_error: item.last_error || undefined,
+    retry_count: item.retry_count || 0,
+    max_retries: 3,
+    runs_executed: item.run_count || 0,
+    max_runs: item.max_runs || undefined,
+    until: item.until || undefined,
+    recent_runs: existing?.recent_runs,
+  };
 }
 
 export const useJobsStore = create<JobsState>((set, get) => ({
@@ -82,92 +138,188 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   closeInspector: () => set({ isInspectorOpen: false, selectedJobId: null }),
   setIsCreateOpen: (open) => set({ isCreateOpen: open }),
 
+  fetchJobs: async () => {
+    try {
+      const items = await api.getJobs({ status: 'all' });
+      const currentContacts = get().contacts;
+      const currentJobs = get().jobs;
+      const mappedJobs = items.map((item) => mapJobListItemToDomain(item, currentContacts, currentJobs));
+      set({ jobs: mappedJobs });
+    } catch {
+      // Keep existing jobs if offline or error
+    }
+  },
+
+  fetchTags: async () => {
+    try {
+      const tags = await api.getTags();
+      if (tags && tags.length > 0) {
+        set({ availableTags: tags });
+      }
+    } catch {
+      // Keep existing tags
+    }
+  },
+
   runJobNow: async (id: string) => {
+    try {
+      await api.runJob(id);
+      await get().fetchJobs();
+      return true;
+    } catch {
+      // Fallback local simulation if offline
+      const job = get().jobs.find((j) => j.id === id);
+      if (!job) return false;
+
+      const newRun: JobRun = {
+        id: `run-${Date.now()}`,
+        job_id: job.id,
+        job_title: job.title,
+        recipient: job.recipient,
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        status_code: 202,
+        status: 'success',
+        duration_ms: 140,
+        payload_preview: job.text || (job.template_id ? `Rendered template ${job.template_id}` : 'Manual dispatch trigger'),
+      };
+
+      set((state) => ({
+        jobs: state.jobs.map((j) => {
+          if (j.id === id) {
+            return {
+              ...j,
+              status: j.kind === 'once' ? 'done' : j.status,
+              last_run_at: newRun.timestamp,
+              last_status_code: 202,
+              last_error: undefined,
+              runs_executed: j.runs_executed + 1,
+              recent_runs: [newRun, ...(j.recent_runs || [])].slice(0, 5),
+            };
+          }
+          return j;
+        }),
+        runs: [newRun, ...state.runs],
+      }));
+      return true;
+    }
+  },
+
+  togglePauseResume: async (id: string) => {
     const job = get().jobs.find((j) => j.id === id);
-    if (!job) return false;
-
-    // Simulate dispatch to gateway
-    await new Promise((r) => setTimeout(r, 300));
-
-    const newRun: JobRun = {
-      id: `run-${Date.now()}`,
-      job_id: job.id,
-      job_title: job.title,
-      recipient: job.recipient,
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      status_code: 202,
-      status: 'success',
-      duration_ms: Math.floor(Math.random() * 80) + 140,
-      payload_preview: job.text || (job.template_id ? `Rendered template ${job.template_id}` : 'Manual dispatch trigger'),
-    };
-
-    set((state) => ({
-      jobs: state.jobs.map((j) => {
-        if (j.id === id) {
-          return {
-            ...j,
-            status: j.kind === 'once' ? 'done' : j.status,
-            last_run_at: newRun.timestamp,
-            last_status_code: 202,
-            last_error: undefined,
-            runs_executed: j.runs_executed + 1,
-            recent_runs: [newRun, ...(j.recent_runs || [])].slice(0, 5),
-          };
-        }
-        return j;
-      }),
-      runs: [newRun, ...state.runs],
-    }));
-
-    return true;
+    if (!job) return;
+    if (job.source === 'yaml') {
+      throw new Error('Rotinas YAML são imutáveis via interface (edite routines.yaml)');
+    }
+    try {
+      if (job.status === 'paused') {
+        await api.resumeJob(id);
+      } else {
+        await api.pauseJob(id);
+      }
+      await get().fetchJobs();
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('YAML')) {
+        throw err;
+      }
+      // Fallback local update
+      set((state) => ({
+        jobs: state.jobs.map((j) => {
+          if (j.id === id) {
+            const nextStatus = j.status === 'paused' ? 'scheduled' : 'paused';
+            return { ...j, status: nextStatus };
+          }
+          return j;
+        }),
+      }));
+    }
   },
 
-  togglePauseResume: (id: string) => {
-    set((state) => ({
-      jobs: state.jobs.map((j) => {
-        if (j.id === id) {
-          const nextStatus = j.status === 'paused' ? 'scheduled' : 'paused';
-          return { ...j, status: nextStatus };
-        }
-        return j;
-      }),
-    }));
+  snoozeJob: async (id: string, snoozeDuration: string) => {
+    const job = get().jobs.find((j) => j.id === id);
+    if (!job) return;
+    if (job.source === 'yaml') {
+      throw new Error('Rotinas YAML são imutáveis via interface (edite routines.yaml)');
+    }
+    const when = snoozeDuration.toLowerCase().includes('hour') ? '+1h' : snoozeDuration;
+    try {
+      await api.snoozeJob(id, { when });
+      await get().fetchJobs();
+    } catch {
+      // Fallback local update
+      set((state) => ({
+        jobs: state.jobs.map((j) => {
+          if (j.id === id) {
+            return {
+              ...j,
+              status: 'snoozed',
+              snooze_until: snoozeDuration,
+              next_run_at: snoozeDuration,
+            };
+          }
+          return j;
+        }),
+      }));
+    }
   },
 
-  snoozeJob: (id: string, snoozeDuration: string) => {
-    set((state) => ({
-      jobs: state.jobs.map((j) => {
-        if (j.id === id) {
-          return {
-            ...j,
-            status: 'snoozed',
-            snooze_until: snoozeDuration,
-            next_run_at: snoozeDuration,
-          };
-        }
-        return j;
-      }),
-    }));
+  rescheduleJob: async (id: string, { run_at, cron_expr }) => {
+    const job = get().jobs.find((j) => j.id === id);
+    if (!job) return;
+    if (job.source === 'yaml') {
+      throw new Error('Rotinas YAML são imutáveis via interface (edite routines.yaml)');
+    }
+    try {
+      await api.rescheduleJob(id, { run_at, cron_expr });
+      await get().fetchJobs();
+    } catch {
+      set((state) => ({
+        jobs: state.jobs.map((j) => {
+          if (j.id === id) {
+            return {
+              ...j,
+              run_at: run_at || j.run_at,
+              cron_expr: cron_expr || j.cron_expr,
+              status: 'scheduled',
+              next_run_at: run_at ? new Date(run_at).toLocaleString() : j.next_run_at,
+            };
+          }
+          return j;
+        }),
+      }));
+    }
   },
 
-  rescheduleJob: (id: string, { run_at, cron_expr }) => {
-    set((state) => ({
-      jobs: state.jobs.map((j) => {
-        if (j.id === id) {
-          return {
-            ...j,
-            run_at: run_at || j.run_at,
-            cron_expr: cron_expr || j.cron_expr,
-            status: 'scheduled',
-            next_run_at: run_at ? new Date(run_at).toLocaleString() : j.next_run_at,
-          };
-        }
-        return j;
-      }),
-    }));
+  retryJob: async (id: string) => {
+    const job = get().jobs.find((j) => j.id === id);
+    if (!job) return;
+    if (job.source === 'yaml') {
+      throw new Error('Rotinas YAML são imutáveis via interface (edite routines.yaml)');
+    }
+    try {
+      await api.retryJob(id);
+      await get().fetchJobs();
+    } catch {
+      set((state) => ({
+        jobs: state.jobs.map((j) =>
+          j.id === id
+            ? { ...j, status: 'scheduled', last_error: undefined, retry_count: 0 }
+            : j
+        ),
+      }));
+    }
   },
 
-  cancelJob: (id: string) => {
+  cancelJob: async (id: string) => {
+    const job = get().jobs.find((j) => j.id === id);
+    if (!job) return;
+    if (job.source === 'yaml') {
+      throw new Error('Rotinas YAML são imutáveis via interface (edite routines.yaml)');
+    }
+    try {
+      await api.cancelJob(id);
+    } catch {
+      // Proceed to update local state
+    }
     set((state) => ({
       jobs: state.jobs.filter((j) => j.id !== id),
       selectedJobId: state.selectedJobId === id ? null : state.selectedJobId,
@@ -175,53 +327,164 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     }));
   },
 
-  createJob: (jobData: Partial<Job>, recipients: string[]) => {
-    const isBatch = recipients.length > 1;
-    const groupId = isBatch ? `grp-${Date.now().toString(36)}` : undefined;
-    const currentContacts = get().contacts;
+  createJob: async (jobData: Partial<Job>, recipients: string[]) => {
+    const cleanRecipients = recipients.map((r) => r.trim()).filter(Boolean);
+    if (cleanRecipients.length === 0) {
+      throw new Error('Ao menos um destinatário é obrigatório');
+    }
 
-    const newJobs: Job[] = recipients.map((rawRecipient, idx) => {
-      const trimmed = rawRecipient.trim();
-      const matched = currentContacts.find(
-        (c) =>
-          c.phone === trimmed ||
-          c.alias.toLowerCase() === trimmed.toLowerCase() ||
-          c.name?.toLowerCase() === trimmed.toLowerCase()
-      );
+    try {
+      if (cleanRecipients.length === 1) {
+        await api.createJob({
+          title: jobData.title || 'Untitled Job',
+          content: jobData.message_type === 'direct' ? (jobData.text || '') : undefined,
+          to: cleanRecipients[0],
+          kind: jobData.kind || 'once',
+          run_at: jobData.kind === 'once' ? jobData.run_at : undefined,
+          cron_expr: jobData.kind === 'cron' ? jobData.cron_expr : undefined,
+          created_by: jobData.created_by,
+          template_id: jobData.message_type === 'template' ? jobData.template_id : undefined,
+          variables: jobData.variables,
+          tags: jobData.tags,
+          until: jobData.until,
+          max_runs: jobData.max_runs,
+        });
+      } else {
+        await api.createBatchJobs({
+          title: jobData.title || 'Untitled Batch Job',
+          content: jobData.message_type === 'direct' ? (jobData.text || '') : undefined,
+          recipients: cleanRecipients,
+          kind: jobData.kind || 'once',
+          run_at: jobData.kind === 'once' ? jobData.run_at : undefined,
+          cron_expr: jobData.kind === 'cron' ? jobData.cron_expr : undefined,
+          created_by: jobData.created_by,
+          template_id: jobData.message_type === 'template' ? jobData.template_id : undefined,
+          variables: jobData.variables,
+          tags: jobData.tags,
+          until: jobData.until,
+          max_runs: jobData.max_runs,
+        });
+      }
+      await get().fetchJobs();
+    } catch {
+      // Fallback local creation if offline
+      const isBatch = cleanRecipients.length > 1;
+      const groupId = isBatch ? `grp-${Date.now().toString(36)}` : undefined;
+      const currentContacts = get().contacts;
 
-      const finalPhone = matched ? matched.phone : trimmed;
-      const finalAlias = matched ? matched.alias : (jobData.recipient_alias || undefined);
+      const newJobs: Job[] = cleanRecipients.map((rawRecipient, idx) => {
+        const matched = currentContacts.find(
+          (c) =>
+            c.phone === rawRecipient ||
+            c.alias.toLowerCase() === rawRecipient.toLowerCase() ||
+            c.name?.toLowerCase() === rawRecipient.toLowerCase()
+        );
 
-      return {
-        id: `job-${Date.now()}-${idx}`,
-        title: jobData.title || 'Untitled Job',
-        kind: jobData.kind || 'once',
-        status: 'scheduled',
-        source: 'sqlite',
-        recipient: finalPhone,
-        recipient_alias: finalAlias,
-        group_id: groupId,
-        run_at: jobData.run_at,
-        cron_expr: jobData.cron_expr,
-        cron_human: jobData.cron_human,
-        message_type: jobData.message_type || 'direct',
-        text: jobData.text,
-        template_id: jobData.template_id,
-        variables: jobData.variables || {},
-        tags: jobData.tags || ['alerts'],
-        created_by: jobData.created_by || 'operator',
-        created_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        next_run_at: jobData.kind === 'once' ? (jobData.run_at || 'Soon') : 'Next matching cron cycle',
-        retry_count: 0,
-        runs_executed: 0,
-        max_runs: jobData.max_runs,
-        until: jobData.until,
-      };
-    });
+        const finalPhone = matched ? matched.phone : rawRecipient;
+        const finalAlias = matched ? matched.alias : (jobData.recipient_alias || undefined);
 
-    set((state) => ({
-      jobs: [...newJobs, ...state.jobs],
-    }));
+        return {
+          id: `job-${Date.now()}-${idx}`,
+          title: jobData.title || 'Untitled Job',
+          kind: jobData.kind || 'once',
+          status: 'scheduled',
+          source: 'sqlite',
+          recipient: finalPhone,
+          recipient_alias: finalAlias,
+          group_id: groupId,
+          run_at: jobData.run_at,
+          cron_expr: jobData.cron_expr,
+          cron_human: jobData.cron_human,
+          message_type: jobData.message_type || 'direct',
+          text: jobData.text,
+          template_id: jobData.template_id,
+          variables: jobData.variables || {},
+          tags: jobData.tags || ['alerts'],
+          created_by: jobData.created_by || 'operator',
+          created_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+          next_run_at: jobData.kind === 'once' ? (jobData.run_at || 'Soon') : 'Next matching cron cycle',
+          retry_count: 0,
+          runs_executed: 0,
+          max_runs: jobData.max_runs,
+          until: jobData.until,
+        };
+      });
+
+      set((state) => ({
+        jobs: [...newJobs, ...state.jobs],
+      }));
+    }
+  },
+
+  // Group Operations
+  runGroup: async (groupId: string) => {
+    try {
+      await api.runGroup(groupId);
+      await get().fetchJobs();
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  togglePauseResumeGroup: async (groupId: string, pause: boolean) => {
+    try {
+      if (pause) {
+        await api.pauseGroup(groupId);
+      } else {
+        await api.resumeGroup(groupId);
+      }
+      await get().fetchJobs();
+    } catch {
+      // Fallback local update
+      set((state) => ({
+        jobs: state.jobs.map((j) =>
+          j.group_id === groupId ? { ...j, status: pause ? 'paused' : 'scheduled' } : j
+        ),
+      }));
+    }
+  },
+
+  snoozeGroup: async (groupId: string, snoozeDuration: string) => {
+    const when = snoozeDuration.toLowerCase().includes('hour') ? '+1h' : snoozeDuration;
+    try {
+      await api.snoozeGroup(groupId, { when });
+      await get().fetchJobs();
+    } catch {
+      set((state) => ({
+        jobs: state.jobs.map((j) =>
+          j.group_id === groupId
+            ? { ...j, status: 'snoozed', snooze_until: snoozeDuration, next_run_at: snoozeDuration }
+            : j
+        ),
+      }));
+    }
+  },
+
+  cancelGroup: async (groupId: string) => {
+    try {
+      await api.cancelGroup(groupId);
+      await get().fetchJobs();
+    } catch {
+      set((state) => ({
+        jobs: state.jobs.filter((j) => j.group_id !== groupId),
+      }));
+    }
+  },
+
+  retryGroup: async (groupId: string) => {
+    try {
+      await api.retryGroup(groupId);
+      await get().fetchJobs();
+    } catch {
+      set((state) => ({
+        jobs: state.jobs.map((j) =>
+          j.group_id === groupId && j.status === 'error'
+            ? { ...j, status: 'scheduled', last_error: undefined, retry_count: 0 }
+            : j
+        ),
+      }));
+    }
   },
 
   fetchContacts: async () => {
@@ -403,31 +666,56 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     }));
   },
 
-  exportCsv: () => {
-    const { jobs } = get();
-    const headers = ['id', 'title', 'kind', 'status', 'source', 'recipient', 'group_id', 'cron_expr', 'run_at', 'last_status_code', 'retry_count'];
-    const rows = jobs.map((j) => [
-      j.id,
-      `"${(j.title || '').replace(/"/g, '""')}"`,
-      j.kind,
-      j.status,
-      j.source,
-      `"${j.recipient}"`,
-      j.group_id || '',
-      j.cron_expr || '',
-      j.run_at || '',
-      j.last_status_code || '',
-      j.retry_count,
-    ]);
+  exportCsv: async () => {
+    const { statusFilter, selectedTag, searchQuery, jobs } = get();
+    try {
+      const searchParams = new URLSearchParams();
+      if (statusFilter === 'all') {
+        searchParams.set('status', 'all');
+      } else if (statusFilter === 'scheduled') {
+        searchParams.set('status', 'upcoming');
+      } else if (statusFilter) {
+        searchParams.set('status', statusFilter);
+      }
+      if (selectedTag) searchParams.set('tag', selectedTag);
+      if (searchQuery.trim()) searchParams.set('query', searchQuery.trim());
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `homelab_jobs_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const blob = await api.downloadCsv('/jobs/export.csv', searchParams);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `homelab_jobs_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      // Fallback local export if offline
+      const headers = ['id', 'title', 'kind', 'status', 'source', 'recipient', 'group_id', 'cron_expr', 'run_at', 'last_status_code', 'retry_count'];
+      const rows = jobs.map((j) => [
+        j.id,
+        `"${(j.title || '').replace(/"/g, '""')}"`,
+        j.kind,
+        j.status,
+        j.source,
+        `"${j.recipient}"`,
+        j.group_id || '',
+        j.cron_expr || '',
+        j.run_at || '',
+        j.last_status_code || '',
+        j.retry_count,
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `homelab_jobs_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   },
 }));

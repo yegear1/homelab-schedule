@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useJobsStore } from '../../stores/jobs';
 import { KpiSummary } from './wdg-kpi-summary';
 import { AgendaFilters } from './wdg-agenda-filters';
@@ -25,7 +25,18 @@ export function AgendaPage() {
     openInspector,
     closeInspector,
     setIsCreateOpen,
+    fetchJobs,
+    fetchTags,
+    fetchContacts,
+    fetchTemplates,
   } = useJobsStore();
+
+  useEffect(() => {
+    fetchJobs();
+    fetchTags();
+    fetchContacts();
+    fetchTemplates();
+  }, [fetchJobs, fetchTags, fetchContacts, fetchTemplates]);
 
   // Filter jobs based on active search, status tab, and tag filter
   const filteredJobs = useMemo(() => {
