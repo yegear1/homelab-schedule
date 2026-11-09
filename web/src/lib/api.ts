@@ -78,7 +78,7 @@ async function _responseError(response: Response): Promise<ApiClientError> {
 }
 
 class ApiService {
-  private getBaseUrl(): string {
+  getBaseUrl(): string {
     if (typeof window !== 'undefined') {
       const customUrl = localStorage.getItem('homelab_api_base_url');
       if (customUrl) return customUrl.replace(/\/+$/, '');

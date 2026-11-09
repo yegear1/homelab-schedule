@@ -1,5 +1,5 @@
 import { defineConfig, loadEnv, type ProxyOptions } from 'vite';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
+import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
@@ -18,5 +18,8 @@ export default defineConfig(({ mode }) => {
       },
     };
   }
-  return { plugins: [svelte(), tailwindcss()], server: { host: '127.0.0.1', port: 5173, proxy } };
+  return {
+    plugins: [react(), tailwindcss()],
+    server: { host: '127.0.0.1', port: 5173, proxy },
+  };
 });

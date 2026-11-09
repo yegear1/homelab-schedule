@@ -1,4 +1,4 @@
-# Stage 1: Build frontend Svelte 5 SPA
+# Stage 1: Build frontend React 19 SPA
 FROM node:22-alpine AS frontend-builder
 
 WORKDIR /web
