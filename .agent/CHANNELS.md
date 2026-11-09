@@ -1,6 +1,6 @@
 # CHANNELS.md — In-Repo Pens and Shared Notebook
 
-The internal scheduler dispatches due jobs when `next_run_at <= now()` in UTC ([ADR-006](adr/006-tick-next-run.md)). Input surfaces ("pens") write to the database and signal `notebook_changed_event`.
+The internal scheduler dispatches due jobs when `next_run_at <= now()` in UTC ([ADR-006](../docs/adr/decisions.md#adr-006-temporal-dispatch-next_run_at-utc-index-and-asyncio-tick-loop)). Input surfaces ("pens") write to the database and signal `notebook_changed_event`.
 
 Human interpretation timezone: `America/Sao_Paulo`. Logs, API parameters, and persisted `next_run_at`: UTC.
 

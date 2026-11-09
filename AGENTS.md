@@ -6,24 +6,24 @@ Lightweight agenda in a single container: one-off and recurring jobs that trigge
 
 ---
 
-## ⚖️ Rule Precedence Hierarchy
+## Priority Ranking & Precedence
 
-When directives or requirements conflict, the agent MUST resolve them using the following strict priority:
-1. **Security & Secrets Isolation:** NEVER expose tokens, passwords, or commit unscrubbed credentials or `.env` files.
-2. **Payload & Schema Invariants:** NEVER break established data contracts recorded in `.agent/NOTES.md`, `.agent/ENDPOINTS.md`, or schemas.
-3. **Strict Typing:** Code MUST pass typechecking in strict mode with zero unchecked `any`/`Any` declarations.
-4. **Architectural Separation:** Domain logic MUST reside in the service layer, NOT in routes, controllers, or MCP tools.
-5. **Code Style & Metrics:** Functions MUST NOT exceed ~40 LOC; linters and formatters MUST pass with exit code 0.
+Resolve directive conflicts using the strict canonical precedence hierarchy:
 
-When a conflict cannot be resolved using this hierarchy, the agent MUST halt execution and request explicit human clarification.
+| Priority | Tier | Rules & Invariants |
+| :---: | :--- | :--- |
+| **`[P0]`** | **Security & Blast Radius** | Zero credential exposure, prohibit destructive git operations (`--force`, `reset --hard`) and destructive docker data actions. |
+| **`[P1]`** | **Payload Invariants & Automated Contracts** | Single ADR diary (`docs/adr/decisions.md`), `NOTES.md` heading ban, schema contracts, strict typing (zero unchecked `any`). |
+| **`[P2]`** | **Architecture & Test Harness** | Domain logic separation, canonical test command pass, consultative dependencies. |
+| **`[P3]`** | **Style & Documentation** | Conventional Commits, Technical English for agent directives and commits. |
 
----
+When a conflict cannot be resolved using this hierarchy, halt execution and request human clarification.
 
 ## Modular Context Triggers
 
 The agent MUST minimize default token load by following progressive disclosure:
 - **Default Context (Loaded on start):** `AGENTS.md`, `.agent/TASK.md`, `.agent/NOTES.md`.
-- **Architectural Decisions (`.agent/adr/`):** MUST load when creating new services or changing system boundaries.
+- **Architectural Decisions (`docs/adr/decisions.md`):** MUST load when creating new services or changing system boundaries.
 - **Domain Skills (`.agent/skills/<name>/SKILL.md`):** MUST load only when the active task touches that skill's trigger.
 - **API & UI Contracts (`.agent/ENDPOINTS.md`, `.agent/INTERFACE.md`):** MUST load when modifying HTTP routes, gateway dispatch, or Web UI components.
 - **Transversal Skills:** Reference external organizational playbooks (`agent-skills`) ONLY when tasks require UI porting, QA audit, sequential/parallel subagent queue execution (`task-queue`), or host-level orchestration.
@@ -135,7 +135,7 @@ For composes/images without a pinned version: adopt the latest stable release.
 
 Prefer MCP over ad-hoc curl once the server exists. Direct production mutation via MCP requires user consent. NEVER log auth tokens. `mcp.json` in editor profiles is local — **do not** version control.
 
-MCP tools in this project: closed surface (see [ADR-005](./.agent/adr/005-closed-mcp-surface.md)). No generic CRUD, no unbounded `PATCH`.
+MCP tools in this project: closed surface (see [ADR-005](docs/adr/decisions.md#adr-005-closed-surface-mcp-server)). No generic CRUD, no unbounded `PATCH`.
 
 ---
 
