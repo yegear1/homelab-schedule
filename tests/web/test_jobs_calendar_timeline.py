@@ -27,15 +27,15 @@ def test_jobs_page_view_mode_switcher_contract() -> None:
 def test_job_timeline_view_contract() -> None:
     content = TIMELINE_COMPONENT.read_text()
     for anchor in (
-        "job-timeline-view", "timeline-filter-all", "timeline-filter-future",
-        "timeline-filter-history", "timeline-future-section", "timeline-history-section",
+        "job-timeline-view", "timeline-future-section", "timeline-history-section",
         "btn-timeline-refresh-runs",
     ):
         assert f'id="{anchor}"' in content
-    assert "duration_ms.toFixed(1)" in content
+    assert "timeline-filter-${value}" in content
+    assert "duration_ms" in content
     assert "status_code" in content
-    assert "run.status === 'success'" in content
-    assert "até 100 tentativas retidas" in content
+    assert "run.status" in content
+    assert "100 tentativas globais" in content
 
 
 def test_job_calendar_view_contract() -> None:
@@ -47,8 +47,8 @@ def test_job_calendar_view_contract() -> None:
         assert f'id="{anchor}"' in content
     for requirement in (
         "['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']",
-        "selectedDayJobs",
-        "não expande todas as ocorrências cron",
+        "selectedJobs",
+        "recorrências não são expandidas",
     ):
         assert requirement in content
 

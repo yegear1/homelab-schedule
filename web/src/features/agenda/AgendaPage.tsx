@@ -12,6 +12,7 @@ import { JobsTable } from './cmp-jobs-table';
 import { JobsTimeline } from './cmp-jobs-timeline';
 import { JobsCalendar } from './cmp-jobs-calendar';
 import { JobInspector } from './wdg-job-inspector';
+import { useAgendaRuns } from './use-agenda-runs';
 
 export function AgendaPage() {
   const {
@@ -44,6 +45,7 @@ export function AgendaPage() {
     return () => window.clearTimeout(timer);
   }, [fetchJobs, statusFilter, selectedTag, searchQuery]);
 
+  const { runs, state: runState, refresh: refreshRuns } = useAgendaRuns(viewMode !== 'table');
   const filteredJobs = jobs;
 
   const selectedJob = useMemo(() => {
@@ -79,10 +81,10 @@ export function AgendaPage() {
         <JobsTable jobs={filteredJobs} onInspect={openInspector} />
       )}
       {(resources.jobs.status === 'ready' || resources.jobs.stale) && viewMode === 'timeline' && (
-        <JobsTimeline jobs={filteredJobs} onInspect={openInspector} />
+        <JobsTimeline jobs={filteredJobs} runs={runs} runState={runState} refreshRuns={() => { void refreshRuns(); }} onInspect={openInspector} />
       )}
       {(resources.jobs.status === 'ready' || resources.jobs.stale) && viewMode === 'calendar' && (
-        <JobsCalendar jobs={filteredJobs} onInspect={openInspector} />
+        <JobsCalendar jobs={filteredJobs} runs={runs} runState={runState} refreshRuns={() => { void refreshRuns(); }} onInspect={openInspector} />
       )}
 
       {/* Inspector Slide-out Drawer */}

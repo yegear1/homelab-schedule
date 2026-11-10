@@ -1,193 +1,63 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { useState } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
-import { Job } from '../../types/domain';
-import { StatusBadge } from '../../components/wdg-status-badge';
+import type { Job } from '../../types/domain';
+import type { JobRun } from '../../lib/types';
+import { ResourceNotice } from '../../components/ResourceNotice';
 
-export interface JobsCalendarProps {
+type RunState = { status: 'idle' | 'loading' | 'ready' | 'error'; error?: string; stale: boolean };
+interface JobsCalendarProps {
   jobs: Job[];
+  runs: JobRun[];
+  runState: RunState;
+  refreshRuns: () => void;
   onInspect: (jobId: string) => void;
 }
 
-export function JobsCalendar({ jobs, onInspect }: JobsCalendarProps) {
-  const [selectedDay, setSelectedDay] = useState<number>(8); // Default Nov 8, 2026
-  const daysInMonth = 30; // November
-  const firstDayOffset = 0; // Nov 1 2026 was Sunday
+function _dateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
-  // Map dummy distribution of scheduled jobs across November 2026 days
-  const getJobsForDay = (day: number): Job[] => {
-    return jobs.filter((job) => {
-      if (job.status !== 'scheduled' && job.status !== 'snoozed') return false;
-      // Spread across days based on id hash for calendar visualization
-      const dayHash = (job.id.charCodeAt(job.id.length - 1) % 20) + 1;
-      return dayHash === day || (job.cron_expr && day % 3 === 0);
-    });
-  };
-
-  const selectedDayJobs = getJobsForDay(selectedDay);
-
-  return (
-    <div id="job-calendar-view" className="rounded-xl border border-border bg-card p-4 md:p-6 shadow-xs space-y-6">
-      {/* Calendar Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="h-5 w-5 text-sky-500" />
-          <h2 id="calendar-current-month" className="text-sm font-semibold text-foreground">
-            November 2026 Schedule Dispatch Grid
-          </h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            id="btn-calendar-today"
-            onClick={() => setSelectedDay(8)}
-            className="text-xs font-mono text-muted-foreground hover:text-foreground px-2 py-1 rounded bg-muted/50 border border-border"
-          >
-            Today: Nov 8, 2026
-          </button>
-          <div className="flex items-center border border-border rounded-lg bg-muted p-0.5">
-            <button
-              type="button"
-              id="btn-calendar-prev"
-              className="p-1 hover:bg-card rounded text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              type="button"
-              id="btn-calendar-next"
-              className="p-1 hover:bg-card rounded text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar Grid (2 cols on large screen) */}
-        <div className="lg:col-span-2">
-          {/* Day of week labels */}
-          <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground mb-2">
-            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
-              <div key={d} className="py-1">
-                {d}
-              </div>
-            ))}
-          </div>
-
-          {/* Day Cells */}
-          <div id="calendar-grid" className="grid grid-cols-7 gap-1.5">
-            {Array.from({ length: firstDayOffset }).map((_, i) => (
-              <div key={`empty-${i}`} className="min-h-[70px] p-1.5 rounded-lg bg-muted/10 opacity-30" />
-            ))}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const dayJobs = getJobsForDay(day);
-              const isSelected = selectedDay === day;
-              const isToday = day === 8;
-
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => setSelectedDay(day)}
-                  className={`min-h-[72px] p-2 rounded-lg border text-left flex flex-col justify-between transition-all active:scale-[0.98] ${
-                    isSelected
-                      ? 'border-sky-500 bg-sky-500/10 text-foreground ring-1 ring-sky-500'
-                      : 'border-border bg-card hover:bg-muted/50 text-foreground'
-                  }`}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span
-                      className={`text-xs font-mono font-medium ${
-                        isToday ? 'bg-sky-500 text-white rounded-full px-1.5 py-0.2' : ''
-                      }`}
-                    >
-                      {day}
-                    </span>
-                    {dayJobs.length > 0 && (
-                      <span className="text-[10px] font-mono text-muted-foreground">
-                        {dayJobs.length}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1 mt-1 overflow-hidden">
-                    {dayJobs.slice(0, 3).map((j) => (
-                      <div
-                        key={j.id}
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          j.kind === 'cron' ? 'bg-sky-500' : 'bg-emerald-500'
-                        }`}
-                        title={j.title}
-                      />
-                    ))}
-                    {dayJobs.length > 3 && (
-                      <span className="text-[9px] text-muted-foreground font-mono">
-                        +{dayJobs.length - 3}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Selected Day Agenda Side Column */}
-        <div id="calendar-day-detail" className="border border-border rounded-xl p-4 bg-muted/20 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <div>
-                <span className="text-xs text-muted-foreground">Selected Day</span>
-                <h3 className="text-base font-semibold text-foreground">
-                  November {selectedDay}, 2026
-                </h3>
-              </div>
-              <span className="text-xs font-mono font-medium text-sky-500 bg-sky-500/10 px-2 py-0.5 rounded-md">
-                {selectedDayJobs.length} Dispatches
-              </span>
-            </div>
-
-            <div className="mt-4 space-y-3 max-h-[360px] overflow-y-auto pr-1">
-              {selectedDayJobs.length === 0 ? (
-                <div className="text-center py-10 text-xs text-muted-foreground">
-                  <Clock className="mx-auto h-6 w-6 mb-2 opacity-40" />
-                  No dispatches scheduled on this day.
-                </div>
-              ) : (
-                selectedDayJobs.map((job) => (
-                  <div
-                    key={job.id}
-                    onClick={() => onInspect(job.id)}
-                    className="p-3 rounded-lg border border-border bg-card hover:border-sky-500/40 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-xs text-foreground truncate">
-                        {job.title}
-                      </span>
-                      <StatusBadge status={job.status} size="sm" showIcon={false} />
-                    </div>
-                    <div className="mt-1 text-[11px] font-mono text-muted-foreground flex items-center justify-between">
-                      <span>{job.kind === 'cron' ? job.cron_expr : 'Once'}</span>
-                      <span>{job.recipient}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-border mt-4 text-[11px] text-muted-foreground font-mono">
-            Blue dots: Recurring cron · Green dots: One-off (não expande todas as ocorrências cron)
-          </div>
-        </div>
+export function JobsCalendar({ jobs, runs, runState, refreshRuns, onInspect }: JobsCalendarProps) {
+  const [selected, setSelected] = useState(() => new Date());
+  const year = selected.getFullYear();
+  const month = selected.getMonth();
+  const offset = new Date(year, month, 1).getDay();
+  const days = new Date(year, month + 1, 0).getDate();
+  const nextJobs = jobs.filter((job) => (job.status === 'scheduled' || job.status === 'snoozed') && job.next_run_at);
+  const jobsFor = (date: Date) => nextJobs.filter((job) => _dateKey(new Date(job.next_run_at!)) === _dateKey(date)).sort((a, b) => new Date(a.next_run_at!).getTime() - new Date(b.next_run_at!).getTime());
+  const runsFor = (date: Date) => runs.filter((run) => _dateKey(new Date(run.ran_at)) === _dateKey(date)).sort((a, b) => new Date(b.ran_at).getTime() - new Date(a.ran_at).getTime());
+  const selectedJobs = jobsFor(selected);
+  const selectedRuns = runsFor(selected);
+  const moveMonth = (delta: number) => setSelected(new Date(year, month + delta, 1));
+  const historyVisible = runState.status === 'ready' || runState.stale;
+  return <div id="job-calendar-view" className="rounded-xl border border-border bg-card p-4 md:p-6 space-y-4">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h2 id="calendar-current-month" className="font-semibold">{selected.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h2>
+      <div className="flex gap-2">
+        <button id="btn-calendar-prev" type="button" aria-label="Mês anterior" onClick={() => moveMonth(-1)} className="min-h-[44px] px-3 border rounded">‹</button>
+        <button id="btn-calendar-today" type="button" onClick={() => setSelected(new Date())} className="min-h-[44px] px-3 border rounded">Hoje</button>
+        <button id="btn-calendar-next" type="button" aria-label="Próximo mês" onClick={() => moveMonth(1)} className="min-h-[44px] px-3 border rounded">›</button>
       </div>
     </div>
-  );
+    <p className="text-xs text-muted-foreground">Até 50 agendamentos carregados e 100 tentativas globais retidas; recorrências não são expandidas.</p>
+    <ResourceNotice label="tentativas" {...runState} onRetry={refreshRuns} />
+    <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">{['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => <span key={day}>{day}</span>)}</div>
+    <div id="calendar-grid" className="grid grid-cols-7 gap-1">
+      {Array.from({ length: offset }, (_, index) => <span key={`empty-${index}`} />)}
+      {Array.from({ length: days }, (_, index) => {
+        const date = new Date(year, month, index + 1);
+        const dayJobs = jobsFor(date);
+        const dayRuns = historyVisible ? runsFor(date) : [];
+        const hasError = dayRuns.some((run) => run.status === 'error');
+        return <button type="button" key={index} aria-label={date.toLocaleDateString('pt-BR')} aria-pressed={_dateKey(date) === _dateKey(selected)} onClick={() => setSelected(date)} className="min-h-[64px] rounded border border-border p-1 text-left aria-pressed:border-sky-500">
+          <span>{index + 1}</span><span className="block text-xs">{dayJobs.length} ag. {historyVisible && `· ${dayRuns.length} tent.`}{hasError && ' ⚠'}</span>
+        </button>;
+      })}
+    </div>
+    <section id="calendar-day-detail" className="space-y-2 border border-border rounded p-3">
+      <h3 className="font-semibold">{selected.toLocaleDateString('pt-BR', { dateStyle: 'full' })}</h3>
+      <p className="text-sm">{selectedJobs.length} próximas execuções{historyVisible && ` · ${selectedRuns.length} tentativas`}</p>
+      {selectedJobs.map((job) => <button key={job.id} type="button" className="block underline text-left min-h-[44px]" onClick={() => onInspect(job.id)}>{new Date(job.next_run_at!).toLocaleTimeString()} · {job.title}</button>)}
+      {historyVisible && selectedRuns.map((run) => <p key={run.id} className="text-sm">{new Date(run.ran_at).toLocaleTimeString()} · {run.status} · HTTP {run.status_code ?? '—'} · {run.duration_ms ?? '—'} ms · {jobs.find((job) => job.id === run.job_id)?.title ?? run.job_id}</p>)}
+    </section>
+  </div>;
 }
