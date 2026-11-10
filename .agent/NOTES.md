@@ -33,6 +33,8 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 ## Architectural Decisions Beyond ADRs
 
+- **Inspector and history [02.39]:** Job detail, attempts and upcoming projection have separate request states and selection guards; global history displays only fields returned by the audit API. Export uses the applied status scope and does not generate local data on failure. Jobs outside the loaded agenda are fetched before guarded lifecycle actions.
+
 - **Agenda views [02.38]:** Calendar uses browser-local dates for loaded `next_run_at` values and up to 100 global attempts; it never expands cron occurrences. Timeline history is independently fetched with stale/error states and is not filtered by the bounded agenda query.
 
 - **Catalog writes [02.37]:** Contact and template state follows accepted server responses; failed mutations preserve drafts. Scoped job counts must not be inferred from the global bounded agenda. Unknown preview tokens remain literal. Digest conflict fixtures use a future date to avoid dispatch races with the clock.
