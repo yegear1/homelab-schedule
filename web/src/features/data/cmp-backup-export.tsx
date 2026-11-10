@@ -4,65 +4,44 @@
  */
 
 import { useState } from 'react';
-import { Database, FileDown, CheckCircle2, ShieldCheck, Download, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { Database, FileDown, ShieldCheck, Download, Loader2 } from 'lucide-react';
 import { api } from '../../lib/api';
-import { useJobsStore } from '../../stores/jobs';
 
 export function BackupExportCard() {
-  const { jobs, runs, templates, contacts } = useJobsStore();
   const [includeRuns, setIncludeRuns] = useState(true);
-  const [isExportingSqlite, setIsExportingSqlite] = useState(false);
-  const [isExportingJson, setIsExportingJson] = useState(false);
+  const [busy, setBusy] = useState<'database' | 'json' | null>(null);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
-  // 1. Raw SQLite Database Snapshot binary download (GET /backup/database)
   const handleDownloadSqlite = async () => {
-    setIsExportingSqlite(true);
-    toast.loading('Checkpointing WAL & generating consistent snapshot...', { id: 'sqlite-snap' });
+    if (busy) return;
+    setBusy('database');
+    setError('');
+    setMessage('');
 
     try {
       const blob = await api.downloadDatabase();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `agenda_snapshot_${new Date().toISOString().split('T')[0]}.sqlite3`;
+      a.download = `homelab-schedule-${new Date().toISOString().replace(/[:.]/g, '-')}.sqlite3`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
-      toast.success('Raw SQLite database snapshot downloaded', {
-        id: 'sqlite-snap',
-        description: 'Point-in-time binary snapshot saved with WAL flushed.',
-      });
-    } catch {
-      // Simulated SQLite 3 binary header fallback if offline
-      const sqliteHeader = 'SQLite format 3\0\x10\x00\x01\x01\x00@  ';
-      const blob = new Blob([sqliteHeader + 'HOMELAB_SCHEDULE_DB_SNAPSHOT_PAYLOAD'], {
-        type: 'application/x-sqlite3',
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `agenda_snapshot_${new Date().toISOString().split('T')[0]}.sqlite3`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast.success('Raw SQLite database snapshot downloaded (offline fallback)', {
-        id: 'sqlite-snap',
-        description: 'Point-in-time binary snapshot saved with WAL flushed.',
-      });
+      setMessage('Snapshot SQLite baixado.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Falha ao baixar snapshot.');
     } finally {
-      setIsExportingSqlite(false);
+      setBusy(null);
     }
   };
 
-  // 2. Standard JSON Data Bundle (GET /backup/export)
   const handleDownloadJson = async () => {
-    setIsExportingJson(true);
-    toast.loading('Generating JSON data bundle...', { id: 'json-export' });
+    if (busy) return;
+    setBusy('json');
+    setError('');
+    setMessage('');
 
     try {
       const bundle = await api.exportData(includeRuns);
@@ -70,53 +49,16 @@ export function BackupExportCard() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `homelab_schedule_bundle_${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `homelab-schedule-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
-      toast.success('JSON data bundle downloaded', {
-        id: 'json-export',
-        description: `Exported ${bundle.jobs.length} jobs, ${bundle.contacts.length} contacts, and ${bundle.templates.length} templates.`,
-      });
-    } catch {
-      // Exclude YAML source routines (managed externally via routines.yaml)
-      const sqliteJobsOnly = jobs.filter((j) => j.source !== 'yaml');
-
-      const bundle = {
-        schema_version: '1.4.0',
-        exported_at: new Date().toISOString(),
-        environment: 'homelab-production',
-        generator: 'homelab-schedule/v2.1',
-        stats: {
-          contacts_count: contacts.length,
-          templates_count: templates.length,
-          jobs_count: sqliteJobsOnly.length,
-          runs_count: includeRuns ? runs.length : 0,
-        },
-        contacts,
-        templates,
-        jobs: sqliteJobsOnly,
-        job_runs: includeRuns ? runs : [],
-      };
-
-      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `homelab_schedule_bundle_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast.success('JSON data bundle downloaded (offline fallback)', {
-        id: 'json-export',
-        description: `Exported ${sqliteJobsOnly.length} jobs, ${contacts.length} contacts, and ${templates.length} templates.`,
-      });
+      setMessage('Exportação JSON concluída.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Falha ao exportar dados.');
     } finally {
-      setIsExportingJson(false);
+      setBusy(null);
     }
   };
 
@@ -126,14 +68,22 @@ export function BackupExportCard() {
         <div className="flex items-center gap-2">
           <Database className="h-5 w-5 text-sky-500" />
           <h2 className="text-base font-semibold text-foreground">
-            Database Backups & Export
+            Backups e Exportação
           </h2>
         </div>
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-mono font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-          <CheckCircle2 size={12} />
-          <span>Consistent WAL Snapshot Ready</span>
-        </span>
       </div>
+
+      {error && (
+        <p role="alert" className="text-xs text-rose-500 font-medium">
+          {error}
+        </p>
+      )}
+
+      {message && (
+        <p role="status" className="text-xs text-emerald-500 font-medium">
+          {message}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* 1. Raw SQLite Snapshot */}
@@ -141,33 +91,28 @@ export function BackupExportCard() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-sky-500" />
-              <h3 className="text-sm font-semibold text-foreground">
-                Raw SQLite Binary Snapshot
+              <h3 id="snapshot-title" className="text-sm font-semibold text-foreground">
+                Snapshot físico
               </h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Downloads a direct binary clone of the active <span className="font-mono text-foreground">agenda.sqlite3</span> database with a passive WAL checkpoint. Compatible with standard SQLite 3 cli and litestream.
+              Baixe uma cópia consistente do banco SQLite, incluindo o histórico retido.
             </p>
-            <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground pt-1">
-              <span>Endpoint: GET /backup/database</span>
-              <span>·</span>
-              <span className="text-emerald-500 font-medium">Safe concurrent read</span>
-            </div>
           </div>
 
           <button
             type="button"
             id="btn-download-sqlite"
             onClick={handleDownloadSqlite}
-            disabled={isExportingSqlite}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] shadow-xs"
+            disabled={busy !== null}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] shadow-xs disabled:opacity-50"
           >
-            {isExportingSqlite ? (
+            {busy === 'database' ? (
               <Loader2 size={15} className="animate-spin" />
             ) : (
               <Download size={15} />
             )}
-            <span>Download .sqlite3 Snapshot (Snapshot físico)</span>
+            <span>{busy === 'database' ? 'Gerando…' : 'Baixar .sqlite3 (Snapshot físico)'}</span>
           </button>
         </div>
 
@@ -176,24 +121,24 @@ export function BackupExportCard() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <FileDown className="h-4 w-4 text-emerald-500" />
-              <h3 className="text-sm font-semibold text-foreground">
-                Portable JSON Data Bundle (Exportar JSON)
+              <h3 id="export-title" className="text-sm font-semibold text-foreground">
+                Exportar JSON
               </h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Human-readable JSON export containing all SQLite-managed contacts, templates, and jobs. Note: YAML-defined routines are excluded to preserve declarative parity.
+              Contatos, modelos e agendamentos SQLite. Rotinas YAML ficam no arquivo de origem.
             </p>
 
-            {/* Toggle include runs */}
-            <label className="flex items-center gap-2 cursor-pointer pt-1">
+            <label className="flex items-center gap-2 cursor-pointer pt-1 min-h-[44px]">
               <input
                 type="checkbox"
                 checked={includeRuns}
                 onChange={(e) => setIncludeRuns(e.target.checked)}
+                disabled={busy !== null}
                 className="h-4 w-4 rounded border-border text-sky-500 focus:ring-sky-500"
               />
               <span className="text-xs text-foreground font-medium">
-                Include execution audit runs ({runs.length} records)
+                Incluir histórico de execuções
               </span>
             </label>
           </div>
@@ -202,15 +147,15 @@ export function BackupExportCard() {
             type="button"
             id="btn-export-json"
             onClick={handleDownloadJson}
-            disabled={isExportingJson}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors min-h-[44px] active:scale-[0.98]"
+            disabled={busy !== null}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors min-h-[44px] active:scale-[0.98] disabled:opacity-50"
           >
-            {isExportingJson ? (
+            {busy === 'json' ? (
               <Loader2 size={15} className="animate-spin" />
             ) : (
               <Download size={15} />
             )}
-            <span>Download JSON Export (Exportar JSON)</span>
+            <span>{busy === 'json' ? 'Exportando…' : 'Exportar arquivo JSON (Exportar JSON)'}</span>
           </button>
         </div>
       </div>

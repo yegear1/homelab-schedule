@@ -4,61 +4,29 @@
  */
 
 import { useState } from 'react';
-import { ShieldCheck, CheckCircle2, RefreshCw, ChevronDown, ChevronUp, HardDrive, Database, Layers } from 'lucide-react';
-import { toast } from 'sonner';
+import { ShieldCheck, RefreshCw } from 'lucide-react';
 import { api } from '../../lib/api';
-import { INITIAL_INTEGRITY_REPORT, SystemIntegrityReport } from './data.fixtures';
+import type { IntegrityCheckResponse } from '../../lib/types';
 
 export function IntegrityCheckCard() {
-  const [report, setReport] = useState<SystemIntegrityReport>(INITIAL_INTEGRITY_REPORT);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isAccordionOpen, setIsAccordionOpen] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<IntegrityCheckResponse | null>(null);
 
   const handleRunDiagnostics = async () => {
-    setIsVerifying(true);
-    toast.loading('Executing SQLite PRAGMA integrity_check & foreign_key_check...', {
-      id: 'diag-check',
-    });
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    // Clear stale results on run/retry
+    setResult(null);
 
     try {
       const res = await api.checkIntegrity();
-      const integrityOk = res.integrity_ok;
-      const fkOk = res.foreign_keys_ok;
-      const fkCount = res.fk_violations ? res.fk_violations.length : 0;
-      const integrityStr = integrityOk ? 'ok' : (res.details ? res.details.join(', ') : 'error');
-
-      setReport((prev) => ({
-        ...prev,
-        status: integrityOk && fkOk ? 'ok' : 'degraded',
-        integrity_check: integrityStr,
-        foreign_key_violations: fkCount,
-        last_checkpoint: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' (live check)',
-      }));
-
-      if (integrityOk && fkOk) {
-        toast.success('SQLite diagnostics passed', {
-          id: 'diag-check',
-          description: 'Zero integrity anomalies or foreign key constraint violations detected.',
-        });
-      } else {
-        toast.warning('SQLite diagnostics finished with warnings', {
-          id: 'diag-check',
-          description: `Integrity: ${integrityStr}, FK Violations: ${fkCount}`,
-        });
-      }
-    } catch {
-      setReport({
-        ...INITIAL_INTEGRITY_REPORT,
-        active_wal_frames: Math.floor(Math.random() * 20) + 30,
-        last_checkpoint: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' (passive)',
-      });
-
-      toast.success('SQLite diagnostics passed (offline fallback)', {
-        id: 'diag-check',
-        description: 'Zero integrity anomalies or foreign key constraint violations detected.',
-      });
+      setResult(res);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Falha ao verificar integridade.');
     } finally {
-      setIsVerifying(false);
+      setBusy(false);
     }
   };
 
@@ -68,12 +36,12 @@ export function IntegrityCheckCard() {
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-emerald-500" />
           <div>
-            <h2 className="text-base font-semibold text-foreground">
-              Database Integrity & Diagnostics (Integridade)
+            <h2 id="integrity-title" className="text-base font-semibold text-foreground">
+              Integridade
             </h2>
-            <span className="text-xs font-mono text-muted-foreground">
-              Endpoint: GET /backup/integrity
-            </span>
+            <p className="text-xs text-muted-foreground">
+              Verifique o banco e as referências entre registros quando precisar.
+            </p>
           </div>
         </div>
 
@@ -81,104 +49,62 @@ export function IntegrityCheckCard() {
           type="button"
           id="btn-check-integrity"
           onClick={handleRunDiagnostics}
-          disabled={isVerifying}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] shadow-xs shrink-0 self-start sm:self-auto"
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] shadow-xs shrink-0 self-start sm:self-auto disabled:opacity-50"
         >
-          <RefreshCw size={14} className={isVerifying ? 'animate-spin' : ''} />
-          <span>Run Diagnostics (Integridade)</span>
+          <RefreshCw size={14} className={busy ? 'animate-spin' : ''} />
+          <span>{busy ? 'Verificando…' : 'Executar checagem (Integridade)'}</span>
         </button>
       </div>
 
-      {/* Diagnostic Gauges */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Gauge 1: SQLite Integrity Check */}
-        <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 flex items-start gap-3">
-          <CheckCircle2 size={20} className="text-emerald-500 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <span className="font-semibold text-sm text-foreground block">
-              PRAGMA integrity_check
-            </span>
-            <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold block">
-              Result: &ldquo;{report.integrity_check}&rdquo;
-            </span>
-            <p className="text-[11px] text-muted-foreground">
-              All {report.page_count} B-tree database pages verified free of bitrot.
-            </p>
-          </div>
-        </div>
+      {error && (
+        <p role="alert" className="text-xs text-rose-500 font-medium">
+          {error}
+        </p>
+      )}
 
-        {/* Gauge 2: Foreign Key Constraint Check */}
-        <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 flex items-start gap-3">
-          <CheckCircle2 size={20} className="text-emerald-500 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <span className="font-semibold text-sm text-foreground block">
-              PRAGMA foreign_key_check
-            </span>
-            <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold block">
-              Violations: {report.foreign_key_violations} detected
-            </span>
-            <p className="text-[11px] text-muted-foreground">
-              Zero orphaned job records or invalid template references.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Details Inspector Accordion */}
-      <div className="border border-border rounded-xl bg-muted/20 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setIsAccordionOpen(!isAccordionOpen)}
-          className="w-full p-4 flex items-center justify-between text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <Database size={15} className="text-sky-500" />
-            <span>Low-Level SQLite Engine Parameters</span>
-          </div>
-          {isAccordionOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-        </button>
-
-        {isAccordionOpen && (
-          <div className="p-4 border-t border-border space-y-3 font-mono text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3 bg-card border border-border rounded-lg">
-                <span className="text-[11px] text-muted-foreground block mb-1">Database File Size</span>
-                <span className="text-base font-bold text-foreground tabular-nums">
-                  {report.db_size_formatted}
-                </span>
-                <span className="text-[10px] text-muted-foreground block mt-0.5">
-                  ({report.db_size_bytes.toLocaleString()} bytes)
-                </span>
-              </div>
-
-              <div className="p-3 bg-card border border-border rounded-lg">
-                <span className="text-[11px] text-muted-foreground block mb-1">Journal Mode</span>
-                <span className="text-base font-bold text-emerald-500">
-                  {report.journal_mode} Active
-                </span>
-                <span className="text-[10px] text-muted-foreground block mt-0.5">
-                  Write-Ahead Logging
-                </span>
-              </div>
-
-              <div className="p-3 bg-card border border-border rounded-lg">
-                <span className="text-[11px] text-muted-foreground block mb-1">WAL Frames</span>
-                <span className="text-base font-bold text-sky-500 tabular-nums">
-                  {report.active_wal_frames} uncommitted
-                </span>
-                <span className="text-[10px] text-muted-foreground block mt-0.5">
-                  Page size: {report.page_size}B
-                </span>
-              </div>
+      {result && (
+        <div role="status" className="space-y-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className={`p-4 rounded-xl border ${result.integrity_ok ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-rose-500/20 bg-rose-500/10'}`}>
+              <span className="font-semibold text-sm text-foreground block mb-1">
+                PRAGMA integrity_check
+              </span>
+              <p className="text-xs font-mono">
+                Banco SQLite: <strong className={result.integrity_ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>{result.integrity_ok ? 'OK' : 'FALHA'}</strong>
+              </p>
+              {result.details && result.details.length > 0 && (
+                <ul className="text-xs text-muted-foreground mt-2 list-disc list-inside">
+                  {result.details.map((detail, idx) => (
+                    <li key={idx}>{detail}</li>
+                  ))}
+                </ul>
+              )}
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border">
-              <span>Last WAL Checkpoint: {report.last_checkpoint}</span>
-              <span className="text-sky-500">PRAGMA synchronous = NORMAL</span>
+            <div className={`p-4 rounded-xl border ${result.foreign_keys_ok ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-rose-500/20 bg-rose-500/10'}`}>
+              <span className="font-semibold text-sm text-foreground block mb-1">
+                PRAGMA foreign_key_check
+              </span>
+              <p className="text-xs font-mono">
+                Chaves estrangeiras: <strong className={result.foreign_keys_ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>{result.foreign_keys_ok ? 'OK' : 'FALHA'}</strong>
+              </p>
+              {result.fk_violations && result.fk_violations.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <h3 className="font-semibold text-rose-500">Violações de referência</h3>
+                  <ul className="text-xs text-muted-foreground list-disc list-inside">
+                    {result.fk_violations.map((v, idx) => (
+                      <li key={idx}>
+                        {v.table} · registro {v.rowid} · referência {v.parent} · chave {v.fkid}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
