@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-10
+
+### Added
+- **React 19 Operator Web UI:** Complete rebuild and modernization of the operator SPA to React 19, Tailwind CSS 4, Radix UI headless primitives, and Zustand stores, removing legacy Svelte dependencies and establishing unified responsive layout.
+- **Authoritative API State & Diagnostics:** Replaced simulated states and synthetic fallbacks across agenda, catalog, history, and backup vaults with strict server-side validation, authentic daemon liveness, and RFC 7234 cache protection.
+- **Preventive Schedule Conflict Detection & Daily Digest MCP:** New `daily_digest` MCP tool and conflict prevention engine analyzing schedule overlaps and notification density.
+- **Agenda Tags & Category Classification:** Schema v11 indexing for tags and categories across SQLite, HTTP REST API, MCP tools, and Web UI.
+- **Recurring Job Upcoming Projections:** Real-time projected execution schedules for recurring cron and interval jobs across API, MCP, and UI.
+- **Operational Health Metrics & Filtered CSV Exports:** Expose aggregate daemon metrics via HTTP and MCP, and provide filtered CSV downloads for job catalogs and execution history ledgers.
+
 ## [0.4.0] - 2026-09-22
 
 ### Added
