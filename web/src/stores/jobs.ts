@@ -316,64 +316,26 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   },
 
   createContact: async (data) => {
-    try {
-      const created = await api.createContact({ name: data.name, phone: data.phone });
-      const newContact: Contact = {
-        id: created.id,
-        name: created.name,
-        alias: created.name,
-        phone: created.phone,
-        role: data.role || 'Resident',
-        tags: data.tags || ['custom'],
-        active_jobs: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        last_dispatch: 'Never',
-        active: true,
-      };
-      set((state) => ({
-        contacts: [newContact, ...state.contacts],
-      }));
-      return newContact;
-    } catch {
-      // Fallback local creation if offline
-      const fallback: Contact = {
-        id: `cnt-${Date.now().toString(36)}`,
-        name: data.name,
-        alias: data.name,
-        phone: data.phone,
-        role: data.role || 'Resident',
-        tags: data.tags || ['custom'],
-        active_jobs: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        last_dispatch: 'Never',
-        active: true,
-      };
-      set((state) => ({
-        contacts: [fallback, ...state.contacts],
-      }));
-      return fallback;
-    }
+    const created = await api.createContact({ name: data.name, phone: data.phone });
+    const contact: Contact = { ...created, alias: created.name, tags: [] };
+    ++generations.contacts;
+    set((state) => ({ contacts: [contact, ...state.contacts], resources: { ...state.resources, contacts: { status: "ready", stale: false } } }));
+    return contact;
   },
 
   updateContact: async (id, updates) => {
-    try {
-      await api.patchContact(id, { name: updates.name, phone: updates.phone });
-    } catch {
-      // Fallback local update
-    }
-    set((state) => ({
-      contacts: state.contacts.map((c) =>
-        c.id === id ? { ...c, ...updates, updated_at: new Date().toISOString() } : c
-      ),
-    }));
+    const updated = await api.patchContact(id, { name: updates.name, phone: updates.phone });
+    ++generations.contacts;
+    set((state) => ({ contacts: state.contacts.map((c) => c.id === id
+      ? { ...updated, alias: updated.name, tags: [] } : c), resources: { ...state.resources, contacts: { status: "ready", stale: false } } }));
   },
 
   deleteContact: async (id) => {
     await api.deleteContact(id);
+    ++generations.contacts;
     set((state) => ({
       contacts: state.contacts.filter((c) => c.id !== id),
+      resources: { ...state.resources, contacts: { status: "ready", stale: false } },
     }));
   },
 
@@ -402,74 +364,28 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   },
 
   createTemplate: async (data) => {
-    try {
-      const created = await api.createTemplate({ name: data.name, body: data.body });
-      const placeholders = (created.body.match(/\{\{([^}]+)\}\}/g) || []).map((m) =>
-        m.replace(/[{}]/g, '').trim()
-      );
-      const newTemplate: Template = {
-        id: created.id,
-        name: created.name,
-        content: created.body,
-        body: created.body,
-        variables: placeholders,
-        placeholders,
-        category: 'custom',
-        updated_at: new Date().toISOString(),
-      };
-      set((state) => ({
-        templates: [newTemplate, ...state.templates],
-      }));
-      return newTemplate;
-    } catch {
-      const placeholders = (data.body.match(/\{\{([^}]+)\}\}/g) || []).map((m) =>
-        m.replace(/[{}]/g, '').trim()
-      );
-      const fallback: Template = {
-        id: `tpl-${Date.now().toString(36)}`,
-        name: data.name,
-        content: data.body,
-        body: data.body,
-        variables: placeholders,
-        placeholders,
-        category: 'custom',
-        updated_at: new Date().toISOString(),
-      };
-      set((state) => ({
-        templates: [fallback, ...state.templates],
-      }));
-      return fallback;
-    }
+    const created = await api.createTemplate(data);
+    const placeholders = (created.body.match(/\{\{([^}]+)\}\}/g) || []).map((m) => m.replace(/[{}]/g, '').trim());
+    const template: Template = { ...created, content: created.body, variables: placeholders, placeholders };
+    ++generations.templates;
+    set((state) => ({ templates: [template, ...state.templates], resources: { ...state.resources, templates: { status: "ready", stale: false } } }));
+    return template;
   },
 
   updateTemplate: async (id, updates) => {
-    try {
-      await api.patchTemplate(id, { name: updates.name, body: updates.body });
-    } catch {
-      // Fallback local update
-    }
-    const placeholders = updates.body
-      ? (updates.body.match(/\{\{([^}]+)\}\}/g) || []).map((m) => m.replace(/[{}]/g, '').trim())
-      : undefined;
-    set((state) => ({
-      templates: state.templates.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              ...updates,
-              ...(updates.body !== undefined ? { content: updates.body } : {}),
-              ...(placeholders ? { variables: placeholders, placeholders } : {}),
-              updated_at: new Date().toISOString(),
-            }
-          : t
-      ),
-    }));
+    const updated = await api.patchTemplate(id, updates);
+    const placeholders = (updated.body.match(/\{\{([^}]+)\}\}/g) || []).map((m) => m.replace(/[{}]/g, '').trim());
+    ++generations.templates;
+    set((state) => ({ templates: state.templates.map((t) => t.id === id
+      ? { ...updated, content: updated.body, variables: placeholders, placeholders } : t), resources: { ...state.resources, templates: { status: "ready", stale: false } } }));
   },
 
   deleteTemplate: async (id) => {
     await api.deleteTemplate(id);
+    ++generations.templates;
     set((state) => ({
       templates: state.templates.filter((t) => t.id !== id),
+      resources: { ...state.resources, templates: { status: "ready", stale: false } },
     }));
   },
 

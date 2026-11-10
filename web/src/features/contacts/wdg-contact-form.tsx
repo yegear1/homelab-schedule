@@ -14,7 +14,7 @@ export interface ContactFormProps {
   onOpenChange: (open: boolean) => void;
   contactToEdit?: Contact | null;
   existingContacts: Contact[];
-  onSave: (contactData: { name: string; phone: string; role?: string }) => void;
+  onSave: (contactData: { name: string; phone: string }) => Promise<void>;
 }
 
 export function ContactForm({
@@ -26,18 +26,16 @@ export function ContactForm({
 }: ContactFormProps) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState('Resident');
+  const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; phone?: string; conflict?: string }>({});
 
   useEffect(() => {
     if (contactToEdit) {
       setName(contactToEdit.name || contactToEdit.alias || '');
       setPhone(contactToEdit.phone || '');
-      setRole(contactToEdit.role || 'Resident');
     } else {
       setName('');
       setPhone('');
-      setRole('Resident');
     }
     setErrors({});
   }, [contactToEdit, open]);
@@ -53,41 +51,25 @@ export function ContactForm({
       errs.name = 'Name cannot exceed 80 characters.';
     }
 
-    // 2. Phone E.164 validation (e.g. +5511999990000)
-    const trimmedPhone = phone.trim();
-    const e164Regex = /^\+[1-9]\d{6,14}$/;
-    if (!trimmedPhone) {
-      errs.phone = 'Phone number is required (E.164 format).';
-    } else if (!e164Regex.test(trimmedPhone)) {
-      errs.phone = '422 Unprocessable Entity: Must be valid E.164 format (e.g., +5511999990000).';
-    } else {
-      // 3. Duplicate phone simulation (409 Conflict)
-      const duplicate = existingContacts.find(
-        (c) => c.phone === trimmedPhone && c.id !== contactToEdit?.id
-      );
-      if (duplicate) {
-        errs.conflict = `409 Conflict: Phone is already assigned to "${duplicate.name || duplicate.alias}".`;
-      }
-    }
+    if (!phone.trim()) errs.phone = 'Phone number is required.';
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
-
-    onSave({
-      name: name.trim(),
-      phone: phone.trim(),
-      role: role.trim() || 'Resident',
-    });
-
-    toast.success('Contact saved', {
-      description: `Synchronized ${name.trim()} to SQLite contact directory.`,
-    });
-    onOpenChange(false);
+    if (busy || !validate()) return;
+    setBusy(true);
+    try {
+      await onSave({ name: name.trim(), phone: phone.trim() });
+      toast.success('Contact saved');
+      onOpenChange(false);
+    } catch (error: unknown) {
+      setErrors({ conflict: error instanceof Error ? error.message : 'Failed to save contact' });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -147,7 +129,7 @@ export function ContactForm({
             {/* Phone input with E.164 hint */}
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">
-                International Phone (E.164) <span className="text-rose-500">*</span>
+                Phone <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -165,23 +147,9 @@ export function ContactForm({
                 <p className="mt-1 text-[11px] text-rose-500 font-mono">{errors.phone}</p>
               ) : (
                 <p className="mt-1 text-[11px] text-muted-foreground font-mono">
-                  Include country code: e.g. +5511988887777 or +14155552671
+                  Include the country code.
                 </p>
               )}
-            </div>
-
-            {/* Role input */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">
-                Role / Escalation Group
-              </label>
-              <input
-                type="text"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                placeholder="e.g. Root Operator, Resident, Pager"
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500 min-h-[44px]"
-              />
             </div>
 
             <div className="pt-4 flex items-center justify-end gap-2 border-t border-border">
@@ -194,6 +162,7 @@ export function ContactForm({
               </button>
               <button
                 type="submit"
+                disabled={busy}
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] shadow-xs"
               >
                 <Save size={14} />

@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Search, Plus, X, Users, Phone, CalendarClock } from 'lucide-react';
+import { Search, Plus, X, Users, Phone } from 'lucide-react';
 import { Contact } from '../../types/domain';
 import { getContactInitials, getAvatarColorClass } from './contacts.fixtures';
 
@@ -31,8 +31,7 @@ export function ContactsList({
       const matchName = (c.name || c.alias || '').toLowerCase().includes(q);
       const matchPhone = c.phone.toLowerCase().includes(q);
       const matchId = c.id.toLowerCase().includes(q);
-      const matchRole = (c.role || '').toLowerCase().includes(q);
-      return matchName || matchPhone || matchId || matchRole;
+      return matchName || matchPhone || matchId;
     });
   }, [contacts, searchQuery]);
 
@@ -93,7 +92,6 @@ export function ContactsList({
             const isSelected = contact.id === selectedContactId;
             const initials = getContactInitials(contact.name || contact.alias);
             const avatarColor = getAvatarColorClass(contact.id);
-            const activeJobs = contact.active_jobs ?? 0;
 
             return (
               <div
@@ -125,20 +123,7 @@ export function ContactsList({
                   </div>
                 </div>
 
-                {/* Right: Active Jobs Pill Badge */}
-                <div className="shrink-0 ml-2">
-                  <span
-                    className={`inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-full border ${
-                      activeJobs > 0
-                        ? 'bg-sky-500/10 text-sky-500 border-sky-500/20 font-medium'
-                        : 'bg-muted text-muted-foreground border-border'
-                    }`}
-                    title={`${activeJobs} active scheduled jobs`}
-                  >
-                    <CalendarClock size={11} />
-                    <span>{activeJobs}</span>
-                  </span>
-                </div>
+
               </div>
             );
           })

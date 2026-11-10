@@ -26,6 +26,7 @@ export function TemplateEditor({
   const [name, setName] = useState('');
   const [body, setBody] = useState('');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [conflictError, setConflictError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -66,10 +67,12 @@ export function TemplateEditor({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     if (!name.trim()) {
       toast.error('Template name is required');
       return;
     }
+    setBusy(true);
     try {
       await onSaveTemplate(template ? template.id : null, {
         name: name.trim(),
@@ -81,18 +84,14 @@ export function TemplateEditor({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to save template';
       toast.error(msg);
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleDeleteAttempt = async () => {
-    if (!template) return;
-    const jobsCount = template.jobs_count ?? 0;
-    if (jobsCount > 0) {
-      setConflictError(
-        `409 Conflict: Template is currently referenced by ${jobsCount} active jobs. Reassign or cancel jobs first.`
-      );
-      return;
-    }
+    if (!template || busy) return;
+    setBusy(true);
     try {
       await onDeleteTemplate(template.id);
       setIsDeleteModalOpen(false);
@@ -100,6 +99,8 @@ export function TemplateEditor({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '409 Conflict: Template is referenced by active jobs.';
       setConflictError(msg);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -132,6 +133,7 @@ export function TemplateEditor({
           <button
             type="button"
             onClick={handleSave}
+            disabled={busy}
             className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] shadow-xs"
           >
             <Save size={14} />
@@ -233,6 +235,7 @@ export function TemplateEditor({
               <button
                 type="button"
                 onClick={handleDeleteAttempt}
+                disabled={busy}
                 className="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-500 text-white hover:bg-rose-600 transition-colors"
               >
                 Confirm Delete

@@ -14,8 +14,6 @@ import {
   Check,
   X,
   AlertTriangle,
-  Clock,
-  Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Contact } from '../../types/domain';
@@ -38,6 +36,7 @@ export function ContactWorkspace({
   onInspectJob,
 }: ContactWorkspaceProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -60,34 +59,31 @@ export function ContactWorkspace({
   };
 
   const saveEdit = async () => {
+    if (busy) return;
     if (!editName.trim() || !editPhone.trim()) {
       toast.error('Name and phone cannot be empty');
       return;
     }
+    setBusy(true);
     try {
       await onUpdateContact(contact.id, {
         name: editName.trim(),
-        alias: editName.trim(),
         phone: editPhone.trim(),
-        updated_at: new Date().toISOString(),
       });
       setIsEditing(false);
       toast.success('Contact profile updated');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update contact';
       toast.error(msg);
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleDeleteAttempt = async () => {
+    if (busy) return;
     setConflictError(null);
-    const activeJobCount = contact.active_jobs ?? 0;
-    if (activeJobCount > 0) {
-      setConflictError(
-        `409 Conflict: Cannot delete contact with ${activeJobCount} active scheduled jobs. Reassign or cancel jobs first.`
-      );
-      return;
-    }
+    setBusy(true);
     try {
       await onDeleteContact(contact.id);
       setIsDeleteModalOpen(false);
@@ -95,6 +91,8 @@ export function ContactWorkspace({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '409 Conflict: Cannot delete contact with active jobs.';
       setConflictError(msg);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -132,8 +130,6 @@ export function ContactWorkspace({
                 <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground whitespace-nowrap overflow-hidden min-w-0">
                   <Phone size={12} className="shrink-0" />
                   <span className="shrink-0">{contact.phone}</span>
-                  <span className="shrink-0">·</span>
-                  <span className="text-sky-500 font-sans truncate shrink-0">{contact.role}</span>
                 </div>
               </div>
             ) : (
@@ -153,6 +149,7 @@ export function ContactWorkspace({
                 <button
                   type="button"
                   onClick={saveEdit}
+                  disabled={busy}
                   className="p-1.5 bg-sky-500 text-white rounded hover:bg-sky-600"
                 >
                   <Check size={14} />
@@ -192,19 +189,7 @@ export function ContactWorkspace({
           </div>
         </div>
 
-        {/* Audit Metadata */}
-        <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono text-muted-foreground pt-1">
-          <div className="flex items-center gap-1">
-            <Clock size={11} />
-            <span>Created: {contact.created_at ? new Date(contact.created_at).toLocaleDateString() : '—'}</span>
-          </div>
-          <div>
-            <span>Updated: {contact.updated_at ? new Date(contact.updated_at).toLocaleDateString() : '—'}</span>
-          </div>
-          <div className="text-foreground">
-            <span>ID: {contact.id}</span>
-          </div>
-        </div>
+        <div className="text-[11px] font-mono text-muted-foreground">ID: {contact.id}</div>
       </div>
 
       {/* Scoped Jobs Table Viewport */}
@@ -214,7 +199,7 @@ export function ContactWorkspace({
             Scoped Scheduled & Triggered Jobs
           </h3>
           <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap truncate shrink-0 text-right">
-            Recipient (`to`) or Creator (`created_by`)
+            Recipient or creator phone
           </span>
         </div>
         <ContactJobs contact={contact} onInspectJob={onInspectJob} />
@@ -255,6 +240,7 @@ export function ContactWorkspace({
               <button
                 type="button"
                 onClick={handleDeleteAttempt}
+                disabled={busy}
                 className="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-500 text-white hover:bg-rose-600 transition-colors"
               >
                 Confirm Delete

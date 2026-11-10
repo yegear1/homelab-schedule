@@ -20,7 +20,7 @@ export function TemplatePreview({ body, templateName }: TemplatePreviewProps) {
       if (token in SAMPLE_SIMULATION_VALUES) {
         return SAMPLE_SIMULATION_VALUES[token];
       }
-      return `[${token}]`;
+      return match;
     });
   }, [body]);
 

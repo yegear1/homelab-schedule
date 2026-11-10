@@ -39,23 +39,7 @@ export function ContactsPage({ initialContactId }: ContactsPageProps) {
   const [inspectJobId, setInspectJobId] = useState<string | null>(null);
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
 
-  // Compute active_jobs dynamically by cross-referencing jobs store
-  const contactsWithDynamicJobCounts = useMemo(() => {
-    return contacts.map((c) => {
-      const activeJobs = jobs.filter(
-        (j) =>
-          (j.recipient === c.phone || (j.created_by && j.created_by === c.alias)) &&
-          (j.status === 'scheduled' || j.status === 'snoozed')
-      ).length;
-      return { ...c, active_jobs: activeJobs };
-    });
-  }, [contacts, jobs]);
-
-  const selectedContact = useMemo(() => {
-    return (
-      contactsWithDynamicJobCounts.find((c) => c.id === selectedContactId) || null
-    );
-  }, [contactsWithDynamicJobCounts, selectedContactId]);
+  const selectedContact = contacts.find((c) => c.id === selectedContactId) || null;
 
   const selectedInspectJob = useMemo(() => {
     return jobs.find((j) => j.id === inspectJobId) || null;
@@ -76,15 +60,10 @@ export function ContactsPage({ initialContactId }: ContactsPageProps) {
   };
 
   const handleDeleteContact = async (id: string) => {
-    try {
-      await deleteContact(id);
-      const remaining = contacts.filter((c) => c.id !== id);
-      setSelectedContactId(remaining[0]?.id || null);
-      setIsMobileDetailView(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Falha ao excluir contato';
-      toast.error(msg);
-    }
+    await deleteContact(id);
+    const remaining = contacts.filter((c) => c.id !== id);
+    setSelectedContactId(remaining[0]?.id || null);
+    setIsMobileDetailView(false);
   };
 
   const handleScheduleForContact = (phone: string) => {
@@ -118,7 +97,7 @@ export function ContactsPage({ initialContactId }: ContactsPageProps) {
           }`}
         >
           <ContactsList
-            contacts={contactsWithDynamicJobCounts}
+            contacts={contacts}
             selectedContactId={selectedContactId}
             onSelectContact={handleSelectContact}
             onOpenCreate={() => {
@@ -135,6 +114,7 @@ export function ContactsPage({ initialContactId }: ContactsPageProps) {
           }`}
         >
           <ContactWorkspace
+            key={selectedContact?.id ?? "none"}
             contact={selectedContact}
             onUpdateContact={handleUpdateContact}
             onDeleteContact={handleDeleteContact}

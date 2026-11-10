@@ -23,19 +23,7 @@ export function TemplatesPage() {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  // Dynamically calculate jobs_count for each template by scanning jobs store
-  const templatesWithLiveCounts = useMemo(() => {
-    return templates.map((tpl) => {
-      const referencedJobs = jobs.filter(
-        (j) => j.template_id === tpl.id && (j.status === 'scheduled' || j.status === 'snoozed')
-      ).length;
-      return { ...tpl, jobs_count: referencedJobs };
-    });
-  }, [templates, jobs]);
-
-  const selectedTemplate = useMemo(() => {
-    return templatesWithLiveCounts.find((t) => t.id === selectedTemplateId) || templatesWithLiveCounts[0] || null;
-  }, [templatesWithLiveCounts, selectedTemplateId]);
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) || null;
 
   const handleSelectTemplate = (id: string) => {
     setSelectedTemplateId(id);
@@ -89,7 +77,7 @@ export function TemplatesPage() {
           }`}
         >
           <TemplateCatalog
-            templates={templatesWithLiveCounts}
+            templates={templates}
             selectedTemplateId={selectedTemplateId}
             onSelectTemplate={handleSelectTemplate}
             onCreateNew={handleCreateNew}
