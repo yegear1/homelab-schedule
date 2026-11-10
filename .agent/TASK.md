@@ -13,7 +13,7 @@
 
 ## Completed Tasks Log
 
-- [02.42] Reconciled browser test suite to React 19 architecture, resolved foundation selectors and probe tokens, purged obsolete operational mock arrays and legacy specs | [`PENDING_COMMIT`] | 2026-11-10 | 55 browser tests, 247 Python tests, mypy, Ruff, frontend check/build, Docker build check and diff check pass
+- [02.42] Reconciled browser test suite to React 19 architecture, resolved foundation selectors and probe tokens, purged obsolete operational mock arrays and legacy specs | [`a7a844d`] | 2026-11-10 | 55 browser tests, 247 Python tests, mypy, Ruff, frontend check/build, Docker build check and diff check pass
 
 - [02.41] Separated daemon liveness from credential authentication, eliminated simulated status values, bound settings revision to live store refresh and restored semantic shell anchors | [`cf910cd`] | 2026-11-09 | 4 focused shell authority browser tests, 45 focused authority browser tests, 247 Python tests, mypy, Ruff, frontend check/build and diff check pass
 
