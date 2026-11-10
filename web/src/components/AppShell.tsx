@@ -396,6 +396,17 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
               </div>
             </button>
 
+            {/* Status badge for API key configuration */}
+            <span
+              className={`hidden sm:inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${
+                apiKey
+                  ? 'bg-muted/40 text-muted-foreground border-border'
+                  : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+              }`}
+            >
+              {apiKey ? 'Configurada neste navegador' : 'Configuração pendente'}
+            </span>
+
             {/* Active Homelab Instance with SCHEDULE_API_KEY badge */}
             <button
               type="button"

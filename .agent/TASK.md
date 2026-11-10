@@ -7,11 +7,13 @@
 
 ## Active Task
 
-- **Task:** [02.42] End-to-end production readiness verification.
-- **Status:** `READY FOR PLANNING`
-- **Next Step:** Plan the scope in [.agent/WEB_UI_REAL_DATA_PLAN.md](.agent/WEB_UI_REAL_DATA_PLAN.md).
+- **Task:** None — roadmap completed.
+- **Status:** `COMPLETE`
+- **Next Step:** Await operator instructions.
 
 ## Completed Tasks Log
+
+- [02.42] Reconciled browser test suite to React 19 architecture, resolved foundation selectors and probe tokens, purged obsolete operational mock arrays and legacy specs | [`PENDING_COMMIT`] | 2026-11-10 | 55 browser tests, 247 Python tests, mypy, Ruff, frontend check/build, Docker build check and diff check pass
 
 - [02.41] Separated daemon liveness from credential authentication, eliminated simulated status values, bound settings revision to live store refresh and restored semantic shell anchors | [`cf910cd`] | 2026-11-09 | 4 focused shell authority browser tests, 45 focused authority browser tests, 247 Python tests, mypy, Ruff, frontend check/build and diff check pass
 
@@ -93,7 +95,7 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 ## Backlog (Upcoming, in priority order)
 
-- [ ] **[02.42]** End-to-end production readiness verification
+- None pending in active roadmap; await operator direction for release or next cycle.
 
 Details and acceptance criteria: [WEB_UI_REAL_DATA_PLAN.md](WEB_UI_REAL_DATA_PLAN.md).
 

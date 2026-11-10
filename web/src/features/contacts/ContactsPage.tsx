@@ -8,7 +8,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { Contact } from '../../types/domain';
-import { INITIAL_CONTACT_DIRECTORY } from './contacts.fixtures';
 import { ContactsList } from './cmp-contacts-list';
 import { ContactWorkspace } from './cmp-contact-workspace';
 import { ContactForm } from './wdg-contact-form';

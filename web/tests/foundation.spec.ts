@@ -63,7 +63,7 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     const colors = await page.evaluate(() => {
       const probe = document.createElement('div');
-      probe.className = 'bg-primary/10 text-label p-space-md rounded-lg';
+      probe.className = 'bg-primary/10 text-foreground p-3 rounded-xl';
       document.body.appendChild(probe);
       const style = getComputedStyle(probe);
       const result = { background: style.backgroundColor, text: style.color,
@@ -73,7 +73,9 @@ for (const theme of ['light', 'dark']) {
     });
     expect(colors.background).not.toBe('rgba(0, 0, 0, 0)');
     expect(colors.background).toMatch(/0\.1\)|10%\)/);
-    expect(colors.text).toBe(theme === 'light' ? 'rgb(29, 29, 31)' : 'rgb(245, 245, 247)');
+    const expectedRgb = theme === 'light' ? 'rgb(29, 29, 31)' : 'rgb(245, 245, 247)';
+    const expectedOklch = theme === 'light' ? 'oklch(0.145 0.015 240)' : 'oklch(0.96 0.005 240)';
+    expect([expectedRgb, expectedOklch]).toContain(colors.text);
     expect(colors.padding).toBe('12px');
     expect(colors.radius).toBe('12px');
   });

@@ -7,7 +7,7 @@ import { ResourceNotice } from '../../components/ResourceNotice';
 import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Template } from '../../types/domain';
-import { INITIAL_STUDIO_TEMPLATES, extractPlaceholders } from './templates.fixtures';
+import { extractPlaceholders } from './templates.fixtures';
 import { TemplateCatalog } from './cmp-template-catalog';
 import { TemplateEditor } from './cmp-template-editor';
 import { useJobsStore } from '../../stores/jobs';

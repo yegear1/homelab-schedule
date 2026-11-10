@@ -100,7 +100,7 @@ export function ContactWorkspace({
   const avatarColor = getAvatarColorClass(contact.id);
 
   return (
-    <div className="h-full flex flex-col bg-card rounded-xl border border-border overflow-hidden shadow-xs">
+    <div id="scr-contact" data-state="ready" className="h-full flex flex-col bg-card rounded-xl border border-border overflow-hidden shadow-xs">
       {/* Workspace Header */}
       <div className="p-4 md:p-6 border-b border-border space-y-4 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

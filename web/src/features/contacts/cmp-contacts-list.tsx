@@ -82,7 +82,7 @@ export function ContactsList({
       </div>
 
       {/* Contacts List View */}
-      <div className="flex-1 overflow-y-auto divide-y divide-border p-2 space-y-1">
+      <div id="contact-rows-container" className="flex-1 overflow-y-auto divide-y divide-border p-2 space-y-1">
         {filteredContacts.length === 0 ? (
           <div className="text-center py-12 text-xs text-muted-foreground">
             No contacts match &ldquo;{searchQuery}&rdquo;.
@@ -94,10 +94,14 @@ export function ContactsList({
             const avatarColor = getAvatarColorClass(contact.id);
 
             return (
-              <div
+              <a
                 key={contact.id}
-                onClick={() => onSelectContact(contact.id)}
-                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all active:scale-[0.99] ${
+                href={`/contacts/${contact.id}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onSelectContact(contact.id);
+                }}
+                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all active:scale-[0.99] text-inherit no-underline ${
                   isSelected
                     ? 'bg-sky-500/10 border border-sky-500/30 ring-1 ring-sky-500/20'
                     : 'hover:bg-muted/60 border border-transparent'
@@ -124,7 +128,7 @@ export function ContactsList({
                 </div>
 
 
-              </div>
+              </a>
             );
           })
         )}
