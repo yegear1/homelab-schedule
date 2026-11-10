@@ -72,7 +72,7 @@ export function ContactsPage({ initialContactId }: ContactsPageProps) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto h-[calc(100vh-8rem)] min-h-[600px] flex flex-col space-y-4">
+    <div id="scr-contacts" data-state={resources.contacts.status} className="max-w-7xl mx-auto h-[calc(100vh-8rem)] min-h-[600px] flex flex-col space-y-4">
       <ResourceNotice label="contatos" {...resources.contacts} onRetry={() => { void fetchContacts(); }} />
       {/* Mobile Back button when viewing detail */}
       {isMobileDetailView && (

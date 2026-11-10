@@ -16,8 +16,6 @@ import {
   Sun,
   Moon,
   Laptop,
-  Radio,
-  Menu,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -39,14 +37,15 @@ interface NavItem {
   path: string;
   label: string;
   icon: typeof Calendar;
+  id: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { path: '/jobs', label: 'Operational Agenda', icon: Calendar },
-  { path: '/contacts', label: 'Contact Directory', icon: Users },
-  { path: '/templates', label: 'Message Templates', icon: FileText },
-  { path: '/history', label: 'Execution Audit Logs', icon: History },
-  { path: '/data', label: 'Backups & Integrity', icon: Database },
+  { path: '/contacts', label: 'Contact Directory', icon: Users, id: 'nav-scr-contacts' },
+  { path: '/jobs', label: 'Operational Agenda', icon: Calendar, id: 'nav-scr-jobs' },
+  { path: '/templates', label: 'Message Templates', icon: FileText, id: 'nav-scr-templates' },
+  { path: '/history', label: 'Execution Audit Logs', icon: History, id: 'nav-scr-history' },
+  { path: '/data', label: 'Backups & Integrity', icon: Database, id: 'btn-open-backup-modal-sidebar' },
 ];
 
 export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
@@ -59,6 +58,8 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
     setIsAccessModalOpen,
     isConnected,
     latencyMs,
+    authStatus,
+    settingsRevision,
     testConnection,
   } = useAuthStore();
 
@@ -66,14 +67,28 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [statusAnnouncement, setStatusAnnouncement] = useState('');
 
   useEffect(() => {
     applyThemeToDocument(theme);
   }, [theme]);
 
+  // Test authentic connection whenever URL or API Key changes
   useEffect(() => {
-    testConnection();
+    void testConnection();
   }, [baseUrl, apiKey, testConnection]);
+
+  // When settings revision changes, announce to accessibility region and refresh shared reads
+  useEffect(() => {
+    if (settingsRevision > 0) {
+      setStatusAnnouncement('Configurações salvas localmente no navegador.');
+      const store = useJobsStore.getState();
+      void store.fetchJobs();
+      void store.fetchTags();
+      void store.fetchContacts();
+      void store.fetchTemplates();
+    }
+  }, [settingsRevision]);
 
   const cycleTheme = () => {
     const next: Record<AppTheme, AppTheme> = {
@@ -87,10 +102,26 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
   const maskedKey = apiKey ? `${apiKey.substring(0, Math.min(apiKey.length, 6))}••••••` : 'None';
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row antialiased">
+    <div
+      className="app-shell min-h-screen bg-background text-foreground flex flex-col md:flex-row antialiased"
+      inert={isAccessModalOpen ? true : undefined}
+    >
+      {/* Skip to Main Content Link for Keyboard Accessibility */}
+      <a
+        href="#main-content"
+        className="shell-skip sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50 px-4 py-2 bg-sky-500 text-white rounded-md font-medium text-sm shadow-md"
+      >
+        Pular para o conteúdo principal
+      </a>
+
+      {/* Polite Live Region for Settings Announcements */}
+      <div role="status" aria-live="polite" className="sr-only">
+        {statusAnnouncement}
+      </div>
+
       {/* Desktop Sidebar */}
       <aside
-        className={`hidden md:flex flex-col border-r border-border bg-card transition-all duration-200 shrink-0 select-none ${
+        className={`shell-sidebar hidden md:flex flex-col border-r border-border bg-card transition-all duration-200 shrink-0 select-none ${
           isSidebarCollapsed ? 'w-16' : 'w-64'
         }`}
       >
@@ -129,6 +160,7 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
         <div className="p-3 border-b border-border">
           <button
             type="button"
+            id="btn-open-create-modal"
             onClick={() => setIsCreateOpen(true)}
             className={`w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[40px] active:scale-[0.98] shadow-xs ${
               isSidebarCollapsed ? 'px-0' : ''
@@ -141,18 +173,20 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
         </div>
 
         {/* Navigation list */}
-        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+        <nav className="shell-navigation flex-1 p-2 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive =
               currentPath === item.path ||
-              (currentPath === '/' && item.path === '/jobs') ||
+              (currentPath === '/' && item.path === '/contacts') ||
               (item.path !== '/' && currentPath.startsWith(item.path));
+
             return (
               <button
                 key={item.path}
                 type="button"
-                id={item.path === '/data' ? 'btn-open-backup-modal-sidebar' : undefined}
+                id={item.id}
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => onNavigate(item.path)}
                 title={isSidebarCollapsed ? item.label : undefined}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px] active:scale-[0.98] ${
@@ -168,21 +202,82 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
           })}
         </nav>
 
-        {/* System Heartbeat & Gateway status indicator */}
+        {/* Theme Segmented Control in Sidebar Footer */}
+        <div className="p-3 pt-0 border-t border-border mt-auto">
+          <div className="text-[11px] font-medium text-muted-foreground mb-1.5 px-0.5">
+            {!isSidebarCollapsed && <span>Aparência</span>}
+          </div>
+          <div className="ui-segments flex items-center justify-between gap-1 p-1 bg-muted/60 rounded-lg border border-border">
+            <button
+              type="button"
+              id="theme-btn-light"
+              aria-pressed={theme === 'light'}
+              onClick={() => setTheme('light')}
+              className={`flex-1 py-1.5 px-1.5 text-xs rounded-md flex items-center justify-center gap-1 min-h-[44px] transition-colors ${
+                theme === 'light'
+                  ? 'bg-background text-foreground shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Tema claro"
+            >
+              <Sun size={14} />
+              {!isSidebarCollapsed && <span className="text-[11px]">Claro</span>}
+            </button>
+            <button
+              type="button"
+              id="theme-btn-system"
+              aria-pressed={theme === 'system'}
+              onClick={() => setTheme('system')}
+              className={`flex-1 py-1.5 px-1.5 text-xs rounded-md flex items-center justify-center gap-1 min-h-[44px] transition-colors ${
+                theme === 'system'
+                  ? 'bg-background text-foreground shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Tema do sistema"
+            >
+              <Laptop size={14} />
+              {!isSidebarCollapsed && <span className="text-[11px]">Auto</span>}
+            </button>
+            <button
+              type="button"
+              id="theme-btn-dark"
+              aria-pressed={theme === 'dark'}
+              onClick={() => setTheme('dark')}
+              className={`flex-1 py-1.5 px-1.5 text-xs rounded-md flex items-center justify-center gap-1 min-h-[44px] transition-colors ${
+                theme === 'dark'
+                  ? 'bg-background text-foreground shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Tema escuro"
+            >
+              <Moon size={14} />
+              {!isSidebarCollapsed && <span className="text-[11px]">Escuro</span>}
+            </button>
+          </div>
+        </div>
+
+        {/* System Heartbeat & Auth status indicator in Sidebar */}
         <div className="p-3 border-t border-border">
-          <div
+          <button
+            type="button"
             onClick={() => setIsAccessModalOpen(true)}
-            className={`cursor-pointer rounded-lg border border-border bg-muted/50 p-2.5 flex items-center gap-2 hover:bg-muted transition-colors ${
+            className={`w-full text-left rounded-lg border border-border bg-muted/50 p-2.5 flex items-center gap-2 hover:bg-muted transition-colors min-h-[44px] ${
               isSidebarCollapsed ? 'justify-center' : ''
             }`}
-            title="Gateway Heartbeat (Click to configure)"
+            title="Conexão do daemon"
           >
             <div className="relative flex h-2.5 w-2.5 shrink-0">
               {isConnected ? (
-                <>
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </>
+                authStatus === 'authenticated' ? (
+                  <>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </>
+                ) : authStatus === 'unauthorized' ? (
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                ) : (
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-500"></span>
+                )
               ) : (
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
               )}
@@ -190,22 +285,37 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
             {!isSidebarCollapsed && (
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-medium text-foreground truncate">
-                  Gateway Connected
+                  {isConnected
+                    ? authStatus === 'authenticated'
+                      ? 'Daemon Autenticado'
+                      : authStatus === 'unauthorized'
+                      ? 'Chave Inválida (401)'
+                      : 'Daemon Online'
+                    : 'Daemon Offline'}
                 </div>
                 <div className="text-[11px] text-muted-foreground font-mono truncate">
-                  202 Ready · {latencyMs}ms
+                  {latencyMs !== null ? `${latencyMs}ms · ` : ''}
+                  {authStatus === 'authenticated'
+                    ? 'Autenticado'
+                    : authStatus === 'unauthorized'
+                    ? 'HTTP 401'
+                    : authStatus === 'no_key'
+                    ? 'Sem chave'
+                    : isConnected
+                    ? 'Liveness OK'
+                    : 'Inacessível'}
                 </div>
               </div>
             )}
-          </div>
+          </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Bar */}
-        <header className="h-16 border-b border-border bg-card px-4 md:px-6 flex items-center justify-between gap-4 shrink-0">
-          {/* Left: Mobile Title or Search trigger */}
+        <header className="shell-header h-16 border-b border-border bg-card px-4 md:px-6 flex items-center justify-between gap-4 shrink-0">
+          {/* Left: Search trigger / Command palette */}
           <div className="flex items-center gap-3 flex-1 max-w-md">
             <button
               type="button"
@@ -222,43 +332,66 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
             </button>
           </div>
 
-          {/* Right: Actions, Gateway Heartbeat, Instance badge & Theme Toggle */}
+          {/* Right: Actions, Heartbeat & Access trigger, Instance badge & Theme Toggle */}
           <div className="flex items-center gap-1.5 md:gap-2.5">
-            {/* New Job CTA Button in Header (Accessible across all screens and pages) */}
+            {/* New Job CTA Button in Header */}
             <button
               type="button"
               onClick={() => setIsCreateOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[40px] active:scale-[0.98] shadow-xs shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-colors min-h-[44px] active:scale-[0.98] shadow-xs shrink-0"
               title="Schedule New Dispatch Job"
             >
               <Plus size={15} />
               <span className="hidden sm:inline">New Job</span>
             </button>
 
-            {/* Gateway Heartbeat indicator (Present across all screens/devices, especially on mobile where sidebar is hidden) */}
+            {/* Daemon Heartbeat & Auth indicator */}
             <button
               type="button"
               onClick={() => setIsAccessModalOpen(true)}
-              className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-border bg-muted/50 hover:bg-muted transition-colors min-h-[40px] active:scale-[0.98] shrink-0"
-              title="Gateway Heartbeat (Click to configure)"
+              className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-border bg-muted/50 hover:bg-muted transition-colors min-h-[44px] active:scale-[0.98] shrink-0"
+              title="Configurações da API"
             >
               <div className="relative flex h-2.5 w-2.5 shrink-0">
                 {isConnected ? (
-                  <>
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                  </>
+                  authStatus === 'authenticated' ? (
+                    <>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </>
+                  ) : authStatus === 'unauthorized' ? (
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                  ) : (
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-500"></span>
+                  )
                 ) : (
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                 )}
               </div>
               <div className="flex flex-col text-left">
                 <div className="text-xs font-medium text-foreground flex items-center gap-1 leading-tight">
-                  <span className="hidden xs:inline">Gateway</span>
-                  <span>{isConnected ? 'Connected' : 'Offline'}</span>
+                  <span className="hidden xs:inline">Daemon</span>
+                  <span>
+                    {isConnected
+                      ? authStatus === 'authenticated'
+                        ? 'Online'
+                        : authStatus === 'unauthorized'
+                        ? '401'
+                        : 'Ativo'
+                      : 'Offline'}
+                  </span>
                 </div>
                 <div className="text-[10px] text-muted-foreground font-mono leading-tight">
-                  202 Ready · {latencyMs}ms
+                  {latencyMs !== null ? `${latencyMs}ms` : 'offline'} ·{' '}
+                  {authStatus === 'authenticated'
+                    ? 'auth'
+                    : authStatus === 'unauthorized'
+                    ? 'chave inválida'
+                    : authStatus === 'no_key'
+                    ? 'sem chave'
+                    : isConnected
+                    ? 'liveness'
+                    : 'desconectado'}
                 </div>
               </div>
             </button>
@@ -267,8 +400,8 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
             <button
               type="button"
               onClick={() => setIsAccessModalOpen(true)}
-              className="hidden xl:inline-flex items-center gap-2 px-2.5 py-2 rounded-lg border border-border bg-muted/30 hover:bg-muted transition-colors min-h-[40px] active:scale-[0.98]"
-              title="Click to adjust Operator API Key and Gateway URL"
+              className="hidden xl:inline-flex items-center gap-2 px-2.5 py-2 rounded-lg border border-border bg-muted/30 hover:bg-muted transition-colors min-h-[44px] active:scale-[0.98]"
+              title="Instância ativa"
             >
               <Server size={14} className="text-sky-500 shrink-0" />
               <span className="text-xs font-mono text-foreground font-medium">
@@ -280,11 +413,11 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
               </span>
             </button>
 
-            {/* Theme Toggle */}
+            {/* Theme Toggle (Mobile & compact desktop) */}
             <button
               type="button"
               onClick={cycleTheme}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/40 hover:bg-muted text-foreground transition-colors min-h-[40px] min-w-[40px] active:scale-[0.98]"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/40 hover:bg-muted text-foreground transition-colors min-h-[44px] min-w-[44px] active:scale-[0.98]"
               title={`Theme: ${theme} (Click to toggle)`}
             >
               {theme === 'dark' ? (
@@ -299,7 +432,11 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
         </header>
 
         {/* Viewport Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 focus:outline-none"
+        >
           {children}
         </main>
       </div>
@@ -310,13 +447,14 @@ export function AppShell({ currentPath, onNavigate, children }: AppShellProps) {
           const Icon = item.icon;
           const isActive =
             currentPath === item.path ||
-            (currentPath === '/' && item.path === '/jobs') ||
+            (currentPath === '/' && item.path === '/contacts') ||
             (item.path !== '/' && currentPath.startsWith(item.path));
           return (
             <button
               key={item.path}
               type="button"
               id={item.path === '/data' ? 'btn-open-backup-modal-header' : undefined}
+              aria-current={isActive ? 'page' : undefined}
               onClick={() => onNavigate(item.path)}
               className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-lg min-h-[48px] min-w-[48px] transition-colors active:scale-[0.98] ${
                 isActive ? 'text-sky-500 font-medium' : 'text-muted-foreground'

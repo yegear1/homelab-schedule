@@ -10,13 +10,16 @@ import { ContactsPage } from './features/contacts/ContactsPage';
 import { TemplatesPage } from './features/templates/TemplatesPage';
 import { HistoryPage } from './features/history/HistoryPage';
 import { DataPage } from './features/data/DataPage';
+import { useAuthStore } from './stores/auth';
 
 export default function App() {
+  const { settingsRevision } = useAuthStore();
   const [currentPath, setCurrentPath] = useState(() => {
     if (typeof window !== 'undefined') {
-      return window.location.pathname || '/jobs';
+      const p = window.location.pathname;
+      return p === '/' ? '/contacts' : (p || '/contacts');
     }
-    return '/jobs';
+    return '/contacts';
   });
 
   const navigate = useCallback((path: string) => {
@@ -28,15 +31,16 @@ export default function App() {
 
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPath(window.location.pathname || '/jobs');
+      const p = window.location.pathname;
+      setCurrentPath(p === '/' ? '/contacts' : (p || '/contacts'));
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const renderActiveView = () => {
-    if (currentPath.startsWith('/contacts')) {
-      const contactId = currentPath.split('/contacts/')[1];
+    if (currentPath === '/' || currentPath.startsWith('/contacts')) {
+      const contactId = currentPath.startsWith('/contacts/') ? currentPath.split('/contacts/')[1] : undefined;
       return (
         <ContactsPage
           initialContactId={contactId}
@@ -52,7 +56,6 @@ export default function App() {
       case '/data':
         return <DataPage />;
       case '/jobs':
-      case '/':
       default:
         return <AgendaPage />;
     }
@@ -60,7 +63,9 @@ export default function App() {
 
   return (
     <AppShell currentPath={currentPath} onNavigate={navigate}>
-      {renderActiveView()}
+      <div key={`${currentPath}:${settingsRevision}`} className="w-full">
+        {renderActiveView()}
+      </div>
     </AppShell>
   );
 }

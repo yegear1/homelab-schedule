@@ -52,7 +52,7 @@ export function TemplatesPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto h-[calc(100vh-8rem)] min-h-[620px] flex flex-col space-y-4">
+    <div id="scr-templates" data-state={resources.templates.status} className="max-w-7xl mx-auto h-[calc(100vh-8rem)] min-h-[620px] flex flex-col space-y-4">
       <ResourceNotice label="modelos" {...resources.templates} onRetry={() => { void fetchTemplates(); }} />
       {/* Mobile Back button when editing */}
       {isMobileEditorView && (

@@ -53,7 +53,7 @@ export function AgendaPage() {
   }, [jobs, selectedJobId]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div id="scr-jobs" data-state={resources.jobs.status} className="max-w-7xl mx-auto space-y-6">
       <ResourceNotice label="agendamentos" {...resources.jobs} onRetry={() => { void fetchJobs(); }} />
       <ResourceNotice label="etiquetas" {...resources.tags} onRetry={() => { void fetchTags(); }} />
       <ResourceNotice label="contatos" {...resources.contacts} onRetry={() => { void fetchContacts(); }} />

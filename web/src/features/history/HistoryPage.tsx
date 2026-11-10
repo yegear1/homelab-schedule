@@ -51,7 +51,7 @@ export function HistoryPage() {
       toast.error(`Falha ao exportar CSV: ${error instanceof Error ? error.message : 'falha de conexão'}`);
     } finally { setExporting(false); }
   }, [applied, state.status, exporting]);
-  return <div className="max-w-7xl mx-auto space-y-4">
+  return <div id="scr-history" data-state={state.status} className="max-w-7xl mx-auto space-y-4">
     <h1 className="text-xl font-bold">Histórico de execuções</h1>
     <p className="text-sm text-muted-foreground">Tentativas retidas, limitadas à consulta; aceitação pelo gateway não confirma entrega.</p>
     <div className="flex flex-wrap gap-2 items-center">

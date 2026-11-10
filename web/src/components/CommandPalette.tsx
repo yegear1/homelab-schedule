@@ -141,7 +141,7 @@ export function CommandPalette({
                 className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm text-foreground hover:bg-muted cursor-pointer transition-colors"
               >
                 <Server className="h-4 w-4 text-amber-500" />
-                <span>Gateway Configuration & API Key</span>
+                <span>Configurações da API & Chave do Operador</span>
               </Command.Item>
             </Command.Group>
 
