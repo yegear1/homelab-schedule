@@ -7,11 +7,13 @@
 
 ## Active Task
 
-- **Task:** [02.38] Restore real agenda views and controls.
+- **Task:** [02.39] Make inspector and execution history authoritative.
 - **Status:** `READY FOR PLANNING`
 - **Next Step:** Plan the scope in [WEB_UI_REAL_DATA_PLAN.md](WEB_UI_REAL_DATA_PLAN.md).
 
 ## Completed Tasks Log
+
+- [02.38] Replaced synthetic calendar and timeline with bounded real next runs and global attempts, month navigation and independent history refresh/error states | [`d65fb09`] | 2026-11-09 | 5 focused browser tests, 247 Python tests, mypy, Ruff, frontend check/build and diff check pass
 
 - [02.37] Made contact and template writes authoritative, preserved failed drafts, removed inferred contact metadata and counts, and corrected template creation and preview | [`9503649`] | 2026-11-09 | 4 focused catalog and 2 read-scope browser tests, 247 Python tests, mypy, Ruff, frontend check/build and diff check pass; stabilized time-sensitive digest test in [`9c4d8a0`]
 
@@ -85,7 +87,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 ## Backlog (Upcoming, in priority order)
 
-- [ ] **[02.38]** Restore real agenda views and controls
 - [ ] **[02.39]** Make inspector and execution history authoritative
 - [ ] **[02.40]** Secure data operations and integrity display
 - [ ] **[02.41]** Align shell, navigation and access feedback

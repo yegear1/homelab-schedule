@@ -33,6 +33,8 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 ## Architectural Decisions Beyond ADRs
 
+- **Agenda views [02.38]:** Calendar uses browser-local dates for loaded `next_run_at` values and up to 100 global attempts; it never expands cron occurrences. Timeline history is independently fetched with stale/error states and is not filtered by the bounded agenda query.
+
 - **Catalog writes [02.37]:** Contact and template state follows accepted server responses; failed mutations preserve drafts. Scoped job counts must not be inferred from the global bounded agenda. Unknown preview tokens remain literal. Digest conflict fixtures use a future date to avoid dispatch races with the clock.
 
 - **UI read states [02.34]:** Initial shared operational collections are empty; failed reads show retryable errors, retained real results are marked stale, and request generations prevent older responses replacing newer reads. Agenda summary uses loaded jobs only. Mutation, history and data fallbacks remain unresolved until their assigned tasks; do not treat this change as production readiness.
