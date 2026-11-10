@@ -68,7 +68,7 @@ def test_daily_digest_with_jobs_and_conflict_detection(
     client: TestClient, api_key: str
 ) -> None:
     # 2 jobs for same recipient (eu) with 2 minutes delta -> conflict
-    today = datetime.now(APP_TZ).date()
+    today = datetime.now(APP_TZ).date() + timedelta(days=1)
     dt1 = datetime(today.year, today.month, today.day, 20, 0, 0, tzinfo=APP_TZ)
     dt2 = datetime(today.year, today.month, today.day, 20, 2, 0, tzinfo=APP_TZ)
     # 1 job for different recipient at 20:00 -> not a conflict with the other recipient
@@ -121,8 +121,8 @@ def test_daily_digest_with_jobs_and_conflict_detection(
         },
     )
 
-    # Global daily digest for today
-    res = client.get("/jobs/digest?date=hoje", headers=_auth(api_key))
+    # Global daily digest for the future date
+    res = client.get(f"/jobs/digest?date={today.isoformat()}", headers=_auth(api_key))
     assert res.status_code == 200
     data = res.json()
     assert data["total_jobs"] == 4
@@ -137,7 +137,9 @@ def test_daily_digest_with_jobs_and_conflict_detection(
     assert "2 mensagens agendadas" in conflict["details"]
 
     # Filtered daily digest for amigo
-    res_amigo = client.get("/jobs/digest?date=hoje&phone=amigo", headers=_auth(api_key))
+    res_amigo = client.get(
+        f"/jobs/digest?date={today.isoformat()}&phone=amigo", headers=_auth(api_key)
+    )
     assert res_amigo.status_code == 200
     data_amigo = res_amigo.json()
     assert data_amigo["total_jobs"] == 1
