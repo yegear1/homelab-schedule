@@ -142,6 +142,7 @@ export function ContactsPage({ initialContactId }: ContactsPageProps) {
 
       <JobInspector
         job={selectedInspectJob}
+        jobId={inspectJobId}
         open={!!inspectJobId}
         onOpenChange={(open) => {
           if (!open) setInspectJobId(null);

@@ -1,204 +1,82 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { JobRun } from '../../types/domain';
-import { JobRun as ApiJobRun } from '../../lib/types';
+import * as Dialog from '@radix-ui/react-dialog';
 import { api } from '../../lib/api';
-import { INITIAL_AUDIT_RUNS } from './history.fixtures';
-import { HistoryMetrics } from './wdg-history-metrics';
-import { HistoryTable } from './cmp-history-table';
-import { RunDetailsSheet } from './wdg-run-details-sheet';
+import type { JobRun } from '../../lib/types';
 import { JobInspector } from '../agenda/wdg-job-inspector';
-import { useJobsStore } from '../../stores/jobs';
 
-function formatRelativeTime(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    if (isNaN(diffMs)) return dateStr;
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min${diffMins === 1 ? '' : 's'} ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-  } catch {
-    return dateStr;
-  }
-}
+type Filter = 'all' | 'success' | 'error';
+type Query = { status: Filter; limit: number };
+type ReadState = { status: 'loading' | 'ready' | 'error'; error?: string };
 
 export function HistoryPage() {
-  const { runs: storeRuns, jobs, fetchJobs } = useJobsStore();
-  const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'failed'>('all');
-  const [recordLimit, setRecordLimit] = useState<number>(50);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedRun, setSelectedRun] = useState<JobRun | null>(null);
-  const [inspectJobId, setInspectJobId] = useState<string | null>(null);
-  const [apiRuns, setApiRuns] = useState<JobRun[] | null>(null);
-
-  const loadRuns = useCallback(async () => {
-    try {
-      const statusParam = statusFilter === 'all' ? undefined : (statusFilter === 'success' ? 'success' : 'error');
-      const runsData = await api.getAllJobRuns(recordLimit, statusParam);
-      const mapped: JobRun[] = runsData.map((r: ApiJobRun) => {
-        const job = jobs.find((j) => j.id === r.job_id);
-        const isSuccess = r.status === 'success' || r.status_code === 202;
-        return {
-          id: r.id,
-          job_id: r.job_id,
-          job_title: job?.title || `Job ${r.job_id}`,
-          recipient: job?.recipient || job?.recipient_alias || 'Webhook target',
-          timestamp: r.ran_at,
-          relative_time: formatRelativeTime(r.ran_at),
-          trigger_mode: r.trigger === 'manual' ? 'manual' : 'scheduled',
-          status_code: r.status_code,
-          status: isSuccess ? 'success' : 'failed',
-          duration_ms: Math.round(r.duration_ms),
-          payload_preview: job?.text || `Dispatch to ${job?.recipient || 'target'}`,
-          rendered_payload: job?.text,
-          error_message: r.error_message || undefined,
-        };
-      });
-      setApiRuns(mapped);
-    } catch {
-      // Fallback to local store or fixtures if offline
-      setApiRuns(null);
-    }
-  }, [statusFilter, recordLimit, jobs]);
-
+  const [query, setQuery] = useState<Query>({ status: 'all', limit: 50 });
+  const [applied, setApplied] = useState<Query | null>(null);
+  const [runs, setRuns] = useState<JobRun[]>([]);
+  const [state, setState] = useState<ReadState>({ status: 'loading' });
+  const [revision, setRevision] = useState(0);
+  const [selected, setSelected] = useState<JobRun | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const generation = useRef(0);
   useEffect(() => {
-    loadRuns();
-  }, [loadRuns]);
-
-  // Merge store runs and initial audit runs if apiRuns is null
-  const allRuns = useMemo(() => {
-    if (apiRuns !== null) {
-      return apiRuns;
-    }
-    const combined = [...storeRuns];
-    INITIAL_AUDIT_RUNS.forEach((initRun) => {
-      if (!combined.some((r) => r.id === initRun.id)) {
-        combined.push(initRun);
-      }
+    const current = ++generation.current;
+    setState({ status: 'loading' });
+    void api.getAllJobRuns(query.limit, query.status === 'all' ? undefined : query.status).then((data) => {
+      if (current !== generation.current) return;
+      setRuns([...data].sort((a, b) => new Date(b.ran_at).getTime() - new Date(a.ran_at).getTime()));
+      setApplied(query);
+      setState({ status: 'ready' });
+    }).catch((error: unknown) => {
+      if (current === generation.current) setState({ status: 'error', error: error instanceof Error ? error.message : 'falha de conexão' });
     });
-    return combined;
-  }, [apiRuns, storeRuns]);
-
-  // Derived filtered runs
-  const filteredRuns = useMemo(() => {
-    if (apiRuns !== null) {
-      return apiRuns;
-    }
-    let list = allRuns;
-    if (statusFilter === 'success') {
-      list = list.filter((r) => r.status_code === 202);
-    } else if (statusFilter === 'failed') {
-      list = list.filter((r) => r.status_code !== 202);
-    }
-    return list.slice(0, recordLimit);
-  }, [apiRuns, allRuns, statusFilter, recordLimit]);
-
-  const selectedJob = useMemo(() => {
-    return jobs.find((j) => j.id === inspectJobId) || null;
-  }, [jobs, inspectJobId]);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([fetchJobs(), loadRuns()]);
-      toast.success('Audit ledger refreshed', {
-        description: 'Synchronized with local SQLite dispatch logs.',
-      });
-    } catch {
-      toast.error('Failed to refresh audit ledger');
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const handleExportCsv = async () => {
+    return () => { generation.current += 1; };
+  }, [query, revision]);
+  const exportCsv = useCallback(async () => {
+    if (!applied || state.status !== 'ready' || exporting) return;
+    setExporting(true);
     try {
       const params = new URLSearchParams();
-      if (statusFilter !== 'all') {
-        params.set('status', statusFilter === 'success' ? 'success' : 'error');
-      }
+      if (applied.status !== 'all') params.set('status', applied.status);
       const blob = await api.downloadCsv('/jobs/runs/export.csv', params);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `homelab_history_audit_${new Date().toISOString().split('T')[0]}.csv`;
+      link.download = 'historico.csv';
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      link.remove();
       URL.revokeObjectURL(url);
-      toast.success('Audit history CSV exported');
     } catch (error: unknown) {
       toast.error(`Falha ao exportar CSV: ${error instanceof Error ? error.message : 'falha de conexão'}`);
-    }
-  };
-
-  return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Page Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-border">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">
-            Execution History & Dispatch Audit Ledger
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Immutable trace of webhook dispatches, downstream WhatsApp delivery latency, and error diagnostics.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-          <span>Retention: 30d</span>
-          <span>·</span>
-          <span className="text-emerald-500 font-medium">Gateway 202 Ready</span>
-        </div>
-      </div>
-
-      {/* Telemetry Metrics & Control Bar */}
-      <HistoryMetrics
-        runs={allRuns}
-        statusFilter={statusFilter}
-        recordLimit={recordLimit}
-        isRefreshing={isRefreshing}
-        onStatusFilterChange={setStatusFilter}
-        onRecordLimitChange={setRecordLimit}
-        onRefresh={handleRefresh}
-        onExportCsv={handleExportCsv}
-      />
-
-      {/* Execution Ledger Table */}
-      <HistoryTable
-        runs={filteredRuns}
-        onSelectRun={(run) => setSelectedRun(run)}
-        onInspectJob={(jobId) => setInspectJobId(jobId)}
-      />
-
-      {/* Slide-over details drawer */}
-      <RunDetailsSheet
-        run={selectedRun}
-        open={!!selectedRun}
-        onOpenChange={(open) => {
-          if (!open) setSelectedRun(null);
-        }}
-        onInspectJob={(jobId) => setInspectJobId(jobId)}
-      />
-
-      {/* Source Job Inspector modal */}
-      <JobInspector
-        job={selectedJob}
-        open={!!inspectJobId}
-        onOpenChange={(open) => {
-          if (!open) setInspectJobId(null);
-        }}
-      />
+    } finally { setExporting(false); }
+  }, [applied, state.status, exporting]);
+  return <div className="max-w-7xl mx-auto space-y-4">
+    <h1 className="text-xl font-bold">Histórico de execuções</h1>
+    <p className="text-sm text-muted-foreground">Tentativas retidas, limitadas à consulta; aceitação pelo gateway não confirma entrega.</p>
+    <div className="flex flex-wrap gap-2 items-center">
+      <label>Status <select aria-label="Status do histórico" value={query.status} onChange={(event) => setQuery({ ...query, status: event.target.value as Filter })} className="border rounded p-2 bg-background">
+        <option value="all">Todos</option><option value="success">Sucesso</option><option value="error">Erro</option>
+      </select></label>
+      <label>Limite <select aria-label="Limite do histórico" value={query.limit} onChange={(event) => setQuery({ ...query, limit: Number(event.target.value) })} className="border rounded p-2 bg-background"><option value={50}>50</option><option value={100}>100</option></select></label>
+      <button type="button" onClick={() => setRevision((n) => n + 1)} className="border rounded p-2 min-h-[44px]">Atualizar</button>
+      <button type="button" onClick={() => void exportCsv()} disabled={state.status !== 'ready' || exporting} className="border rounded p-2 min-h-[44px]">Exportar CSV</button>
     </div>
-  );
+    {state.status === 'loading' && <p role="status">Carregando histórico…</p>}
+    {state.status === 'error' && <div role="alert">Falha ao carregar histórico: {state.error} <button type="button" onClick={() => setRevision((n) => n + 1)}>Tentar novamente</button></div>}
+    {state.status === 'ready' && <section>
+      <p className="text-sm">{runs.length} tentativas carregadas · limite {applied?.limit}</p>
+      {runs.length === 0 ? <p>Nenhuma tentativa encontrada.</p> : <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead><tr><th>Data</th><th>Agendamento</th><th>Origem</th><th>Status</th><th>HTTP</th><th>Duração</th><th>Ações</th></tr></thead><tbody>{runs.map((run) => <tr key={run.id} className="border-t border-border">
+        <td>{run.ran_at}</td><td><button type="button" className="underline" onClick={() => setJobId(run.job_id)}>{run.job_id}</button></td><td>{run.trigger}</td><td>{run.status}</td><td>{run.status_code ?? '—'}</td><td>{run.duration_ms ?? '—'} ms</td><td><button type="button" onClick={() => setSelected(run)} className="underline min-h-[44px]">Detalhes</button></td>
+      </tr>)}</tbody></table></div>}
+    </section>}
+    <Dialog.Root open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}><Dialog.Portal>
+      <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
+      {selected && <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card p-6 rounded border border-border space-y-2 max-w-lg w-full">
+        <Dialog.Title className="font-semibold">Tentativa {selected.id}</Dialog.Title><p>{selected.ran_at} · {selected.trigger} · {selected.status}</p><p>HTTP {selected.status_code ?? '—'} · {selected.duration_ms ?? '—'} ms</p>{selected.error_message && <p>{selected.error_message}</p>}
+        <button type="button" className="underline mr-4 min-h-[44px]" onClick={() => { setJobId(selected.job_id); setSelected(null); }}>Inspecionar agendamento</button><Dialog.Close>Fechar</Dialog.Close>
+      </Dialog.Content>}
+    </Dialog.Portal></Dialog.Root>
+    <JobInspector job={null} jobId={jobId} open={!!jobId} onOpenChange={(open) => { if (!open) setJobId(null); }} />
+  </div>;
 }

@@ -24,9 +24,8 @@ def test_jobs_page_implements_job_runs_audit_contract() -> None:
     assert "getAllJobRuns(limit: number = 50, status?: string): Promise<JobRun[]>" in api_content
 
     # Verify JobsPage state and loading
-    assert "setAuditRuns" in page_content
-    assert "setLoadingRuns" in page_content
-    assert "api.getJobRuns(job.id, 20)" in page_content
+    assert "useInspectorResource" in page_content
+    assert "api.getJobRuns(currentJob.id, 20)" in page_content
 
     # Verify JobsPage drawer section elements
     assert 'id="detail-runs-section"' in page_content
@@ -35,5 +34,5 @@ def test_jobs_page_implements_job_runs_audit_contract() -> None:
     assert 'id="runs-empty"' in page_content
     assert 'id="runs-list"' in page_content
     assert "Histórico de Disparos" in page_content
-    assert "run.duration_ms.toFixed(1)" in page_content
+    assert "run.duration_ms" in page_content
 

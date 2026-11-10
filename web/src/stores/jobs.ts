@@ -33,9 +33,9 @@ function _snoozeWhen(duration: string): string {
   return duration.toLowerCase().includes('hour') ? '+1h' : duration;
 }
 
-function _requireJob(id: string, options: { mutable: boolean } = { mutable: true }): Job {
-  const job = useJobsStore.getState().jobs.find((j) => j.id === id);
-  if (!job) throw new Error('Agendamento não encontrado na lista carregada; atualize a agenda');
+async function _requireJob(id: string, options: { mutable: boolean } = { mutable: true }): Promise<Job> {
+  const state = useJobsStore.getState();
+  const job = state.jobs.find((j) => j.id === id) ?? mapJobListItemToDomain(await api.getJob(id), state.contacts, []);
   if (options.mutable && job.source === 'yaml') throw new Error(YAML_IMMUTABLE_MESSAGE);
   return job;
 }
@@ -225,34 +225,36 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     }
   },
 
-  runJobNow: async (id: string) => {
-    _requireJob(id, { mutable: false });
-    return _mutate(`job:${id}`, () => api.runJob(id));
-  },
+  runJobNow: async (id: string) => _mutate(`job:${id}`, async () => {
+    await _requireJob(id, { mutable: false });
+    return api.runJob(id);
+  }),
 
-  togglePauseResume: async (id: string) => {
-    const job = _requireJob(id);
-    return _mutate(`job:${id}`, () => (job.status === 'paused' ? api.resumeJob(id) : api.pauseJob(id)));
-  },
+  togglePauseResume: async (id: string) => _mutate(`job:${id}`, async () => {
+    const job = await _requireJob(id);
+    return job.status === 'paused' ? api.resumeJob(id) : api.pauseJob(id);
+  }),
 
-  snoozeJob: async (id: string, snoozeDuration: string) => {
-    _requireJob(id);
-    return _mutate(`job:${id}`, () => api.snoozeJob(id, { when: _snoozeWhen(snoozeDuration) }));
-  },
+  snoozeJob: async (id: string, snoozeDuration: string) => _mutate(`job:${id}`, async () => {
+    await _requireJob(id);
+    return api.snoozeJob(id, { when: _snoozeWhen(snoozeDuration) });
+  }),
 
-  rescheduleJob: async (id: string, { run_at, cron_expr }) => {
-    _requireJob(id);
-    return _mutate(`job:${id}`, () => api.rescheduleJob(id, { run_at, cron_expr }));
-  },
+  rescheduleJob: async (id: string, { run_at, cron_expr }) => _mutate(`job:${id}`, async () => {
+    await _requireJob(id);
+    return api.rescheduleJob(id, { run_at, cron_expr });
+  }),
 
-  retryJob: async (id: string) => {
-    _requireJob(id);
-    return _mutate(`job:${id}`, () => api.retryJob(id));
-  },
+  retryJob: async (id: string) => _mutate(`job:${id}`, async () => {
+    await _requireJob(id);
+    return api.retryJob(id);
+  }),
 
   cancelJob: async (id: string) => {
-    _requireJob(id);
-    const outcome = await _mutate(`job:${id}`, () => api.cancelJob(id));
+    const outcome = await _mutate(`job:${id}`, async () => {
+      await _requireJob(id);
+      return api.cancelJob(id);
+    });
     set((state) => ({
       selectedJobId: state.selectedJobId === id ? null : state.selectedJobId,
       isInspectorOpen: state.selectedJobId === id ? false : state.isInspectorOpen,

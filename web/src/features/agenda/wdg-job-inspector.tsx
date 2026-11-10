@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {
   X,
@@ -18,8 +18,10 @@ import {
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Job, JobRun } from '../../types/domain';
-import { UpcomingRunItem } from '../../lib/types';
+import { Job } from '../../types/domain';
+import { ApiClientError } from '../../lib/api';
+import { mapJobListItemToDomain } from '../../stores/jobs';
+import { useInspectorResource } from './use-inspector-resource';
 import { StatusBadge, SourceBadge } from '../../components/wdg-status-badge';
 import { useJobsStore } from '../../stores/jobs';
 import { api } from '../../lib/api';
@@ -29,101 +31,49 @@ export interface JobInspectorProps {
   job: Job | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  jobId?: string | null;
 }
 
-export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
+export function JobInspector({ job, jobId, open, onOpenChange }: JobInspectorProps) {
+  const id = jobId || job?.id || '';
+  if (!open || !id) return null;
+  return <InspectorLoader key={id} id={id} onOpenChange={onOpenChange} />;
+}
+
+function InspectorLoader({ id, onOpenChange }: { id: string; onOpenChange: (open: boolean) => void }) {
+  const open = true;
+  const contacts = useJobsStore((state) => state.contacts);
+  const [revision, setRevision] = useState(0);
+  const load = useCallback(() => api.getJob(id), [id]);
+  const detail = useInspectorResource(id, load, revision);
+  if (detail.status !== 'ready') return <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
+      <Dialog.Content className="fixed right-0 top-0 z-50 bg-card p-6 border border-border">
+        <Dialog.Title>Detalhes do agendamento</Dialog.Title>
+        {detail.status === 'loading' ? <p role="status">Carregando detalhes…</p> : <div role="alert">
+          <p>{detail.error instanceof ApiClientError && detail.error.status === 404 ? 'Agendamento não encontrado.' : `Falha ao carregar detalhes: ${detail.error instanceof Error ? detail.error.message : 'falha de conexão'}`}</p>
+          <button type="button" onClick={() => setRevision((value) => value + 1)}>Tentar novamente</button>
+        </div>}
+        <Dialog.Close>Fechar</Dialog.Close>
+      </Dialog.Content></Dialog.Portal></Dialog.Root>;
+  const loaded = detail.data;
+  const current = { ...mapJobListItemToDomain(loaded, contacts, []), text: loaded.content };
+  return <InspectorContent key={id} job={current} open={open} onOpenChange={onOpenChange} onChanged={() => setRevision((n) => n + 1)} />;
+}
+
+function InspectorContent({ job: currentJob, open, onOpenChange, onChanged }: { job: Job; open: boolean; onOpenChange: (open: boolean) => void; onChanged: () => void }) {
   const { runJobNow, togglePauseResume, snoozeJob, rescheduleJob, cancelJob, retryJob } = useJobsStore();
   const [activeTab, setActiveTab] = useState<'details' | 'history' | 'projection'>('details');
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [newRunAt, setNewRunAt] = useState('');
   const [newCron, setNewCron] = useState('');
-  const [fullJob, setFullJob] = useState<Job | null>(null);
-  const [auditRuns, setAuditRuns] = useState<JobRun[]>([]);
-  const [upcomingRuns, setUpcomingRuns] = useState<UpcomingRunItem[]>([]);
-  const [loadingRuns, setLoadingRuns] = useState(false);
-  const [loadingUpcoming, setLoadingUpcoming] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
-
-  useEffect(() => {
-    if (!job || !open) {
-      setFullJob(null);
-      setAuditRuns([]);
-      setUpcomingRuns([]);
-      return;
-    }
-    let active = true;
-
-    api.getJob(job.id)
-      .then((loaded) => {
-        if (!active) return;
-        setFullJob({
-          ...job,
-          text: loaded.content,
-          template_id: loaded.template_id || undefined,
-          variables: loaded.variables || {},
-          tags: loaded.tags || [],
-        });
-      })
-      .catch(() => {
-        if (active) setFullJob(job);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [job?.id, open]);
-
-  useEffect(() => {
-    if (!job || !open) return;
-    let active = true;
-
-    if (activeTab === 'history') {
-      setLoadingRuns(true);
-      api.getJobRuns(job.id, 50)
-        .then((rawRuns) => {
-          if (!active) return;
-          const mapped: JobRun[] = rawRuns.map((r) => ({
-            id: r.id,
-            job_id: r.job_id,
-            job_title: job.title,
-            recipient: job.recipient,
-            timestamp: r.ran_at ? r.ran_at.replace('T', ' ').substring(0, 19) : '',
-            status_code: r.status_code,
-            status: r.status === 'success' ? 'success' : 'failed',
-            duration_ms: Math.round(r.duration_ms),
-            payload_preview: '',
-            error_message: r.error_message || undefined,
-          }));
-          setAuditRuns(mapped);
-        })
-        .catch(() => {
-          if (active) setAuditRuns(job.recent_runs || []);
-        })
-        .finally(() => {
-          if (active) setLoadingRuns(false);
-        });
-    } else if (activeTab === 'projection') {
-      setLoadingUpcoming(true);
-      api.getUpcomingRuns(job.id, 5)
-        .then((res) => {
-          if (!active) return;
-          setUpcomingRuns(res.runs || []);
-        })
-        .catch(() => {
-          // Keep empty if none
-        })
-        .finally(() => {
-          if (!active) setLoadingUpcoming(false);
-        });
-    }
-
-    return () => {
-      active = false;
-    };
-  }, [job?.id, activeTab, open]);
-
-  if (!job) return null;
-  const currentJob = fullJob || job;
+  const [runsRevision, setRunsRevision] = useState(0);
+  const [upcomingRevision, setUpcomingRevision] = useState(0);
+  const loadRuns = useCallback(() => api.getJobRuns(currentJob.id, 20), [currentJob.id]);
+  const loadUpcoming = useCallback(() => api.getUpcomingRuns(currentJob.id, 5), [currentJob.id]);
+  const runs = useInspectorResource(currentJob.id, loadRuns, runsRevision);
+  const upcoming = useInspectorResource(currentJob.id, loadUpcoming, upcomingRevision);
   const isYaml = currentJob.source === 'yaml';
 
   const rejectYaml = (): boolean => {
@@ -135,7 +85,9 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
   const mutate = async (feedback: MutationFeedback): Promise<boolean> => {
     setIsBusy(true);
     try {
-      return await runWithFeedback(feedback);
+      const accepted = await runWithFeedback(feedback);
+      if (accepted) onChanged();
+      return accepted;
     } finally {
       setIsBusy(false);
     }
@@ -296,10 +248,10 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
                 {/* Rendered Payload */}
                 <div>
                   <span className="text-[11px] font-medium text-muted-foreground block mb-1">
-                    Rendered Notification Payload
+                    Conteúdo armazenado
                   </span>
                   <div className="p-3 rounded-lg border border-border bg-background font-mono text-xs whitespace-pre-wrap text-foreground">
-                    {currentJob.text || (currentJob.template_id ? `[Template: ${currentJob.template_id}]` : 'No payload defined')}
+                    {currentJob.text ?? '—'}
                   </div>
                 </div>
 
@@ -350,7 +302,7 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
                 <div className="space-y-1.5 text-[11px] text-muted-foreground">
                   <div className="flex justify-between">
                     <span>Recipient</span>
-                    <span className="font-mono text-foreground">{currentJob.recipient} ({currentJob.recipient_alias || 'Alias'})</span>
+                    <span className="font-mono text-foreground">{currentJob.recipient}{currentJob.recipient_alias ? ` (${currentJob.recipient_alias})` : ''}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Created by</span>
@@ -374,114 +326,21 @@ export function JobInspector({ job, open, onOpenChange }: JobInspectorProps) {
               </div>
             )}
 
-            {activeTab === 'history' && (
-              <div id="detail-runs-section" className="mt-4 space-y-2">
-                <div className="flex items-center justify-between pb-1">
-                  <span className="text-xs font-semibold text-foreground">Histórico de Disparos</span>
-                  <button
-                    type="button"
-                    id="btn-refresh-runs"
-                    onClick={() => {
-                      if (!job) return;
-                      setLoadingRuns(true);
-                      api.getJobRuns(job.id, 20)
-                        .then((runs) => {
-                          setAuditRuns(
-                            runs.map((r) => ({
-                              id: r.id,
-                              job_id: r.job_id,
-                              job_title: job.title,
-                              recipient: job.recipient,
-                              timestamp: r.ran_at ? r.ran_at.replace('T', ' ').substring(0, 19) : '',
-                              status_code: r.status_code,
-                              status: r.status === 'success' ? 'success' : 'failed',
-                              duration_ms: Math.round(r.duration_ms),
-                              payload_preview: '',
-                              error_message: r.error_message || undefined,
-                            }))
-                          );
-                        })
-                        .finally(() => setLoadingRuns(false));
-                    }}
-                    className="p-1 text-muted-foreground hover:text-foreground"
-                    title="Refresh runs"
-                  >
-                    <RotateCw size={12} className={loadingRuns ? 'animate-spin' : ''} />
-                  </button>
-                </div>
-                {loadingRuns ? (
-                  <div id="runs-loading" className="py-8 flex justify-center">
-                    <Loader2 className="animate-spin h-5 w-5 text-sky-500" />
-                  </div>
-                ) : auditRuns.length === 0 ? (
-                  <p id="runs-empty" className="text-xs text-muted-foreground py-6 text-center font-mono">
-                    No recorded execution history for this task.
-                  </p>
-                ) : (
-                  <div id="runs-list" className="space-y-2">
-                    {auditRuns.map((run) => (
-                      <div key={run.id} className="p-3 rounded-lg border border-border bg-background text-xs space-y-1">
-                        <div className="flex items-center justify-between font-mono">
-                          <span className={run.status === 'success' ? 'text-emerald-500 font-semibold' : 'text-rose-500 font-semibold'}>
-                            HTTP {run.status_code} {run.status === 'success' ? 'Accepted' : 'Failed'}
-                          </span>
-                          <span className="text-muted-foreground text-[11px]">{run.duration_ms.toFixed(1)}ms</span>
-                        </div>
-                        <div className="text-muted-foreground font-mono text-[11px]">{run.timestamp}</div>
-                        {run.error_message && (
-                          <div className="text-rose-400 font-mono text-[10px] pt-1">{run.error_message}</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {activeTab === 'history' && <div id="detail-runs-section" className="mt-4 space-y-2">
+              <div className="flex justify-between"><span>Histórico de Disparos · até 20 tentativas</span><button id="btn-refresh-runs" type="button" onClick={() => setRunsRevision((n) => n + 1)}>Atualizar</button></div>
+              {runs.status === 'loading' && <p id="runs-loading" role="status">Carregando tentativas…</p>}
+              {runs.status === 'error' && <p role="alert">Falha ao carregar tentativas: {runs.error instanceof Error ? runs.error.message : 'falha de conexão'}</p>}
+              {runs.status === 'ready' && (runs.data.length === 0 ? <p id="runs-empty">Nenhuma tentativa registrada.</p> : <div id="runs-list">{runs.data.map((run) => <div key={run.id} className="border rounded p-3 text-xs">
+                <p>{run.ran_at} · {run.trigger} · {run.status}</p><p>HTTP {run.status_code ?? '—'} · {run.duration_ms ?? '—'} ms</p>{run.error_message && <p>{run.error_message}</p>}
+              </div>)}</div>)}
+            </div>}
+            {activeTab === 'projection' && <div id="detail-upcoming-card" className="mt-4 space-y-2 text-xs">
+              <div className="flex justify-between"><span>Próximas execuções · até 5</span><button id="btn-refresh-upcoming" type="button" onClick={() => setUpcomingRevision((n) => n + 1)}>Atualizar</button></div>
+              {upcoming.status === 'loading' && <p id="upcoming-loading" role="status">Carregando projeção…</p>}
+              {upcoming.status === 'error' && <p role="alert">Falha ao carregar projeção: {upcoming.error instanceof Error ? upcoming.error.message : 'falha de conexão'}</p>}
+              {upcoming.status === 'ready' && (upcoming.data.runs.length === 0 ? <p id="upcoming-empty">Nenhuma próxima execução.</p> : <div id="upcoming-list">{upcoming.data.runs.map((item, index) => <p key={item.run_at}>#{index + 1} · {item.run_at_local}</p>)}</div>)}
+            </div>}
 
-            {activeTab === 'projection' && (
-              <div id="detail-upcoming-card" className="mt-4 space-y-2 text-xs">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] text-muted-foreground">
-                    Next Planned Trigger Dispatches (UTC)
-                  </span>
-                  <button
-                    type="button"
-                    id="btn-refresh-upcoming"
-                    onClick={() => {
-                      if (!job) return;
-                      setLoadingUpcoming(true);
-                      api.getUpcomingRuns(job.id, 5)
-                        .then((res) => setUpcomingRuns(res.runs))
-                        .finally(() => setLoadingUpcoming(false));
-                    }}
-                    className="p-1 text-muted-foreground hover:text-foreground"
-                    title="Refresh upcoming"
-                  >
-                    <RotateCw size={12} className={loadingUpcoming ? 'animate-spin' : ''} />
-                  </button>
-                </div>
-                {loadingUpcoming ? (
-                  <div id="upcoming-loading" className="py-8 flex justify-center">
-                    <Loader2 className="animate-spin h-5 w-5 text-sky-500" />
-                  </div>
-                ) : upcomingRuns.length === 0 ? (
-                  <p id="upcoming-empty" className="text-xs text-muted-foreground py-6 text-center font-mono">
-                    No upcoming runs projected for this task.
-                  </p>
-                ) : (
-                  <div id="upcoming-list" className="space-y-1.5">
-                    {upcomingRuns.map((p, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-background font-mono text-[11px]">
-                        <span className="text-muted-foreground">Próxima #{idx + 1}</span>
-                        <span className="text-sky-500 font-medium">
-                          {p.formatted_date || p.run_at_local || p.run_at} {p.time_local ? `(${p.time_local})` : ''}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Interactive Action Bar */}

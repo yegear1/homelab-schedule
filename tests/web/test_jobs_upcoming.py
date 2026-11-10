@@ -27,10 +27,8 @@ def test_jobs_page_upcoming_runs_contract() -> None:
     content = INSPECTOR_FILE.read_text(encoding="utf-8")
 
     # State and functions
-    assert "upcomingRuns" in content
-    assert "setUpcomingRuns" in content
-    assert "loadingUpcoming" in content
-    assert "api.getUpcomingRuns(job.id, 5)" in content
+    assert "useInspectorResource" in content
+    assert "api.getUpcomingRuns(currentJob.id, 5)" in content
 
     # DOM elements in detail drawer
     assert 'id="detail-upcoming-card"' in content
