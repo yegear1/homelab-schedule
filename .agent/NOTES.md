@@ -33,6 +33,8 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 ## Architectural Decisions Beyond ADRs
 
+- **Data operations and integrity [02.40]:** Removed fake binary SQLite blob synthesis and client-side JSON export fallbacks; failed downloads create zero files and surface retryable errors. Initial integrity diagnostics are idle and unverified, without fabricated page counts or simulated WAL frame metrics; live results render actual PRAGMA `integrity_check` and `foreign_key_check` fields, clearing stale outputs on error without claiming pass. Import enforces bundle schema validation, retains staged drafts and counts on server failures, locks inputs during in-flight processing, and surfaces authoritative server counts and warnings.
+
 - **Inspector and history [02.39]:** Job detail, attempts and upcoming projection have separate request states and selection guards; global history displays only fields returned by the audit API. Export uses the applied status scope and does not generate local data on failure. Jobs outside the loaded agenda are fetched before guarded lifecycle actions.
 
 - **Agenda views [02.38]:** Calendar uses browser-local dates for loaded `next_run_at` values and up to 100 global attempts; it never expands cron occurrences. Timeline history is independently fetched with stale/error states and is not filtered by the bounded agenda query.

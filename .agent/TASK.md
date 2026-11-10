@@ -7,11 +7,13 @@
 
 ## Active Task
 
-- **Task:** [02.40] Secure data operations and integrity display.
+- **Task:** [02.41] Align shell, navigation and access feedback.
 - **Status:** `READY FOR PLANNING`
-- **Next Step:** Plan the scope in [WEB_UI_REAL_DATA_PLAN.md](WEB_UI_REAL_DATA_PLAN.md).
+- **Next Step:** Plan the scope in [.agent/WEB_UI_REAL_DATA_PLAN.md](.agent/WEB_UI_REAL_DATA_PLAN.md).
 
 ## Completed Tasks Log
+
+- [02.40] Removed synthetic SQLite and JSON download fallbacks, wired authoritative integrity diagnostics without fabricated metrics, validated import schema and preserved drafts on failure | [`3b9b2da`] | 2026-11-09 | 3 focused data authority browser tests, 14 history-data browser tests, 247 Python tests, mypy, Ruff, frontend check/build and diff check pass
 
 - [02.39] Bound inspector detail, attempts and projections and global history to independent API reads; removed sample audit data and fabricated metrics; protected selection races and exports | [`fb0adf9`] | 2026-11-09 | 4 focused history and 20 mutation browser tests, 247 Python tests, mypy, Ruff, frontend checks/build and diff check pass
 
@@ -89,7 +91,6 @@ Cycles `v0.1.0`, `v0.2.0`, `v0.3.0`, and `v0.4.0` archived in `ARCHIVE.md`.
 
 ## Backlog (Upcoming, in priority order)
 
-- [ ] **[02.40]** Secure data operations and integrity display
 - [ ] **[02.41]** Align shell, navigation and access feedback
 - [ ] **[02.42]** End-to-end production readiness verification
 
