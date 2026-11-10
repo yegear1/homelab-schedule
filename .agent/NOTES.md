@@ -33,6 +33,8 @@ Single OS process. Zero Redis, zero APScheduler, zero Alembic, zero messaging cl
 
 ## Architectural Decisions Beyond ADRs
 
+- **Catalog writes [02.37]:** Contact and template state follows accepted server responses; failed mutations preserve drafts. Scoped job counts must not be inferred from the global bounded agenda. Unknown preview tokens remain literal. Digest conflict fixtures use a future date to avoid dispatch races with the clock.
+
 - **UI read states [02.34]:** Initial shared operational collections are empty; failed reads show retryable errors, retained real results are marked stale, and request generations prevent older responses replacing newer reads. Agenda summary uses loaded jobs only. Mutation, history and data fallbacks remain unresolved until their assigned tasks; do not treat this change as production readiness.
 
 - **React UI remediation baseline [02.33]:** `WEB_UI_REAL_DATA_PLAN.md` records source-to-surface ownership and the approved sequential tasks. Existing browser tests retain required behavior but four agenda cases failed on missing `#scr-jobs`; the suite was interrupted, so its remaining results are unknown. Python source-contract passes do not prove browser behavior. Never replace failed live reads, writes, diagnostics, or downloads with synthetic success.
