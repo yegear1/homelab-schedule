@@ -40,3 +40,8 @@ web/.vite/
 
 # Test execution results
 test-results/
+
+# Agent & worktree ephemeral scratch
+.agent/.cache/
+.worktrees/
+.maestri/
