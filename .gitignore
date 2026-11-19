@@ -45,3 +45,8 @@ test-results/
 .agent/.cache/
 .worktrees/
 .maestri/
+
+# Agent & dev-harness ephemeral state
+.harness/queue/done/
+.harness/queue/escalated/
+.harness/worktrees/

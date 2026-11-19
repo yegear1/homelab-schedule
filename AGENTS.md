@@ -38,7 +38,6 @@ When a conflict cannot be resolved using this hierarchy, halt execution and requ
 ## Modular Context Triggers
 
 The agent MUST minimize default token load by following progressive disclosure:
-- **Ephemeral feature specifications (Batch Context Anchor):** Read `.agent/scratch/specs/<XX-YY>.md` when executing sequential sub-task batches (`[BATCH: Bx]`) to reuse feature contracts and file maps without re-scanning the repository.
 - **Default Context (Loaded on start):** `AGENTS.md`, `.agent/TASK.md`, `.agent/NOTES.md`.
 - **Architectural Decisions (`docs/adr/decisions.md`):** MUST load when creating new services or changing system boundaries.
 - **Domain Skills (`.agent/skills/<name>/SKILL.md`):** MUST load only when the active task touches that skill's trigger.
@@ -53,7 +52,6 @@ The agent MUST minimize default token load by following progressive disclosure:
 1. Read `AGENTS.md`, `.agent/TASK.md`, and `.agent/NOTES.md` before editing any files.
 2. **Plan first (or Pre-Approved Fast-Track):** If `Status` in `.agent/TASK.md` is `READY FOR PLANNING`, set to `PLANNING`, present plan, await approval, then set to `RUNNING`. If task scope was already decided during planning (`Status: APPROVED`) with zero open questions/blockers, transition directly to `RUNNING` on `proceed` (or use the `task-queue` skill on `proceed queue` to execute sequential/parallel subagents with multi-account quota routing; tag independent tasks that have strictly disjoint file scopes with `[PARALLEL: Wx]` and `Paths:`). Halt and revert to `PLANNING` if any ambiguity or unapproved dependency arises.
 3. Work on exactly ONE active task at a time.
-- **Sequential Sub-Task Batching (`[BATCH: Bx]`):** Group 2 to 4 atomic sequential subtasks (`[XX.YY.ZZ]`) that share the same architectural layer (`Type:`) and feature spec anchor (`.agent/scratch/specs/XX-YY.md`). Execute subtasks in a single warm-cache session or worktree (`ZZ.01` -> `Verify:` -> atomic `git commit` -> `ZZ.02` -> `Verify:` -> atomic `git commit`) without intermediate planning pauses. Never mix Backend (`Type: code`) and Frontend/QA (`Type: browser-qa` / `mobile-qa`) in the same batch. Do not track extra error counters during execution; rely exclusively on the canonical Fail-Stop circuit breaker.
 
 ### Step 3: Falsifiable Definition of Done (DoD)
 A task MUST NOT be marked done based on subjective appraisal. It MUST satisfy:
@@ -90,7 +88,7 @@ If an automated command (test, build, typecheck, lint) fails **3 consecutive tim
 
 ## Task Numbering (`[XX.Y]`)
 
-Format: `[Epic].[Sequence]` with two-digit epics. Subtasks: `[XX.Y.Z]`. Exactly **one** task active in `RUNNING` status. IDs are immutable within a release cycle. After Git tag: archive to `ARCHIVE.md`, restart at `[00.1]`/`[01.1]`, and update active task ID. Future Backlog: `[99.1] Prepare Release (Git Tag) and Sanitize Context` — **NEVER** start without explicit user permission.
+Format: `[Epic].[Sequence]` with two-digit epics. Subtasks: `[XX.Y.Z]`. Exactly **one** task active in `.agent/TASK.md`. IDs are immutable within a release cycle. After Git tag: archive to `ARCHIVE.md`, restart at `[00.1]`/`[01.1]`, and update active task ID. Future Backlog: `[99.1] Prepare Release (Git Tag) and Sanitize Context` — **NEVER** start without explicit user permission.
 
 **Next ID:** Derived solely from Active Task + Log of current cycle. Ignore Future Backlog and closing sections. Same epic → `Y+1`. New epic → `[XX+1.1]`. Never jump to `90.x`/`99.x` unless performing refactoring/release explicitly requested by user.
 
@@ -111,7 +109,9 @@ Not restricted to phase `99.x`. When releasing `vX.Y.Z`:
 1. **Archive:** Move completed log from `TASK.md` to `ARCHIVE.md` under `## [vX.Y.Z] - YYYY-MM-DD`.
 2. **Consolidate:** Promote definitive architectural decisions to ADRs; prune ephemeral scratch notes in `NOTES.md`.
 3. **Perimeter:** Sync `.env.example` and `README.md` to the release tag.
-4. **Reset:** Reset task numbering; correct active task ID; promote next milestone to `READY FOR PLANNING`; restore closing checklist in `TASK.md`.
+4. **Reset:** Reset task numbering; correct active task ID; promote next milestone to the active task; restore closing checklist in `TASK.md`.
+
+
 
 ---
 
@@ -270,6 +270,16 @@ git commit -m "feat(scheduler): enforce until expiration limit on recurring jobs
 [08.02.03] [APPROVED] [BATCH: B1-backend] Type: code | Read: .agent/scratch/specs/08-02.md | Verify -> git commit
 ```
 
+### Commit Messages
+```markdown
+// BAD: Appending AI/agent attribution trailers to commit messages or PR descriptions
+git commit -m "feat(auth): add session refresh" -m "Co-Authored-By: <Agent> <noreply@example.com>"
+// Or PR body containing: "Generated with <Agent>"
+
+// GOOD: Clean commit message and PR description without attribution trailers
+git commit -m "feat(auth): add session refresh"
+```
+
 ## Git Conventions
 
 - **Atomic Commits:** Each commit MUST represent a single logical change.
@@ -282,3 +292,10 @@ git commit -m "feat(scheduler): enforce until expiration limit on recurring jobs
   - `docs`: documentation only
 - **Branch Strategy:** Trunk-based development on `main`.
 - **Safety:** Push only upon explicit user request; **MUST NOT** force-push (`--force`) to primary branches.
+- **No Agent Attribution Trailers:** NEVER append `Co-Authored-By`, `Generated with ...`, or similar AI/agent attribution trailers to commit messages or PR descriptions.
+
+## 2-Tier Execution & Hermetic Skills Contract
+
+- **Tier 1 — Interactive (Default):** Lean `.agent/TASK.md` checklist (`- [ ]` atomic subtasks) validated by the repository's canonical test and build commands.
+- **Tier 2 — Autonomous (`dev-harness` / Parallel Worktrees):** Strict micro-contracts (`files_read`, `files_edit`, `verify`) live inside `.harness/queue/<id>.{md,yaml}` or `harness:ready` GitHub Issues consumed by `dev-harness`, never in `.agent/TASK.md`. Lifecycle hooks in `.agent/hooks/` (`post-worktree-create`, `pre-verify`, `post-worktree-teardown`) apply to both tiers.
+- **Hermetic Skills & Context Contract:** Procedural guidelines and skills must be self-contained within `.agent/skills/` or injected directly into the task dispatch prompt by the orchestrator; never wander the host filesystem for missing skills.

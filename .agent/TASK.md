@@ -8,7 +8,6 @@
 ## Active Task
 
 - **Task:** None — roadmap completed.
-- **Status:** `COMPLETE`
 - **Next Step:** Await operator instructions.
 
 ## Completed Tasks Log
